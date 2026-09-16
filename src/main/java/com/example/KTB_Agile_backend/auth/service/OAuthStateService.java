@@ -20,7 +20,7 @@ public class OAuthStateService {
 
 	private static final Duration STATE_TTL = Duration.ofMinutes(5);
 
-	private final OAuthStateRepository oauthStateRepository;
+	private final OAuthStateStore oauthStateStore;
 	private final SecureRandom secureRandom = new SecureRandom();
 
 	@Transactional
@@ -29,11 +29,11 @@ public class OAuthStateService {
 		byte[] stateBytes = new byte[32];
 		secureRandom.nextBytes(stateBytes);
 		String state = Base64.getUrlEncoder().withoutPadding().encodeToString(stateBytes);
-		oauthStateRepository.save(new OAuthState(
+		oauthStateStore.save(
 				Hashing.sha256(state),
 				normalizedProvider,
 				Instant.now().plus(STATE_TTL)
-		));
+		);
 		return state;
 	}
 
@@ -48,13 +48,12 @@ public class OAuthStateService {
 
 		String normalizedProvider = normalizeProvider(provider);
 		Instant now = Instant.now();
-		int consumed = oauthStateRepository.consumeIfValid(
+		boolean consumed = oauthStateStore.consumeIfValid(
 				Hashing.sha256(stateCookie),
 				normalizedProvider,
-				now,
 				now
 		);
-		if (consumed != 1) {
+		if (!consumed) {
 			throw new IllegalArgumentException("expired or already consumed OAuth state");
 		}
 	}
