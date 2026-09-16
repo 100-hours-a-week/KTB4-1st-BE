@@ -4,44 +4,44 @@ import com.example.KTB_Agile_backend.auth.client.OAuthProviderClient;
 import com.example.KTB_Agile_backend.auth.dto.OAuthUserInfo;
 import com.example.KTB_Agile_backend.auth.dto.request.OAuthLoginRequest;
 import com.example.KTB_Agile_backend.auth.dto.response.AuthResponse;
-import com.example.KTB_Agile_backend.user.entity.RefreshToken;
-import com.example.KTB_Agile_backend.user.repository.RefreshTokenRepository;
+import com.example.KTB_Agile_backend.auth.dto.response.TokenReissueResponse;
+import com.example.KTB_Agile_backend.auth.token.AccessTokenIssuer;
+import com.example.KTB_Agile_backend.auth.token.RefreshTokenService;
+import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.repository.SocialAccountRepository;
 import com.example.KTB_Agile_backend.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
 	@Test
-	void createsUserAndStoresHashedRefreshTokenOnFirstLogin() {
+	void createsUserAndIssuesBothTokensOnFirstLogin() {
 		OAuthStateService stateService = mock(OAuthStateService.class);
 		OAuthProviderClient providerClient = mock(OAuthProviderClient.class);
 		UserRepository userRepository = mock(UserRepository.class);
 		SocialAccountRepository socialAccountRepository = mock(SocialAccountRepository.class);
-		RefreshTokenRepository refreshTokenRepository = mock(RefreshTokenRepository.class);
-		TokenService tokenService = mock(TokenService.class);
+		AccessTokenIssuer accessTokenIssuer = mock(AccessTokenIssuer.class);
+		RefreshTokenService refreshTokenService = mock(RefreshTokenService.class);
 		AuthService authService = new AuthService(
 				stateService,
 				List.of(providerClient),
 				userRepository,
 				socialAccountRepository,
-				refreshTokenRepository,
-				tokenService
+				accessTokenIssuer,
+				refreshTokenService
 		);
 
 		when(providerClient.provider()).thenReturn("KAKAO");
@@ -51,10 +51,9 @@ class AuthServiceTest {
 				.thenReturn(Optional.empty());
 		when(userRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 		when(socialAccountRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-		when(tokenService.issueAccessToken(any())).thenReturn("access-token");
-		when(tokenService.issueRefreshToken()).thenReturn("refresh-token");
-		when(tokenService.refreshTokenExpiresAt()).thenReturn(LocalDateTime.now().plusDays(14));
-		when(tokenService.accessTokenExpiresInSeconds()).thenReturn(900L);
+		when(accessTokenIssuer.issue(any())).thenReturn("access-token");
+		when(refreshTokenService.issue(any())).thenReturn("refresh-token");
+		when(accessTokenIssuer.expiresInSeconds()).thenReturn(900L);
 
 		AuthResponse response = authService.oauthLogin(
 				new OAuthLoginRequest("kakao", "authorization-code", "state"),
@@ -64,8 +63,47 @@ class AuthServiceTest {
 		assertEquals("access-token", response.accessToken());
 		assertTrue(response.isNewUser());
 		verify(stateService).consume("state", "state", "KAKAO");
-		ArgumentCaptor<RefreshToken> refreshTokenCaptor = ArgumentCaptor.forClass(RefreshToken.class);
-		verify(refreshTokenRepository).save(refreshTokenCaptor.capture());
-		assertEquals(Hashing.sha256("refresh-token"), refreshTokenCaptor.getValue().getTokenHash());
+		verify(refreshTokenService).issue(any(User.class));
+	}
+
+	@Test
+	void reissuesAccessTokenWithValidatedRefreshToken() {
+		AccessTokenIssuer accessTokenIssuer = mock(AccessTokenIssuer.class);
+		RefreshTokenService refreshTokenService = mock(RefreshTokenService.class);
+		AuthService authService = new AuthService(
+				mock(OAuthStateService.class),
+				List.of(),
+				mock(UserRepository.class),
+				mock(SocialAccountRepository.class),
+				accessTokenIssuer,
+				refreshTokenService
+		);
+		User user = new User("kim");
+		when(refreshTokenService.requireValidUser("refresh-token")).thenReturn(user);
+		when(accessTokenIssuer.issue(user)).thenReturn("new-access-token");
+		when(accessTokenIssuer.expiresInSeconds()).thenReturn(900L);
+
+		TokenReissueResponse response = authService.reissueToken("refresh-token");
+
+		assertEquals("new-access-token", response.accessToken());
+		assertEquals("Bearer", response.tokenType());
+		assertEquals(900L, response.expiresIn());
+	}
+
+	@Test
+	void delegatesRefreshTokenRevocationOnLogout() {
+		RefreshTokenService refreshTokenService = mock(RefreshTokenService.class);
+		AuthService authService = new AuthService(
+				mock(OAuthStateService.class),
+				List.of(),
+				mock(UserRepository.class),
+				mock(SocialAccountRepository.class),
+				mock(AccessTokenIssuer.class),
+				refreshTokenService
+		);
+
+		authService.logout("refresh-token");
+
+		verify(refreshTokenService).revoke("refresh-token");
 	}
 }
