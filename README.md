@@ -1,6 +1,6 @@
 # KTB Final Team Backend
 
-Spring Boot backend project built with Java 26 and Gradle.
+Spring Boot backend project built with Java 25 and Gradle.
 
 ## Run
 
