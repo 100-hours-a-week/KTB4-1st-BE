@@ -62,4 +62,14 @@ public class User {
 
 		this.nickname = nickname;
 	}
+
+	public User(String nickname, String profileImageUrl) {
+		this(nickname);
+		this.profileImageUrl = profileImageUrl;
+	}
+
+	public void withdraw(LocalDateTime withdrawnAt) {
+		this.deletedAt = withdrawnAt;
+		this.userStatus = UserStatus.WITHDRAWN;
+	}
 }
