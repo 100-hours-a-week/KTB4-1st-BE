@@ -6,17 +6,16 @@ import com.example.KTB_Agile_backend.auth.dto.request.OAuthLoginRequest;
 import com.example.KTB_Agile_backend.auth.dto.response.AuthResponse;
 import com.example.KTB_Agile_backend.auth.dto.response.TokenReissueResponse;
 import com.example.KTB_Agile_backend.auth.dto.response.UserProfile;
-import com.example.KTB_Agile_backend.user.entity.RefreshToken;
+import com.example.KTB_Agile_backend.auth.token.AccessTokenIssuer;
+import com.example.KTB_Agile_backend.auth.token.RefreshTokenService;
 import com.example.KTB_Agile_backend.user.entity.SocialAccount;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.entity.UserStatus;
-import com.example.KTB_Agile_backend.user.repository.RefreshTokenRepository;
 import com.example.KTB_Agile_backend.user.repository.SocialAccountRepository;
 import com.example.KTB_Agile_backend.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 
@@ -24,28 +23,29 @@ import java.util.Locale;
 public class AuthService {
 
 	private static final String DEFAULT_PROVIDER = "KAKAO";
+	private static final String TOKEN_TYPE = "Bearer";
 
 	private final OAuthStateService oauthStateService;
 	private final List<OAuthProviderClient> oauthProviderClients;
 	private final UserRepository userRepository;
 	private final SocialAccountRepository socialAccountRepository;
-	private final RefreshTokenRepository refreshTokenRepository;
-	private final TokenService tokenService;
+	private final AccessTokenIssuer accessTokenIssuer;
+	private final RefreshTokenService refreshTokenService;
 
 	public AuthService(
 			OAuthStateService oauthStateService,
 			List<OAuthProviderClient> oauthProviderClients,
 			UserRepository userRepository,
 			SocialAccountRepository socialAccountRepository,
-			RefreshTokenRepository refreshTokenRepository,
-			TokenService tokenService
+			AccessTokenIssuer accessTokenIssuer,
+			RefreshTokenService refreshTokenService
 	) {
 		this.oauthStateService = oauthStateService;
 		this.oauthProviderClients = oauthProviderClients;
 		this.userRepository = userRepository;
 		this.socialAccountRepository = socialAccountRepository;
-		this.refreshTokenRepository = refreshTokenRepository;
-		this.tokenService = tokenService;
+		this.accessTokenIssuer = accessTokenIssuer;
+		this.refreshTokenService = refreshTokenService;
 	}
 
 	public String issueOAuthState() {
@@ -87,18 +87,13 @@ public class AuthService {
 		}
 
 		ensureActive(user);
-		String accessToken = tokenService.issueAccessToken(user);
-		String refreshToken = tokenService.issueRefreshToken();
-		refreshTokenRepository.save(new RefreshToken(
-				user,
-				Hashing.sha256(refreshToken),
-				tokenService.refreshTokenExpiresAt()
-		));
+		String accessToken = accessTokenIssuer.issue(user);
+		String refreshToken = refreshTokenService.issue(user);
 
 		AuthResponse response = new AuthResponse(
 				accessToken,
-				TokenService.TOKEN_TYPE,
-				tokenService.accessTokenExpiresInSeconds(),
+				TOKEN_TYPE,
+				accessTokenIssuer.expiresInSeconds(),
 				newUser,
 				new UserProfile(user.getId(), user.getNickname(), user.getProfileImageUrl())
 		);
@@ -107,40 +102,18 @@ public class AuthService {
 
 	@Transactional
 	public TokenReissueResponse reissueToken(String refreshToken) {
-		if (refreshToken == null || refreshToken.isBlank()) {
-			throw new IllegalArgumentException("refresh token must not be blank");
-		}
-
-		RefreshToken savedToken = refreshTokenRepository
-				.findByTokenHashAndDeletedAtIsNull(Hashing.sha256(refreshToken))
-				.orElseThrow(() -> new IllegalArgumentException("invalid refresh token"));
-		LocalDateTime now = LocalDateTime.now();
-		if (!savedToken.getExpiresAt().isAfter(now)) {
-			savedToken.revoke();
-			throw new IllegalArgumentException("refresh token is expired");
-		}
-
-		User user = savedToken.getUser();
+		User user = refreshTokenService.requireValidUser(refreshToken);
 		ensureActive(user);
 		return new TokenReissueResponse(
-				tokenService.issueAccessToken(user),
-				TokenService.TOKEN_TYPE,
-				tokenService.accessTokenExpiresInSeconds()
+				accessTokenIssuer.issue(user),
+				TOKEN_TYPE,
+				accessTokenIssuer.expiresInSeconds()
 		);
 	}
 
 	@Transactional
 	public void logout(String refreshToken) {
-		if (refreshToken == null || refreshToken.isBlank()) {
-			return;
-		}
-
-		refreshTokenRepository
-				.findByTokenHashAndDeletedAtIsNull(Hashing.sha256(refreshToken))
-				.ifPresent(token -> {
-					token.revoke();
-					refreshTokenRepository.save(token);
-				});
+		refreshTokenService.revoke(refreshToken);
 	}
 
 	private OAuthProviderClient findProviderClient(String provider) {
