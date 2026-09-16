@@ -4,6 +4,7 @@ import com.example.KTB_Agile_backend.auth.client.OAuthProviderClient;
 import com.example.KTB_Agile_backend.auth.dto.OAuthUserInfo;
 import com.example.KTB_Agile_backend.auth.dto.request.OAuthLoginRequest;
 import com.example.KTB_Agile_backend.auth.dto.response.AuthResponse;
+import com.example.KTB_Agile_backend.auth.token.AccessTokenIssuer;
 import com.example.KTB_Agile_backend.user.entity.RefreshToken;
 import com.example.KTB_Agile_backend.user.repository.RefreshTokenRepository;
 import com.example.KTB_Agile_backend.user.repository.SocialAccountRepository;
@@ -34,6 +35,7 @@ class AuthServiceTest {
 		UserRepository userRepository = mock(UserRepository.class);
 		SocialAccountRepository socialAccountRepository = mock(SocialAccountRepository.class);
 		RefreshTokenRepository refreshTokenRepository = mock(RefreshTokenRepository.class);
+		AccessTokenIssuer accessTokenIssuer = mock(AccessTokenIssuer.class);
 		TokenService tokenService = mock(TokenService.class);
 		AuthService authService = new AuthService(
 				stateService,
@@ -41,6 +43,7 @@ class AuthServiceTest {
 				userRepository,
 				socialAccountRepository,
 				refreshTokenRepository,
+				accessTokenIssuer,
 				tokenService
 		);
 
@@ -51,10 +54,10 @@ class AuthServiceTest {
 				.thenReturn(Optional.empty());
 		when(userRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 		when(socialAccountRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-		when(tokenService.issueAccessToken(any())).thenReturn("access-token");
+		when(accessTokenIssuer.issueAccessToken(any())).thenReturn("access-token");
 		when(tokenService.issueRefreshToken()).thenReturn("refresh-token");
 		when(tokenService.refreshTokenExpiresAt()).thenReturn(LocalDateTime.now().plusDays(14));
-		when(tokenService.accessTokenExpiresInSeconds()).thenReturn(900L);
+		when(accessTokenIssuer.accessTokenExpiresInSeconds()).thenReturn(900L);
 
 		AuthResponse response = authService.oauthLogin(
 				new OAuthLoginRequest("kakao", "authorization-code", "state"),

@@ -6,6 +6,7 @@ import com.example.KTB_Agile_backend.auth.dto.request.OAuthLoginRequest;
 import com.example.KTB_Agile_backend.auth.dto.response.AuthResponse;
 import com.example.KTB_Agile_backend.auth.dto.response.TokenReissueResponse;
 import com.example.KTB_Agile_backend.auth.dto.response.UserProfile;
+import com.example.KTB_Agile_backend.auth.token.AccessTokenIssuer;
 import com.example.KTB_Agile_backend.user.entity.RefreshToken;
 import com.example.KTB_Agile_backend.user.entity.SocialAccount;
 import com.example.KTB_Agile_backend.user.entity.User;
@@ -24,12 +25,14 @@ import java.util.Locale;
 public class AuthService {
 
 	private static final String DEFAULT_PROVIDER = "KAKAO";
+	private static final String TOKEN_TYPE = "Bearer";
 
 	private final OAuthStateService oauthStateService;
 	private final List<OAuthProviderClient> oauthProviderClients;
 	private final UserRepository userRepository;
 	private final SocialAccountRepository socialAccountRepository;
 	private final RefreshTokenRepository refreshTokenRepository;
+	private final AccessTokenIssuer accessTokenIssuer;
 	private final TokenService tokenService;
 
 	public AuthService(
@@ -38,6 +41,7 @@ public class AuthService {
 			UserRepository userRepository,
 			SocialAccountRepository socialAccountRepository,
 			RefreshTokenRepository refreshTokenRepository,
+			AccessTokenIssuer accessTokenIssuer,
 			TokenService tokenService
 	) {
 		this.oauthStateService = oauthStateService;
@@ -45,6 +49,7 @@ public class AuthService {
 		this.userRepository = userRepository;
 		this.socialAccountRepository = socialAccountRepository;
 		this.refreshTokenRepository = refreshTokenRepository;
+		this.accessTokenIssuer = accessTokenIssuer;
 		this.tokenService = tokenService;
 	}
 
@@ -87,7 +92,7 @@ public class AuthService {
 		}
 
 		ensureActive(user);
-		String accessToken = tokenService.issueAccessToken(user);
+		String accessToken = accessTokenIssuer.issueAccessToken(user);
 		String refreshToken = tokenService.issueRefreshToken();
 		refreshTokenRepository.save(new RefreshToken(
 				user,
@@ -97,8 +102,8 @@ public class AuthService {
 
 		AuthResponse response = new AuthResponse(
 				accessToken,
-				TokenService.TOKEN_TYPE,
-				tokenService.accessTokenExpiresInSeconds(),
+				TOKEN_TYPE,
+				accessTokenIssuer.accessTokenExpiresInSeconds(),
 				newUser,
 				new UserProfile(user.getId(), user.getNickname(), user.getProfileImageUrl())
 		);
@@ -123,9 +128,9 @@ public class AuthService {
 		User user = savedToken.getUser();
 		ensureActive(user);
 		return new TokenReissueResponse(
-				tokenService.issueAccessToken(user),
-				TokenService.TOKEN_TYPE,
-				tokenService.accessTokenExpiresInSeconds()
+				accessTokenIssuer.issueAccessToken(user),
+				TOKEN_TYPE,
+				accessTokenIssuer.accessTokenExpiresInSeconds()
 		);
 	}
 
