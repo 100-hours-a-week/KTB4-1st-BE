@@ -1,15 +1,14 @@
 package com.example.KTB_Agile_backend.auth.client;
 
 import com.example.KTB_Agile_backend.auth.dto.OAuthUserInfo;
+import com.example.KTB_Agile_backend.auth.dto.provider.KakaoTokenResponse;
+import com.example.KTB_Agile_backend.auth.dto.provider.KakaoUserResponse;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
-
-import java.util.Map;
 
 @Component
 public class KakaoOAuthProviderClient implements OAuthProviderClient {
@@ -53,55 +52,42 @@ public class KakaoOAuthProviderClient implements OAuthProviderClient {
 			form.add("redirect_uri", redirectUri);
 		}
 
-		Map<String, Object> tokenResponse = restClient.post()
+		KakaoTokenResponse tokenResponse = restClient.post()
 				.uri("https://kauth.kakao.com/oauth/token")
 				.contentType(MediaType.APPLICATION_FORM_URLENCODED)
 				.body(form)
 				.retrieve()
-				.body(new ParameterizedTypeReference<>() {
-				});
-		String accessToken = text(tokenResponse, "access_token");
+				.body(KakaoTokenResponse.class);
+		String accessToken = tokenResponse == null ? null : tokenResponse.accessToken();
 		if (accessToken == null || accessToken.isBlank()) {
 			throw new IllegalStateException("Kakao access token was not returned");
 		}
 
-		Map<String, Object> userResponse = restClient.get()
+		KakaoUserResponse userResponse = restClient.get()
 				.uri("https://kapi.kakao.com/v2/user/me")
 				.headers(headers -> headers.setBearerAuth(accessToken))
 				.retrieve()
-				.body(new ParameterizedTypeReference<>() {
-				});
-		String providerUserId = text(userResponse, "id");
+				.body(KakaoUserResponse.class);
+		String providerUserId = userResponse == null || userResponse.id() == null
+				? null
+				: String.valueOf(userResponse.id());
 		if (providerUserId == null || providerUserId.isBlank()) {
 			throw new IllegalStateException("Kakao user id was not returned");
 		}
 
-		Map<String, Object> properties = map(userResponse, "properties");
-		Map<String, Object> kakaoAccount = map(userResponse, "kakao_account");
-		Map<String, Object> profile = map(kakaoAccount, "profile");
+		KakaoUserResponse.Properties properties = userResponse.properties();
+		KakaoUserResponse.KakaoAccount kakaoAccount = userResponse.kakaoAccount();
+		KakaoUserResponse.Profile profile = kakaoAccount == null ? null : kakaoAccount.profile();
 		String nickname = firstNonBlank(
-				text(properties, "nickname"),
-				text(profile, "nickname"),
+				properties == null ? null : properties.nickname(),
+				profile == null ? null : profile.nickname(),
 				"kakao-" + providerUserId
 		);
 		String profileImageUrl = firstNonBlank(
-				text(properties, "profile_image"),
-				text(profile, "profile_image_url")
+				properties == null ? null : properties.profileImageUrl(),
+				profile == null ? null : profile.profileImageUrl()
 		);
 		return new OAuthUserInfo(PROVIDER, providerUserId, nickname, profileImageUrl);
-	}
-
-	@SuppressWarnings("unchecked")
-	private static Map<String, Object> map(Map<String, Object> source, String key) {
-		Object value = source == null ? null : source.get(key);
-		return value instanceof Map<?, ?> valueMap
-				? (Map<String, Object>) valueMap
-				: Map.of();
-	}
-
-	private static String text(Map<String, Object> source, String key) {
-		Object value = source == null ? null : source.get(key);
-		return value == null ? null : String.valueOf(value);
 	}
 
 	private static String firstNonBlank(String... values) {
