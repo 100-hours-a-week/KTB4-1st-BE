@@ -1,4 +1,4 @@
-package com.example.KTB_Agile_backend.auth.service;
+package com.example.KTB_Agile_backend.auth.token;
 
 import com.example.KTB_Agile_backend.user.entity.User;
 import org.springframework.beans.factory.annotation.Value;
@@ -8,30 +8,22 @@ import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.util.Base64;
 
-@Service
-public class TokenService {
-
-	public static final String TOKEN_TYPE = "Bearer";
+@Component
+public class JwtAccessTokenIssuer implements AccessTokenIssuer {
 
 	private final JwtEncoder jwtEncoder;
 	private final Duration accessTokenTtl;
-	private final Duration refreshTokenTtl;
-	private final SecureRandom secureRandom = new SecureRandom();
 
-	public TokenService(
+	public JwtAccessTokenIssuer(
 			@Value("${auth.jwt.secret}") String jwtSecret,
-			@Value("${auth.jwt.access-token-ttl-seconds}") long accessTokenTtlSeconds,
-			@Value("${auth.refresh-token-ttl-days}") long refreshTokenTtlDays
+			@Value("${auth.jwt.access-token-ttl-seconds}") long accessTokenTtlSeconds
 	) {
 		if (jwtSecret.getBytes(StandardCharsets.UTF_8).length < 32) {
 			throw new IllegalArgumentException("JWT secret must be at least 32 bytes");
@@ -40,10 +32,10 @@ public class TokenService {
 				new SecretKeySpec(jwtSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256")
 		).build();
 		this.accessTokenTtl = Duration.ofSeconds(accessTokenTtlSeconds);
-		this.refreshTokenTtl = Duration.ofDays(refreshTokenTtlDays);
 	}
 
-	public String issueAccessToken(User user) {
+	@Override
+	public String issue(User user) {
 		Instant issuedAt = Instant.now();
 		JwtClaimsSet claims = JwtClaimsSet.builder()
 				.subject(String.valueOf(user.getId()))
@@ -56,17 +48,8 @@ public class TokenService {
 		)).getTokenValue();
 	}
 
-	public String issueRefreshToken() {
-		byte[] tokenBytes = new byte[32];
-		secureRandom.nextBytes(tokenBytes);
-		return Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
-	}
-
-	public LocalDateTime refreshTokenExpiresAt() {
-		return LocalDateTime.now().plus(refreshTokenTtl);
-	}
-
-	public long accessTokenExpiresInSeconds() {
+	@Override
+	public long expiresInSeconds() {
 		return accessTokenTtl.toSeconds();
 	}
 }
