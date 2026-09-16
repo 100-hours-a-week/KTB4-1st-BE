@@ -13,6 +13,7 @@ import com.example.KTB_Agile_backend.user.entity.UserStatus;
 import com.example.KTB_Agile_backend.user.repository.RefreshTokenRepository;
 import com.example.KTB_Agile_backend.user.repository.SocialAccountRepository;
 import com.example.KTB_Agile_backend.user.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Locale;
 
 @Service
+@RequiredArgsConstructor
 public class AuthService {
 
 	private static final String DEFAULT_PROVIDER = "KAKAO";
@@ -31,22 +33,6 @@ public class AuthService {
 	private final SocialAccountRepository socialAccountRepository;
 	private final RefreshTokenRepository refreshTokenRepository;
 	private final TokenService tokenService;
-
-	public AuthService(
-			OAuthStateService oauthStateService,
-			List<OAuthProviderClient> oauthProviderClients,
-			UserRepository userRepository,
-			SocialAccountRepository socialAccountRepository,
-			RefreshTokenRepository refreshTokenRepository,
-			TokenService tokenService
-	) {
-		this.oauthStateService = oauthStateService;
-		this.oauthProviderClients = oauthProviderClients;
-		this.userRepository = userRepository;
-		this.socialAccountRepository = socialAccountRepository;
-		this.refreshTokenRepository = refreshTokenRepository;
-		this.tokenService = tokenService;
-	}
 
 	public String issueOAuthState() {
 		return oauthStateService.issue(DEFAULT_PROVIDER);
