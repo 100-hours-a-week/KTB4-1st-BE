@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class JwtAccessTokenIssuerTest {
 
@@ -33,5 +34,11 @@ class JwtAccessTokenIssuerTest {
 		assertEquals("USER", jwt.getClaimAsString("role"));
 		assertEquals(900, Duration.between(jwt.getIssuedAt(), jwt.getExpiresAt()).toSeconds());
 		assertEquals(900, issuer.expiresInSeconds());
+	}
+
+	@Test
+	void rejectsJwtSecretShorterThan256Bits() {
+		assertThrows(IllegalArgumentException.class,
+				() -> new JwtAccessTokenIssuer("too-short", 900));
 	}
 }

@@ -1,6 +1,8 @@
 package com.example.KTB_Agile_backend.auth.service;
 
-import com.example.KTB_Agile_backend.auth.state.OAuthStateStore;
+import com.example.KTB_Agile_backend.auth.entity.OAuthState;
+import com.example.KTB_Agile_backend.auth.repository.OAuthStateRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,16 +15,13 @@ import java.util.Base64;
 import java.util.Locale;
 
 @Service
+@RequiredArgsConstructor
 public class OAuthStateService {
 
 	private static final Duration STATE_TTL = Duration.ofMinutes(5);
 
 	private final OAuthStateStore oauthStateStore;
 	private final SecureRandom secureRandom = new SecureRandom();
-
-	public OAuthStateService(OAuthStateStore oauthStateStore) {
-		this.oauthStateStore = oauthStateStore;
-	}
 
 	@Transactional
 	public String issue(String provider) {
