@@ -75,16 +75,13 @@ public class KakaoOAuthProviderClient implements OAuthProviderClient {
 			throw new IllegalStateException("Kakao user id was not returned");
 		}
 
-		KakaoUserResponse.Properties properties = userResponse.properties();
 		KakaoUserResponse.KakaoAccount kakaoAccount = userResponse.kakaoAccount();
 		KakaoUserResponse.Profile profile = kakaoAccount == null ? null : kakaoAccount.profile();
 		String nickname = firstNonBlank(
-				properties == null ? null : properties.nickname(),
 				profile == null ? null : profile.nickname(),
 				"kakao-" + providerUserId
 		);
 		String profileImageUrl = firstNonBlank(
-				properties == null ? null : properties.profileImageUrl(),
 				profile == null ? null : profile.profileImageUrl()
 		);
 		return new OAuthUserInfo(PROVIDER, providerUserId, nickname, profileImageUrl);
