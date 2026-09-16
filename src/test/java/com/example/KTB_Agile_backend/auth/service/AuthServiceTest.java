@@ -8,8 +8,8 @@ import com.example.KTB_Agile_backend.auth.dto.response.TokenReissueResponse;
 import com.example.KTB_Agile_backend.auth.token.AccessTokenIssuer;
 import com.example.KTB_Agile_backend.auth.token.RefreshTokenService;
 import com.example.KTB_Agile_backend.user.entity.User;
-import com.example.KTB_Agile_backend.user.repository.SocialAccountRepository;
-import com.example.KTB_Agile_backend.user.repository.UserRepository;
+import com.example.KTB_Agile_backend.user.service.AccountProvisioningService;
+import com.example.KTB_Agile_backend.user.service.AccountResult;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -31,15 +31,13 @@ class AuthServiceTest {
 	void createsUserAndIssuesBothTokensOnFirstLogin() {
 		OAuthStateService stateService = mock(OAuthStateService.class);
 		OAuthProviderClient providerClient = mock(OAuthProviderClient.class);
-		UserRepository userRepository = mock(UserRepository.class);
-		SocialAccountRepository socialAccountRepository = mock(SocialAccountRepository.class);
+		AccountProvisioningService accountProvisioningService = mock(AccountProvisioningService.class);
 		AccessTokenIssuer accessTokenIssuer = mock(AccessTokenIssuer.class);
 		RefreshTokenService refreshTokenService = mock(RefreshTokenService.class);
 		AuthService authService = new AuthService(
 				stateService,
 				List.of(providerClient),
-				userRepository,
-				socialAccountRepository,
+				accountProvisioningService,
 				accessTokenIssuer,
 				refreshTokenService
 		);
@@ -47,10 +45,8 @@ class AuthServiceTest {
 		when(providerClient.provider()).thenReturn("KAKAO");
 		when(providerClient.getUserInfo("authorization-code"))
 				.thenReturn(new OAuthUserInfo("KAKAO", "provider-user-1", "kim", null));
-		when(socialAccountRepository.findByProviderAndProviderUserId("KAKAO", "provider-user-1"))
-				.thenReturn(Optional.empty());
-		when(userRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-		when(socialAccountRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(accountProvisioningService.findOrCreate(any()))
+				.thenReturn(new AccountResult(new User("kim"), true));
 		when(accessTokenIssuer.issue(any())).thenReturn("access-token");
 		when(refreshTokenService.issue(any())).thenReturn("refresh-token");
 		when(accessTokenIssuer.expiresInSeconds()).thenReturn(900L);
@@ -63,6 +59,7 @@ class AuthServiceTest {
 		assertEquals("access-token", response.accessToken());
 		assertTrue(response.isNewUser());
 		verify(stateService).consume("state", "state", "KAKAO");
+		verify(accountProvisioningService).findOrCreate(any());
 		verify(refreshTokenService).issue(any(User.class));
 	}
 
@@ -73,8 +70,7 @@ class AuthServiceTest {
 		AuthService authService = new AuthService(
 				mock(OAuthStateService.class),
 				List.of(),
-				mock(UserRepository.class),
-				mock(SocialAccountRepository.class),
+				mock(AccountProvisioningService.class),
 				accessTokenIssuer,
 				refreshTokenService
 		);
@@ -96,8 +92,7 @@ class AuthServiceTest {
 		AuthService authService = new AuthService(
 				mock(OAuthStateService.class),
 				List.of(),
-				mock(UserRepository.class),
-				mock(SocialAccountRepository.class),
+				mock(AccountProvisioningService.class),
 				mock(AccessTokenIssuer.class),
 				refreshTokenService
 		);

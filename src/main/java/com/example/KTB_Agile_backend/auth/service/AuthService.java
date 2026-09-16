@@ -8,11 +8,10 @@ import com.example.KTB_Agile_backend.auth.dto.response.TokenReissueResponse;
 import com.example.KTB_Agile_backend.auth.dto.response.UserProfile;
 import com.example.KTB_Agile_backend.auth.token.AccessTokenIssuer;
 import com.example.KTB_Agile_backend.auth.token.RefreshTokenService;
-import com.example.KTB_Agile_backend.user.entity.SocialAccount;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.entity.UserStatus;
-import com.example.KTB_Agile_backend.user.repository.SocialAccountRepository;
-import com.example.KTB_Agile_backend.user.repository.UserRepository;
+import com.example.KTB_Agile_backend.user.service.AccountProvisioningService;
+import com.example.KTB_Agile_backend.user.service.AccountResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,8 +28,7 @@ public class AuthService {
 
 	private final OAuthStateService oauthStateService;
 	private final List<OAuthProviderClient> oauthProviderClients;
-	private final UserRepository userRepository;
-	private final SocialAccountRepository socialAccountRepository;
+	private final AccountProvisioningService accountProvisioningService;
 	private final AccessTokenIssuer accessTokenIssuer;
 	private final RefreshTokenService refreshTokenService;
 
@@ -54,24 +52,9 @@ public class AuthService {
 		OAuthUserInfo userInfo = findProviderClient(provider).getUserInfo(request.authorizationCode());
 		validateUserInfo(userInfo, provider);
 
-		SocialAccount socialAccount = socialAccountRepository
-				.findByProviderAndProviderUserId(provider, userInfo.providerUserId())
-				.orElse(null);
-		boolean newUser = socialAccount == null;
-		User user;
-
-		if (newUser) {
-			user = userRepository.save(new User(userInfo.nickname()));
-			socialAccount = socialAccountRepository.save(
-					new SocialAccount(user, provider, userInfo.providerUserId())
-			);
-		} else {
-			user = socialAccount.getUser();
-			ensureActive(user);
-			socialAccount.recordLogin();
-			socialAccountRepository.save(socialAccount);
-		}
-
+		AccountResult accountResult = accountProvisioningService.findOrCreate(userInfo);
+		User user = accountResult.user();
+		boolean newUser = accountResult.newUser();
 		ensureActive(user);
 		String accessToken = accessTokenIssuer.issue(user);
 		String refreshToken = refreshTokenService.issue(user);
