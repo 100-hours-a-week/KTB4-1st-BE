@@ -9,6 +9,7 @@ auth:
   refresh-token-ttl-days: ${REFRESH_TOKEN_TTL_DAYS:14}
   oauth:
     state-ttl-seconds: ${OAUTH_STATE_TTL_SECONDS:300}
+    frontend-redirect-uri: ${FRONTEND_REDIRECT_URI:http://localhost:3000}
     kakao:
       client-id: ${KAKAO_CLIENT_ID:}
       client-secret: ${KAKAO_CLIENT_SECRET:}
