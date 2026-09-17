@@ -68,9 +68,9 @@ public class GlobalExceptionHandler {
 
 	private static String internalMessage(String requestUri) {
 		return switch (requestUri) {
-			case "/auth/oauth", "/api/auth/oauth" -> "인증 처리 중 서버 오류가 발생했습니다.";
-			case "/auth/refresh", "/api/auth/refresh" -> "토큰 재발급 중 서버 오류가 발생했습니다.";
-			case "/auth/logout", "/api/auth/logout" -> "로그아웃 처리 중 서버 오류가 발생했습니다.";
+			case "/auth/oauth" -> "인증 처리 중 서버 오류가 발생했습니다.";
+			case "/auth/refresh" -> "토큰 재발급 중 서버 오류가 발생했습니다.";
+			case "/auth/logout" -> "로그아웃 처리 중 서버 오류가 발생했습니다.";
 			default -> "서버 오류가 발생했습니다.";
 		};
 	}
