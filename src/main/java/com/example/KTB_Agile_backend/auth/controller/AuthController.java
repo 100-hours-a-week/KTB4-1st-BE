@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Duration;
@@ -57,6 +58,22 @@ public class AuthController {
 	public ResponseEntity<ApiResponse<AuthResponse>> oauthLogin(
 			@Valid @RequestBody OAuthLoginRequest request,
 			@CookieValue(name = OAUTH_STATE_COOKIE, required = false) String stateCookie
+	) {
+		return login(request, stateCookie);
+	}
+
+	@GetMapping("/kakao/callback")
+	public ResponseEntity<ApiResponse<AuthResponse>> kakaoCallback(
+			@RequestParam("code") String code,
+			@RequestParam("state") String state,
+			@CookieValue(name = OAUTH_STATE_COOKIE, required = false) String stateCookie
+	) {
+		return login(new OAuthLoginRequest("KAKAO", code, state), stateCookie);
+	}
+
+	private ResponseEntity<ApiResponse<AuthResponse>> login(
+			OAuthLoginRequest request,
+			String stateCookie
 	) {
 		AuthTokenResult result = authService.oauthLoginWithTokens(request, stateCookie);
 		HttpStatus status = result.response().isNewUser() ? HttpStatus.CREATED : HttpStatus.OK;

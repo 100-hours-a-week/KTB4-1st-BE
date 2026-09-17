@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.nullValue;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -84,6 +85,35 @@ class AuthControllerTest {
 				.andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=1209600")));
 
 		verify(authService).oauthLoginWithTokens(any(), eq("state-value"));
+	}
+
+	@Test
+	void handlesKakaoCallbackAndReturnsAccessTokenWithRefreshCookie() throws Exception {
+		AuthResponse authResponse = new AuthResponse(
+				"access-token",
+				"Bearer",
+				900,
+				false,
+				new UserProfile(1L, "kim", null)
+		);
+		when(authService.oauthLoginWithTokens(any(), eq("state-value")))
+				.thenReturn(new AuthTokenResult(authResponse, "refresh-token"));
+
+		mockMvc.perform(get("/auth/kakao/callback")
+					.queryParam("code", "authorization-code")
+					.queryParam("state", "state-value")
+					.cookie(new jakarta.servlet.http.Cookie("oauth_state", "state-value")))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.accessToken").value("access-token"))
+				.andExpect(header().string(HttpHeaders.SET_COOKIE,
+						containsString("refresh_token=refresh-token")));
+
+		verify(authService).oauthLoginWithTokens(
+				argThat(request -> request.provider().equals("KAKAO")
+						&& request.authorizationCode().equals("authorization-code")
+						&& request.state().equals("state-value")),
+				eq("state-value")
+		);
 	}
 
 	@Test
