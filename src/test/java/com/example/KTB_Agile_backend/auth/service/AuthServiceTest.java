@@ -50,10 +50,10 @@ class AuthServiceTest {
 		when(refreshTokenService.issue(any())).thenReturn("refresh-token");
 		when(accessTokenIssuer.expiresInSeconds()).thenReturn(900L);
 
-		AuthResponse response = authService.oauthLogin(
+		AuthResponse response = authService.oauthLoginWithTokens(
 				new OAuthLoginRequest("kakao", "authorization-code", "state"),
 				"state"
-		);
+		).response();
 
 		assertEquals("access-token", response.accessToken());
 		assertTrue(response.isNewUser());
