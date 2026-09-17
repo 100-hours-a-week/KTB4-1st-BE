@@ -55,7 +55,7 @@ public class SecurityConfig {
 				.httpBasic(AbstractHttpConfigurer::disable)
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/auth/oauth/**", "/auth/refresh", "/error").permitAll()
+						.requestMatchers("/auth/oauth/**", "/auth/kakao/callback", "/auth/refresh", "/error").permitAll()
 						.anyRequest().authenticated()
 				)
 				.exceptionHandling(exception -> exception
