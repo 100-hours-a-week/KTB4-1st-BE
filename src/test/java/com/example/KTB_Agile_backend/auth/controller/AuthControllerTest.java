@@ -5,10 +5,10 @@ import com.example.KTB_Agile_backend.auth.dto.response.UserProfile;
 import com.example.KTB_Agile_backend.auth.service.AuthService;
 import com.example.KTB_Agile_backend.auth.service.AuthTokenResult;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
+import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.common.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -121,8 +121,7 @@ class AuthControllerTest {
 	void returnsStandardUnauthorizedForInvalidRefreshToken() throws Exception {
 		when(authService.reissueToken("invalid-token"))
 				.thenThrow(new ApiException(
-						HttpStatus.UNAUTHORIZED,
-						"UNAUTHORIZED",
+						ErrorCode.UNAUTHORIZED,
 						"Refresh Token이 만료되었거나 유효하지 않습니다."
 				));
 

@@ -4,9 +4,9 @@ import com.example.KTB_Agile_backend.auth.dto.OAuthUserInfo;
 import com.example.KTB_Agile_backend.auth.dto.provider.KakaoTokenResponse;
 import com.example.KTB_Agile_backend.auth.dto.provider.KakaoUserResponse;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
+import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.common.response.ErrorResponse;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
@@ -44,8 +44,7 @@ public class KakaoOAuthProviderClient implements OAuthProviderClient {
 	public OAuthUserInfo getUserInfo(String authorizationCode) {
 		if (authorizationCode == null || authorizationCode.isBlank()) {
 			throw new ApiException(
-					HttpStatus.BAD_REQUEST,
-					"BAD_REQUEST",
+					ErrorCode.BAD_REQUEST,
 					"인가 코드가 유효하지 않습니다.",
 					List.of(new ErrorResponse.Field("authorizationCode", "유효하지 않은 인가 코드입니다."))
 			);
@@ -121,8 +120,7 @@ public class KakaoOAuthProviderClient implements OAuthProviderClient {
 
 	private static ApiException authenticationFailed(Throwable cause) {
 		return new ApiException(
-				HttpStatus.UNAUTHORIZED,
-				"UNAUTHORIZED",
+				ErrorCode.UNAUTHORIZED,
 				"인증에 실패했습니다. 인가 코드가 만료되었거나 유효하지 않습니다.",
 				List.of(new ErrorResponse.Field("authorizationCode", "만료되었거나 이미 사용된 인가 코드입니다.")),
 				cause

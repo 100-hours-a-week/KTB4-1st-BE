@@ -35,14 +35,14 @@ public class GlobalExceptionHandler {
 		String message = details.stream().anyMatch(detail -> "authorizationCode".equals(detail.field()))
 				? "인가 코드가 유효하지 않습니다."
 				: "요청 값이 올바르지 않습니다.";
-		return response(HttpStatus.BAD_REQUEST,
-				new ErrorResponse("BAD_REQUEST", message, details));
+		return response(ErrorCode.BAD_REQUEST.status(),
+				new ErrorResponse(ErrorCode.BAD_REQUEST.value(), message, details));
 	}
 
 	@ExceptionHandler(HttpMessageNotReadableException.class)
 	public ResponseEntity<ApiResponse<Void>> handleUnreadableMessage() {
-		return response(HttpStatus.BAD_REQUEST,
-				new ErrorResponse("BAD_REQUEST", "요청 본문 형식이 올바르지 않습니다.", List.of()));
+		return response(ErrorCode.BAD_REQUEST.status(),
+				new ErrorResponse(ErrorCode.BAD_REQUEST.value(), "요청 본문 형식이 올바르지 않습니다.", List.of()));
 	}
 
 	@ExceptionHandler(Exception.class)
@@ -51,9 +51,9 @@ public class GlobalExceptionHandler {
 			HttpServletRequest request
 	) {
 		log.error("Unhandled API exception: {} {}", request.getMethod(), request.getRequestURI(), exception);
-		return response(HttpStatus.INTERNAL_SERVER_ERROR,
+		return response(ErrorCode.INTERNAL_SERVER_ERROR.status(),
 				new ErrorResponse(
-						"INTERNAL_SERVER_ERROR",
+						ErrorCode.INTERNAL_SERVER_ERROR.value(),
 						internalMessage(request.getRequestURI()),
 						List.of()
 				));
