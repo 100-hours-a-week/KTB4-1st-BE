@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -20,10 +21,14 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 @Configuration
 @EnableMethodSecurity
@@ -44,12 +49,28 @@ public class SecurityConfig {
 	}
 
 	@Bean
+	CorsConfigurationSource corsConfigurationSource(
+			@Value("${cors.allowed-origins:http://localhost:3000}") List<String> allowedOrigins
+	) {
+		CorsConfiguration configuration = new CorsConfiguration();
+		configuration.setAllowedOrigins(allowedOrigins);
+		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+		configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
+		configuration.setAllowCredentials(true);
+
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", configuration);
+		return source;
+	}
+
+	@Bean
 	SecurityFilterChain securityFilterChain(
 			HttpSecurity http,
 			JwtDecoder jwtDecoder,
 			ObjectMapper objectMapper
 	) throws Exception {
 		http
+				.cors(Customizer.withDefaults())
 				.csrf(AbstractHttpConfigurer::disable)
 				.formLogin(AbstractHttpConfigurer::disable)
 				.httpBasic(AbstractHttpConfigurer::disable)
