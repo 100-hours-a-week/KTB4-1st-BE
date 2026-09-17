@@ -1,9 +1,11 @@
 package com.example.KTB_Agile_backend.auth.service;
 
+import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.user.entity.RefreshToken;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.repository.RefreshTokenRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
@@ -40,15 +42,15 @@ public class RefreshTokenService {
 
 	public User requireValidUser(String token) {
 		if (token == null || token.isBlank()) {
-			throw new IllegalArgumentException("refresh token must not be blank");
+			throw invalidRefreshToken();
 		}
 
 		RefreshToken savedToken = refreshTokenRepository
 				.findByTokenHashAndDeletedAtIsNull(Hashing.sha256(token))
-				.orElseThrow(() -> new IllegalArgumentException("invalid refresh token"));
+				.orElseThrow(RefreshTokenService::invalidRefreshToken);
 		if (!savedToken.getExpiresAt().isAfter(LocalDateTime.now())) {
 			savedToken.revoke();
-			throw new IllegalArgumentException("refresh token is expired");
+			throw invalidRefreshToken();
 		}
 		return savedToken.getUser();
 	}
@@ -64,5 +66,13 @@ public class RefreshTokenService {
 					savedToken.revoke();
 					refreshTokenRepository.save(savedToken);
 				});
+	}
+
+	private static ApiException invalidRefreshToken() {
+		return new ApiException(
+				HttpStatus.UNAUTHORIZED,
+				"UNAUTHORIZED",
+				"Refresh Token이 만료되었거나 유효하지 않습니다."
+		);
 	}
 }

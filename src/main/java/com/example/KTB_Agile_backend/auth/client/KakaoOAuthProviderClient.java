@@ -3,13 +3,18 @@ package com.example.KTB_Agile_backend.auth.client;
 import com.example.KTB_Agile_backend.auth.dto.OAuthUserInfo;
 import com.example.KTB_Agile_backend.auth.dto.provider.KakaoTokenResponse;
 import com.example.KTB_Agile_backend.auth.dto.provider.KakaoUserResponse;
+import com.example.KTB_Agile_backend.common.exception.ApiException;
+import com.example.KTB_Agile_backend.common.response.ErrorResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
+import java.util.List;
 @Component
 public class KakaoOAuthProviderClient implements OAuthProviderClient {
 
@@ -37,8 +42,16 @@ public class KakaoOAuthProviderClient implements OAuthProviderClient {
 
 	@Override
 	public OAuthUserInfo getUserInfo(String authorizationCode) {
-		if (authorizationCode == null || authorizationCode.isBlank() || clientId.isBlank()) {
-			throw new IllegalArgumentException("Kakao OAuth configuration or authorization code is missing");
+		if (authorizationCode == null || authorizationCode.isBlank()) {
+			throw new ApiException(
+					HttpStatus.BAD_REQUEST,
+					"BAD_REQUEST",
+					"인가 코드가 유효하지 않습니다.",
+					List.of(new ErrorResponse.Field("authorizationCode", "유효하지 않은 인가 코드입니다."))
+			);
+		}
+		if (clientId.isBlank()) {
+			throw new IllegalStateException("Kakao OAuth client id is missing");
 		}
 
 		MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
@@ -52,22 +65,32 @@ public class KakaoOAuthProviderClient implements OAuthProviderClient {
 			form.add("redirect_uri", redirectUri);
 		}
 
-		KakaoTokenResponse tokenResponse = restClient.post()
-				.uri("https://kauth.kakao.com/oauth/token")
-				.contentType(MediaType.APPLICATION_FORM_URLENCODED)
-				.body(form)
-				.retrieve()
-				.body(KakaoTokenResponse.class);
+		KakaoTokenResponse tokenResponse;
+		try {
+			tokenResponse = restClient.post()
+					.uri("https://kauth.kakao.com/oauth/token")
+					.contentType(MediaType.APPLICATION_FORM_URLENCODED)
+					.body(form)
+					.retrieve()
+					.body(KakaoTokenResponse.class);
+		} catch (RestClientResponseException exception) {
+			throw authenticationFailed(exception);
+		}
 		String accessToken = tokenResponse == null ? null : tokenResponse.accessToken();
 		if (accessToken == null || accessToken.isBlank()) {
 			throw new IllegalStateException("Kakao access token was not returned");
 		}
 
-		KakaoUserResponse userResponse = restClient.get()
-				.uri("https://kapi.kakao.com/v2/user/me")
-				.headers(headers -> headers.setBearerAuth(accessToken))
-				.retrieve()
-				.body(KakaoUserResponse.class);
+		KakaoUserResponse userResponse;
+		try {
+			userResponse = restClient.get()
+					.uri("https://kapi.kakao.com/v2/user/me")
+					.headers(headers -> headers.setBearerAuth(accessToken))
+					.retrieve()
+					.body(KakaoUserResponse.class);
+		} catch (RestClientResponseException exception) {
+			throw authenticationFailed(exception);
+		}
 		String providerUserId = userResponse == null || userResponse.id() == null
 				? null
 				: String.valueOf(userResponse.id());
@@ -94,5 +117,15 @@ public class KakaoOAuthProviderClient implements OAuthProviderClient {
 			}
 		}
 		return null;
+	}
+
+	private static ApiException authenticationFailed(Throwable cause) {
+		return new ApiException(
+				HttpStatus.UNAUTHORIZED,
+				"UNAUTHORIZED",
+				"인증에 실패했습니다. 인가 코드가 만료되었거나 유효하지 않습니다.",
+				List.of(new ErrorResponse.Field("authorizationCode", "만료되었거나 이미 사용된 인가 코드입니다.")),
+				cause
+		);
 	}
 }

@@ -1,8 +1,15 @@
 package com.example.KTB_Agile_backend.security;
 
+import com.example.KTB_Agile_backend.common.response.ApiResponse;
+import com.example.KTB_Agile_backend.common.response.ErrorResponse;
+import tools.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -15,6 +22,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import javax.crypto.spec.SecretKeySpec;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 @Configuration
@@ -36,20 +44,60 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder) throws Exception {
+	SecurityFilterChain securityFilterChain(
+			HttpSecurity http,
+			JwtDecoder jwtDecoder,
+			ObjectMapper objectMapper
+	) throws Exception {
 		http
 				.csrf(AbstractHttpConfigurer::disable)
 				.formLogin(AbstractHttpConfigurer::disable)
 				.httpBasic(AbstractHttpConfigurer::disable)
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/api/auth/oauth/**", "/api/auth/refresh", "/auth/**", "/error").permitAll()
+						.requestMatchers("/auth/oauth/**", "/auth/refresh", "/error").permitAll()
 						.anyRequest().authenticated()
+				)
+				.exceptionHandling(exception -> exception
+						.authenticationEntryPoint((request, response, cause) -> writeError(
+								response,
+								objectMapper,
+								HttpStatus.UNAUTHORIZED,
+								unauthorizedMessage(request)
+						))
+						.accessDeniedHandler((request, response, cause) -> writeError(
+								response,
+								objectMapper,
+								HttpStatus.FORBIDDEN,
+								"접근 권한이 없습니다."
+						))
 				)
 				.addFilterBefore(
 						new JwtAuthenticationFilter(jwtDecoder),
 						UsernamePasswordAuthenticationFilter.class
 				);
 		return http.build();
+	}
+
+	private static String unauthorizedMessage(HttpServletRequest request) {
+		String requestUri = request.getRequestURI();
+		return requestUri != null && requestUri.endsWith("/auth/logout")
+				? "로그인이 필요하거나 Access Token이 만료되었거나 유효하지 않습니다."
+				: "로그인이 필요합니다.";
+	}
+
+	private static void writeError(
+			HttpServletResponse response,
+			ObjectMapper objectMapper,
+			HttpStatus status,
+			String message
+	) throws IOException {
+		response.setStatus(status.value());
+		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+		response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+		objectMapper.writeValue(
+				response.getWriter(),
+				new ApiResponse<Void>(null, new ErrorResponse(status.name(), message, java.util.List.of()))
+		);
 	}
 }

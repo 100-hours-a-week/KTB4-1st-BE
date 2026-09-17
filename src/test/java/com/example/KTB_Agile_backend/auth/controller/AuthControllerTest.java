@@ -4,14 +4,18 @@ import com.example.KTB_Agile_backend.auth.dto.response.AuthResponse;
 import com.example.KTB_Agile_backend.auth.dto.response.UserProfile;
 import com.example.KTB_Agile_backend.auth.service.AuthService;
 import com.example.KTB_Agile_backend.auth.service.AuthTokenResult;
+import com.example.KTB_Agile_backend.common.exception.ApiException;
+import com.example.KTB_Agile_backend.common.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -33,6 +37,7 @@ class AuthControllerTest {
 		 authService = mock(AuthService.class);
 		 mockMvc = MockMvcBuilders
 				.standaloneSetup(new AuthController(authService, 14, 300))
+				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
 	}
 
@@ -40,7 +45,7 @@ class AuthControllerTest {
 	void issuesStateAndStoresItInAnHttpOnlyCookie() throws Exception {
 		when(authService.issueOAuthState()).thenReturn("state-value");
 
-		mockMvc.perform(get("/api/auth/oauth/state"))
+		mockMvc.perform(get("/auth/oauth/state"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.state").value("state-value"))
 				.andExpect(jsonPath("$.data.expiresIn").value(300))
@@ -61,7 +66,7 @@ class AuthControllerTest {
 		when(authService.oauthLoginWithTokens(any(), eq("state-value")))
 				.thenReturn(new AuthTokenResult(authResponse, "refresh-token"));
 
-		mockMvc.perform(post("/api/auth/oauth")
+		mockMvc.perform(post("/auth/oauth")
 					.cookie(new jakarta.servlet.http.Cookie("oauth_state", "state-value"))
 					.contentType(MediaType.APPLICATION_JSON)
 					.content("""
@@ -83,7 +88,7 @@ class AuthControllerTest {
 
 	@Test
 	void logoutRevokesRefreshTokenAndDeletesCookie() throws Exception {
-		mockMvc.perform(post("/api/auth/logout")
+		mockMvc.perform(post("/auth/logout")
 					.cookie(new jakarta.servlet.http.Cookie("refresh_token", "refresh-token")))
 				.andExpect(status().isNoContent())
 				.andExpect(header().string(HttpHeaders.SET_COOKIE,
@@ -91,5 +96,55 @@ class AuthControllerTest {
 				.andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")));
 
 		verify(authService).logout("refresh-token");
+	}
+
+	@Test
+	void returnsStandardBadRequestForInvalidAuthorizationCode() throws Exception {
+		mockMvc.perform(post("/auth/oauth")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{
+							  "provider": "KAKAO",
+							  "authorizationCode": "",
+							  "state": "state-value"
+							}
+							"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.data").value(nullValue()))
+				.andExpect(jsonPath("$.error.code").value("BAD_REQUEST"))
+				.andExpect(jsonPath("$.error.message").value("인가 코드가 유효하지 않습니다."))
+				.andExpect(jsonPath("$.error.details[0].field").value("authorizationCode"))
+				.andExpect(jsonPath("$.error.details[0].reason").value("유효하지 않은 인가 코드입니다."));
+	}
+
+	@Test
+	void returnsStandardUnauthorizedForInvalidRefreshToken() throws Exception {
+		when(authService.reissueToken("invalid-token"))
+				.thenThrow(new ApiException(
+						HttpStatus.UNAUTHORIZED,
+						"UNAUTHORIZED",
+						"Refresh Token이 만료되었거나 유효하지 않습니다."
+				));
+
+		mockMvc.perform(post("/auth/refresh")
+					.cookie(new jakarta.servlet.http.Cookie("refresh_token", "invalid-token")))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.data").value(nullValue()))
+				.andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"))
+				.andExpect(jsonPath("$.error.message").value("Refresh Token이 만료되었거나 유효하지 않습니다."))
+				.andExpect(jsonPath("$.error.details").isEmpty());
+	}
+
+	@Test
+	void hidesUnexpectedRefreshErrorBehindStandardResponse() throws Exception {
+		when(authService.reissueToken("refresh-token"))
+				.thenThrow(new RuntimeException("database failure"));
+
+		mockMvc.perform(post("/auth/refresh")
+					.cookie(new jakarta.servlet.http.Cookie("refresh_token", "refresh-token")))
+				.andExpect(status().isInternalServerError())
+				.andExpect(jsonPath("$.error.code").value("INTERNAL_SERVER_ERROR"))
+				.andExpect(jsonPath("$.error.message").value("토큰 재발급 중 서버 오류가 발생했습니다."))
+				.andExpect(jsonPath("$.error.details").isEmpty());
 	}
 }

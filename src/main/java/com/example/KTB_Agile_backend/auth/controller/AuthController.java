@@ -23,12 +23,12 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Duration;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
 public class AuthController {
 
 	private static final String OAUTH_STATE_COOKIE = "oauth_state";
 	private static final String REFRESH_TOKEN_COOKIE = "refresh_token";
-	private static final String COOKIE_PATH = "/api/auth";
+	private static final String COOKIE_PATH = "/auth";
 
 	private final AuthService authService;
 	private final Duration oauthStateTtl;
