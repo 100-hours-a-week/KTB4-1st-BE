@@ -4,6 +4,7 @@ auth:
     access-token-ttl-seconds: 900
   refresh-token-ttl-days: 14
   oauth:
+    state-ttl-seconds: 300
     kakao:
       client-id: test-client-id
       client-secret: test-client-secret
