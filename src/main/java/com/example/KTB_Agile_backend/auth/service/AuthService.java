@@ -38,11 +38,6 @@ public class AuthService {
 		return oauthStateService.issue(DEFAULT_PROVIDER);
 	}
 
-	@Transactional
-	public AuthResponse oauthLogin(OAuthLoginRequest request, String stateCookie) {
-		return oauthLoginWithTokens(request, stateCookie).response();
-	}
-
 	/**
 	 * Controller가 refresh token을 HttpOnly 쿠키로 옮길 때 사용하는 로그인 결과다.
 	 */
