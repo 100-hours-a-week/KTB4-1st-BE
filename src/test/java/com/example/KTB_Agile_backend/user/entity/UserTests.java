@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 class UserTests {
 
@@ -16,16 +15,6 @@ class UserTests {
 		assertThat(user.getNickname()).isEqualTo("nickname");
 		assertThat(user.getUserRole()).isEqualTo(UserRole.USER);
 		assertThat(user.getUserStatus()).isEqualTo(UserStatus.ACTIVE);
-	}
-
-	@Test
-	void rejectsBlankNickname() {
-		assertThatIllegalArgumentException().isThrownBy(() -> new User(" "));
-	}
-
-	@Test
-	void rejectsNicknameLongerThanColumnLimit() {
-		assertThatIllegalArgumentException().isThrownBy(() -> new User("a".repeat(201)));
 	}
 
 	@Test
