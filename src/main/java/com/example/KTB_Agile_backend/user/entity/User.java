@@ -53,13 +53,6 @@ public class User {
 	private UserStatus userStatus = UserStatus.ACTIVE;
 
 	public User(String nickname) {
-		if (nickname == null || nickname.isBlank()) {
-			throw new IllegalArgumentException("nickname must not be blank");
-		}
-		if (nickname.length() > 200) {
-			throw new IllegalArgumentException("nickname must not exceed 200 characters");
-		}
-
 		this.nickname = nickname;
 	}
 
