@@ -7,36 +7,34 @@ import java.util.List;
 
 public class ApiException extends RuntimeException {
 
-	private final HttpStatus status;
+	private final ErrorCode code;
 	private final ErrorResponse error;
 
-	public ApiException(HttpStatus status, String code, String message) {
-		this(status, code, message, List.of());
+	public ApiException(ErrorCode code, String message) {
+		this(code, message, List.of());
 	}
 
 	public ApiException(
-			HttpStatus status,
-			String code,
+			ErrorCode code,
 			String message,
 			List<ErrorResponse.Field> details
 	) {
-		this(status, code, message, details, null);
+		this(code, message, details, null);
 	}
 
 	public ApiException(
-			HttpStatus status,
-			String code,
+			ErrorCode code,
 			String message,
 			List<ErrorResponse.Field> details,
 			Throwable cause
 	) {
 		super(message, cause);
-		this.status = status;
-		this.error = new ErrorResponse(code, message, details == null ? List.of() : List.copyOf(details));
+		this.code = code;
+		this.error = new ErrorResponse(code.value(), message, details == null ? List.of() : List.copyOf(details));
 	}
 
 	public HttpStatus status() {
-		return status;
+		return code.status();
 	}
 
 	public ErrorResponse error() {

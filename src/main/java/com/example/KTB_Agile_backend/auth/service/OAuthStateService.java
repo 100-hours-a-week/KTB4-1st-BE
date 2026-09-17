@@ -2,9 +2,9 @@ package com.example.KTB_Agile_backend.auth.service;
 
 import com.example.KTB_Agile_backend.auth.state.OAuthStateStore;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
+import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.common.response.ErrorResponse;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -74,8 +74,7 @@ public class OAuthStateService {
 	private static String normalizeProvider(String provider) {
 		if (provider == null || provider.isBlank()) {
 			throw new ApiException(
-					HttpStatus.BAD_REQUEST,
-					"BAD_REQUEST",
+					ErrorCode.BAD_REQUEST,
 					"요청 값이 올바르지 않습니다.",
 					List.of(new ErrorResponse.Field("provider", "provider는 필수 입력값입니다."))
 			);
@@ -85,8 +84,7 @@ public class OAuthStateService {
 
 	private static ApiException authenticationFailed() {
 		return new ApiException(
-				HttpStatus.UNAUTHORIZED,
-				"UNAUTHORIZED",
+				ErrorCode.UNAUTHORIZED,
 				"인증에 실패했습니다. 인가 코드가 만료되었거나 유효하지 않습니다.",
 				AUTHENTICATION_DETAILS
 		);

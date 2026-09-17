@@ -2,6 +2,7 @@ package com.example.KTB_Agile_backend.user.service;
 
 import com.example.KTB_Agile_backend.auth.dto.OAuthUserInfo;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
+import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.common.response.ErrorResponse;
 import com.example.KTB_Agile_backend.user.entity.SocialAccount;
 import com.example.KTB_Agile_backend.user.entity.User;
@@ -9,7 +10,6 @@ import com.example.KTB_Agile_backend.user.repository.SocialAccountRepository;
 import com.example.KTB_Agile_backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,8 +46,7 @@ public class AccountProvisioningService {
 			);
 		} catch (DataIntegrityViolationException exception) {
 			throw new ApiException(
-					HttpStatus.CONFLICT,
-					"SOCIAL_ACCOUNT_CONFLICT",
+					ErrorCode.SOCIAL_ACCOUNT_CONFLICT,
 					"계정 연결 정보가 충돌했습니다.",
 					List.of(new ErrorResponse.Field(
 							"socialAccount",
@@ -63,8 +62,7 @@ public class AccountProvisioningService {
 	private static String normalizeProvider(String provider) {
 		if (provider == null || provider.isBlank()) {
 			throw new ApiException(
-					HttpStatus.BAD_REQUEST,
-					"BAD_REQUEST",
+					ErrorCode.BAD_REQUEST,
 					"요청 값이 올바르지 않습니다.",
 					List.of(new ErrorResponse.Field("provider", "provider는 필수 입력값입니다."))
 			);
@@ -74,8 +72,7 @@ public class AccountProvisioningService {
 
 	private static ApiException authenticationFailed() {
 		return new ApiException(
-				HttpStatus.UNAUTHORIZED,
-				"UNAUTHORIZED",
+				ErrorCode.UNAUTHORIZED,
 				"인증에 실패했습니다. 인가 코드가 만료되었거나 유효하지 않습니다.",
 				List.of(new ErrorResponse.Field("authorizationCode", "만료되었거나 이미 사용된 인가 코드입니다."))
 		);

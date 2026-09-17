@@ -1,5 +1,6 @@
 package com.example.KTB_Agile_backend.security;
 
+import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
 import com.example.KTB_Agile_backend.common.response.ErrorResponse;
 import tools.jackson.databind.ObjectMapper;
@@ -8,7 +9,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -62,13 +62,13 @@ public class SecurityConfig {
 						.authenticationEntryPoint((request, response, cause) -> writeError(
 								response,
 								objectMapper,
-								HttpStatus.UNAUTHORIZED,
+								ErrorCode.UNAUTHORIZED,
 								unauthorizedMessage(request)
 						))
 						.accessDeniedHandler((request, response, cause) -> writeError(
 								response,
 								objectMapper,
-								HttpStatus.FORBIDDEN,
+								ErrorCode.FORBIDDEN,
 								"접근 권한이 없습니다."
 						))
 				)
@@ -89,15 +89,15 @@ public class SecurityConfig {
 	private static void writeError(
 			HttpServletResponse response,
 			ObjectMapper objectMapper,
-			HttpStatus status,
+			ErrorCode code,
 			String message
 	) throws IOException {
-		response.setStatus(status.value());
+		response.setStatus(code.status().value());
 		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 		response.setCharacterEncoding(StandardCharsets.UTF_8.name());
 		objectMapper.writeValue(
 				response.getWriter(),
-				new ApiResponse<Void>(null, new ErrorResponse(status.name(), message, java.util.List.of()))
+				new ApiResponse<Void>(null, new ErrorResponse(code.value(), message, java.util.List.of()))
 		);
 	}
 }
