@@ -6,7 +6,6 @@ import com.example.KTB_Agile_backend.auth.dto.request.OAuthLoginRequest;
 import com.example.KTB_Agile_backend.auth.dto.response.AuthResponse;
 import com.example.KTB_Agile_backend.auth.dto.response.TokenReissueResponse;
 import com.example.KTB_Agile_backend.auth.token.AccessTokenIssuer;
-import com.example.KTB_Agile_backend.auth.token.RefreshTokenService;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.service.AccountProvisioningService;
 import com.example.KTB_Agile_backend.user.service.AccountResult;

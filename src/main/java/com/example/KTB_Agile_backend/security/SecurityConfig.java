@@ -43,7 +43,7 @@ public class SecurityConfig {
 				.httpBasic(AbstractHttpConfigurer::disable)
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/auth/**", "/error").permitAll()
+						.requestMatchers("/api/auth/oauth/**", "/api/auth/refresh", "/auth/**", "/error").permitAll()
 						.anyRequest().authenticated()
 				)
 				.addFilterBefore(
