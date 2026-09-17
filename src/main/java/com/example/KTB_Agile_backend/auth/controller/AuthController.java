@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.URI;
 import java.time.Duration;
 
 @RestController
@@ -34,15 +35,18 @@ public class AuthController {
 	private final AuthService authService;
 	private final Duration oauthStateTtl;
 	private final Duration refreshTokenTtl;
+	private final URI frontendRedirectUri;
 
 	public AuthController(
 			AuthService authService,
 			@Value("${auth.refresh-token-ttl-days}") long refreshTokenTtlDays,
-			@Value("${auth.oauth.state-ttl-seconds}") long stateTtlSeconds
+			@Value("${auth.oauth.state-ttl-seconds}") long stateTtlSeconds,
+			@Value("${auth.oauth.frontend-redirect-uri}") String frontendRedirectUri
 	) {
 		this.authService = authService;
 		this.oauthStateTtl = Duration.ofSeconds(stateTtlSeconds);
 		this.refreshTokenTtl = Duration.ofDays(refreshTokenTtlDays);
+		this.frontendRedirectUri = URI.create(frontendRedirectUri);
 	}
 
 	@GetMapping("/oauth/state")
@@ -63,12 +67,19 @@ public class AuthController {
 	}
 
 	@GetMapping("/kakao/callback")
-	public ResponseEntity<ApiResponse<AuthResponse>> kakaoCallback(
+	public ResponseEntity<Void> kakaoCallback(
 			@RequestParam("code") String code,
 			@RequestParam("state") String state,
 			@CookieValue(name = OAUTH_STATE_COOKIE, required = false) String stateCookie
 	) {
-		return login(new OAuthLoginRequest("KAKAO", code, state), stateCookie);
+		AuthTokenResult result = authService.oauthLoginWithTokens(
+				new OAuthLoginRequest("KAKAO", code, state),
+				stateCookie
+		);
+		return ResponseEntity.status(HttpStatus.FOUND)
+				.location(frontendRedirectUri)
+				.header(HttpHeaders.SET_COOKIE, refreshTokenCookie(result.refreshToken()).toString())
+				.build();
 	}
 
 	private ResponseEntity<ApiResponse<AuthResponse>> login(

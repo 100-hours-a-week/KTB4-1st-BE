@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -35,9 +36,9 @@ class AuthControllerTest {
 
 	@BeforeEach
 	void setUp() {
-		 authService = mock(AuthService.class);
-		 mockMvc = MockMvcBuilders
-				.standaloneSetup(new AuthController(authService, 14, 300))
+		authService = mock(AuthService.class);
+		mockMvc = MockMvcBuilders
+				.standaloneSetup(new AuthController(authService, 14, 300, "http://localhost:3000"))
 				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
 	}
@@ -88,7 +89,7 @@ class AuthControllerTest {
 	}
 
 	@Test
-	void handlesKakaoCallbackAndReturnsAccessTokenWithRefreshCookie() throws Exception {
+	void handlesKakaoCallbackAndRedirectsToFrontendWithRefreshCookie() throws Exception {
 		AuthResponse authResponse = new AuthResponse(
 				"access-token",
 				"Bearer",
@@ -103,10 +104,11 @@ class AuthControllerTest {
 					.queryParam("code", "authorization-code")
 					.queryParam("state", "state-value")
 					.cookie(new jakarta.servlet.http.Cookie("oauth_state", "state-value")))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.data.accessToken").value("access-token"))
+				.andExpect(status().isFound())
+				.andExpect(header().string(HttpHeaders.LOCATION, "http://localhost:3000"))
 				.andExpect(header().string(HttpHeaders.SET_COOKIE,
-						containsString("refresh_token=refresh-token")));
+						containsString("refresh_token=refresh-token")))
+				.andExpect(content().string(""));
 
 		verify(authService).oauthLoginWithTokens(
 				argThat(request -> request.provider().equals("KAKAO")
