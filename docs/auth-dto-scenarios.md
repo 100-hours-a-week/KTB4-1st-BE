@@ -9,6 +9,24 @@
 - 첫 Kakao 로그인에서는 서버가 User와 SocialAccount을 생성한다.
 - JWT의 role은 서버가 발급하며, 클라이언트 요청 DTO로 받지 않는다.
 
+## API 명세서 URI 표기와 Controller 매핑
+
+API 명세서의 URI 앞에 붙은 `/api/`는 실제 서버 경로가 아니라 API 명세서에 정의된 URI임을 나타내는 표기다. Controller를 구현할 때는 `/api/`를 제거한 실제 경로를 사용한다.
+
+예를 들어 API 명세서의 `/api/auth/oauth`는 실제 `/auth/oauth`로 매핑한다.
+
+```java
+@RequestMapping("/auth")
+class AuthController {
+
+	@PostMapping("/oauth")
+	void oauthLogin() {
+	}
+}
+```
+
+따라서 `/api/auth/refresh`는 실제 `/auth/refresh`, `/api/auth/logout`은 실제 `/auth/logout`이다. 메서드에는 공통 경로를 제외한 `/refresh`, `/logout`만 작성한다.
+
 ## DTO 목록
 
 | DTO | 역할 | 사용 시점 |

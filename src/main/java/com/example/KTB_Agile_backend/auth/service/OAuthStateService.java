@@ -1,7 +1,10 @@
 package com.example.KTB_Agile_backend.auth.service;
 
 import com.example.KTB_Agile_backend.auth.state.OAuthStateStore;
+import com.example.KTB_Agile_backend.common.exception.ApiException;
+import com.example.KTB_Agile_backend.common.response.ErrorResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,10 +14,15 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.List;
 import java.util.Locale;
 
 @Service
 public class OAuthStateService {
+
+	private static final List<ErrorResponse.Field> AUTHENTICATION_DETAILS = List.of(
+			new ErrorResponse.Field("authorizationCode", "만료되었거나 이미 사용된 인가 코드입니다.")
+	);
 
 	private final OAuthStateStore oauthStateStore;
 	private final Duration stateTtl;
@@ -48,7 +56,7 @@ public class OAuthStateService {
 				|| !MessageDigest.isEqual(
 						stateCookie.getBytes(StandardCharsets.UTF_8),
 						requestState.getBytes(StandardCharsets.UTF_8))) {
-			throw new IllegalArgumentException("invalid OAuth state");
+			throw authenticationFailed();
 		}
 
 		String normalizedProvider = normalizeProvider(provider);
@@ -59,14 +67,28 @@ public class OAuthStateService {
 				now
 		);
 		if (!consumed) {
-			throw new IllegalArgumentException("expired or already consumed OAuth state");
+			throw authenticationFailed();
 		}
 	}
 
 	private static String normalizeProvider(String provider) {
 		if (provider == null || provider.isBlank()) {
-			throw new IllegalArgumentException("provider must not be blank");
+			throw new ApiException(
+					HttpStatus.BAD_REQUEST,
+					"BAD_REQUEST",
+					"요청 값이 올바르지 않습니다.",
+					List.of(new ErrorResponse.Field("provider", "provider는 필수 입력값입니다."))
+			);
 		}
 		return provider.trim().toUpperCase(Locale.ROOT);
+	}
+
+	private static ApiException authenticationFailed() {
+		return new ApiException(
+				HttpStatus.UNAUTHORIZED,
+				"UNAUTHORIZED",
+				"인증에 실패했습니다. 인가 코드가 만료되었거나 유효하지 않습니다.",
+				AUTHENTICATION_DETAILS
+		);
 	}
 }

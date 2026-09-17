@@ -42,7 +42,7 @@ SecurityContextHolder.getContext().setAuthentication(authentication);
 
 - JWT claim은 서명된 인증 결과지만, 그 자체가 현재 요청의 인증 객체는 아니다.
 - `SecurityContext`는 요청 단위로 인증 주체와 authority를 보관하는 Spring Security 표준 진입점이다.
-- `SecurityConfig`는 세션을 사용하지 않는 stateless 정책을 적용하고, `/auth/**`와 `/error`만 공개한다.
+- `SecurityConfig`는 세션을 사용하지 않는 stateless 정책을 적용하고, `/auth/oauth/**`, `/auth/refresh`, `/error`만 공개한다. `/auth/logout`은 인증이 필요하다.
 - Controller가 JWT 문자열을 직접 파싱하지 않아도 `@PreAuthorize("hasRole('ADMIN')")` 같은 공통 권한 처리를 사용할 수 있다.
 
 ## 역할 변경과 Access Token 만료
