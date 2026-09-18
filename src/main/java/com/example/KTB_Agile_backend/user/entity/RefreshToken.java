@@ -1,5 +1,6 @@
 package com.example.KTB_Agile_backend.user.entity;
 
+import com.example.KTB_Agile_backend.common.entity.SoftDeletableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -12,15 +13,13 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "refresh_tokens")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class RefreshToken {
+public class RefreshToken extends SoftDeletableEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,13 +36,6 @@ public class RefreshToken {
 	@Column(name = "expires_at", nullable = false)
 	private LocalDateTime expiresAt;
 
-	@CreationTimestamp
-	@Column(name = "created_at", nullable = false, updatable = false)
-	private LocalDateTime createdAt;
-
-	@Column(name = "deleted_at")
-	private LocalDateTime deletedAt;
-
 	public RefreshToken(User user, String tokenHash, LocalDateTime expiresAt) {
 		this.user = user;
 		this.tokenHash = tokenHash;
@@ -51,6 +43,6 @@ public class RefreshToken {
 	}
 
 	public void revoke() {
-		this.deletedAt = LocalDateTime.now();
+		markDeleted(LocalDateTime.now());
 	}
 }

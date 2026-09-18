@@ -35,6 +35,9 @@ class UserPreferenceRepositoryTest {
 
 		UserPreference preference = userPreferenceRepository.findByUser_Id(user.getId()).orElseThrow();
 
+		assertThat(user.getCreatedAt()).isNotNull();
+		assertThat(user.getUpdatedAt()).isNotNull();
+		assertThat(preference.getCreatedAt()).isNotNull();
 		assertThat(userPreferenceRepository.existsByUser_Id(user.getId())).isTrue();
 		assertThat(preference.getAnswers()).extracting(UserPreferenceAnswer::getQuestion)
 				.containsExactly("question-one", "question-two");

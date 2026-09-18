@@ -7,15 +7,16 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 public interface OAuthStateRepository extends JpaRepository<OAuthState, Long> {
 
 	@Transactional
 	@Modifying
-	@Query("""
+		@Query("""
 			update OAuthState oauthState
-			set oauthState.consumedAt = :consumedAt
+			set oauthState.consumedAt = :consumedAt,
+			    oauthState.updatedAt = :consumedAt
 			where oauthState.stateHash = :stateHash
 			  and oauthState.provider = :provider
 			  and oauthState.expiresAt > :now
@@ -24,7 +25,7 @@ public interface OAuthStateRepository extends JpaRepository<OAuthState, Long> {
 	int consumeIfValid(
 			@Param("stateHash") String stateHash,
 			@Param("provider") String provider,
-			@Param("now") Instant now,
-			@Param("consumedAt") Instant consumedAt
+			@Param("now") LocalDateTime now,
+			@Param("consumedAt") LocalDateTime consumedAt
 	);
 }

@@ -1,5 +1,6 @@
 package com.example.KTB_Agile_backend.user.entity;
 
+import com.example.KTB_Agile_backend.common.entity.BaseEntity;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -16,9 +17,6 @@ import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,7 +30,7 @@ import java.util.List;
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class UserPreference {
+public class UserPreference extends BaseEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -51,10 +49,6 @@ public class UserPreference {
 	@OrderColumn(name = "answer_order")
 	@Getter(AccessLevel.NONE)
 	private List<UserPreferenceAnswer> answers = new ArrayList<>();
-
-	@CreationTimestamp
-	@Column(name = "created_at", nullable = false, updatable = false)
-	private LocalDateTime createdAt;
 
 	public UserPreference(User user, List<UserPreferenceAnswer> answers) {
 		this.user = user;

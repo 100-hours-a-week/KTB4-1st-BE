@@ -1,5 +1,6 @@
 package com.example.KTB_Agile_backend.group.entity;
 
+import com.example.KTB_Agile_backend.common.entity.SoftDeletableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -9,8 +10,6 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -18,7 +17,7 @@ import java.time.LocalDateTime;
 @Table(name = "groups")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Group {
+public class Group extends SoftDeletableEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,13 +38,6 @@ public class Group {
 
 	@Column(name = "group_content", nullable = false, length = 300)
 	private String groupContent;
-
-	@CreationTimestamp
-	@Column(name = "created_at", nullable = false, updatable = false)
-	private LocalDateTime createdAt;
-
-	@Column(name = "deleted_at")
-	private LocalDateTime deletedAt;
 
 	private Group(
 			String groupName,
@@ -72,8 +64,8 @@ public class Group {
 	}
 
 	public void delete() {
-		if (deletedAt == null) {
-			deletedAt = LocalDateTime.now();
+		if (!isDeleted()) {
+			markDeleted(LocalDateTime.now());
 		}
 	}
 }

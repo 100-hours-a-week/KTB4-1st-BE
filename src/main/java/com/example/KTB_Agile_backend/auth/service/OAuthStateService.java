@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Duration;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
@@ -45,7 +45,7 @@ public class OAuthStateService {
 		oauthStateStore.save(
 				Hashing.sha256(state),
 				normalizedProvider,
-				Instant.now().plus(stateTtl)
+				LocalDateTime.now().plus(stateTtl)
 		);
 		return state;
 	}
@@ -60,7 +60,7 @@ public class OAuthStateService {
 		}
 
 		String normalizedProvider = normalizeProvider(provider);
-		Instant now = Instant.now();
+		LocalDateTime now = LocalDateTime.now();
 		boolean consumed = oauthStateStore.consumeIfValid(
 				Hashing.sha256(stateCookie),
 				normalizedProvider,
