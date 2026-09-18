@@ -14,6 +14,9 @@ public abstract class SoftDeletableEntity extends BaseEntity {
 	private LocalDateTime deletedAt;
 
 	protected void markDeleted(LocalDateTime deletedAt) {
+		if (deletedAt == null) {
+			throw new IllegalArgumentException("deletedAt must not be null");
+		}
 		this.deletedAt = deletedAt;
 	}
 

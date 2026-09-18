@@ -5,9 +5,10 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+
+import static java.util.Objects.requireNonNull;
 
 @Entity
 @Table(
@@ -36,21 +37,27 @@ public class SocialAccount extends BaseEntity {
 	@Column(name = "provider_user_id", nullable = false, length = 255)
 	private String providerUserId;
 
-	@CreationTimestamp
-	@Column(name = "linked_at", nullable = false, updatable = false)
-	private LocalDateTime linkedAt;
-
 	@Column(name = "last_login_at", nullable = false)
 	private LocalDateTime lastLoginAt;
 
 	public SocialAccount(User user, String provider, String providerUserId) {
-		this.user = user;
-		this.provider = provider;
-		this.providerUserId = providerUserId;
+		this.user = requireNonNull(user, "user must not be null");
+		this.provider = requireText(provider, "provider", 20);
+		this.providerUserId = requireText(providerUserId, "providerUserId", 255);
 		this.lastLoginAt = LocalDateTime.now();
 	}
 
 	public void recordLogin() {
 		this.lastLoginAt = LocalDateTime.now();
+	}
+
+	private static String requireText(String value, String field, int maxLength) {
+		if (value == null || value.isBlank()) {
+			throw new IllegalArgumentException(field + " must not be blank");
+		}
+		if (value.length() > maxLength) {
+			throw new IllegalArgumentException(field + " must be at most " + maxLength + " characters");
+		}
+		return value;
 	}
 }

@@ -46,11 +46,11 @@ public class Group extends SoftDeletableEntity {
 			BigDecimal latitude,
 			String groupContent
 	) {
-		this.groupName = groupName;
-		this.roadAddress = roadAddress;
-		this.longitude = longitude;
-		this.latitude = latitude;
-		this.groupContent = groupContent;
+		this.groupName = requireText(groupName, "groupName", 30);
+		this.roadAddress = requireText(roadAddress, "roadAddress", 100);
+		this.longitude = requireCoordinate(longitude, "longitude", -180, 180);
+		this.latitude = requireCoordinate(latitude, "latitude", -90, 90);
+		this.groupContent = requireValue(groupContent, "groupContent", 300);
 	}
 
 	public static Group create(
@@ -67,5 +67,40 @@ public class Group extends SoftDeletableEntity {
 		if (!isDeleted()) {
 			markDeleted(LocalDateTime.now());
 		}
+	}
+
+	private static String requireText(String value, String field, int maxLength) {
+		if (value == null || value.isBlank()) {
+			throw new IllegalArgumentException(field + " must not be blank");
+		}
+		return requireMaxLength(value, field, maxLength);
+	}
+
+	private static String requireValue(String value, String field, int maxLength) {
+		if (value == null) {
+			throw new IllegalArgumentException(field + " must not be null");
+		}
+		return requireMaxLength(value, field, maxLength);
+	}
+
+	private static String requireMaxLength(String value, String field, int maxLength) {
+		if (value.length() > maxLength) {
+			throw new IllegalArgumentException(field + " must be at most " + maxLength + " characters");
+		}
+		return value;
+	}
+
+	private static BigDecimal requireCoordinate(
+			BigDecimal value,
+			String field,
+			int min,
+			int max
+	) {
+		if (value == null
+				|| value.compareTo(BigDecimal.valueOf(min)) < 0
+				|| value.compareTo(BigDecimal.valueOf(max)) > 0) {
+			throw new IllegalArgumentException(field + " is out of range");
+		}
+		return value;
 	}
 }

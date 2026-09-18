@@ -12,6 +12,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
+import static java.util.Objects.requireNonNull;
+
 @Entity
 @Table(name = "oauth_states")
 @Getter
@@ -36,8 +38,18 @@ public class OAuthState extends BaseEntity {
 	private LocalDateTime consumedAt;
 
 	public OAuthState(String stateHash, String provider, LocalDateTime expiresAt) {
-		this.stateHash = stateHash;
-		this.provider = provider;
-		this.expiresAt = expiresAt;
+		this.stateHash = requireText(stateHash, "stateHash", 64);
+		this.provider = requireText(provider, "provider", 20);
+		this.expiresAt = requireNonNull(expiresAt, "expiresAt must not be null");
+	}
+
+	private static String requireText(String value, String field, int maxLength) {
+		if (value == null || value.isBlank()) {
+			throw new IllegalArgumentException(field + " must not be blank");
+		}
+		if (value.length() > maxLength) {
+			throw new IllegalArgumentException(field + " must be at most " + maxLength + " characters");
+		}
+		return value;
 	}
 }

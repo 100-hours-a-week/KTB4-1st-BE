@@ -50,6 +50,9 @@ public class GroupItem extends SoftDeletableEntity {
 	public GroupItem(Group group, Long itemId) {
 		this.group = requireNonNull(group, "group must not be null");
 		this.itemId = requireNonNull(itemId, "itemId must not be null");
+		if (itemId <= 0) {
+			throw new IllegalArgumentException("itemId must be positive");
+		}
 	}
 
 	public void delete() {

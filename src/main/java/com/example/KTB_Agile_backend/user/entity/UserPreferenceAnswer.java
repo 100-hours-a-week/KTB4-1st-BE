@@ -7,6 +7,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import static java.util.Objects.requireNonNull;
+
 @Embeddable
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -33,7 +35,14 @@ public class UserPreferenceAnswer {
 	private String answer;
 
 	public UserPreferenceAnswer(String question, String answer) {
-		this.question = question;
-		this.answer = answer;
+		this.question = requireText(question, "question");
+		this.answer = requireText(answer, "answer");
+	}
+
+	private static String requireText(String value, String field) {
+		if (requireNonNull(value, field + " must not be null").isBlank()) {
+			throw new IllegalArgumentException(field + " must not be blank");
+		}
+		return value;
 	}
 }

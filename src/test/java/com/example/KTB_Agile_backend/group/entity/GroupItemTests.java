@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class GroupItemTests {
 
@@ -19,5 +20,12 @@ class GroupItemTests {
 
 		assertThat(groupItem.isActive()).isFalse();
 		assertThat(groupItem.getDeletedAt()).isNotNull();
+	}
+
+	@Test
+	void rejectsNonPositiveItemId() {
+		Group group = Group.create("그룹", "주소", BigDecimal.ZERO, BigDecimal.ZERO, "");
+
+		assertThrows(IllegalArgumentException.class, () -> new GroupItem(group, 0L));
 	}
 }
