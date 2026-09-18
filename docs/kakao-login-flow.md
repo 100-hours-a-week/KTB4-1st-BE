@@ -79,9 +79,11 @@ GET /auth/oauth/state
 상태 코드는 `200 OK`다.
 
 ```http
-Set-Cookie: oauth_state={원본 state}; Path=/auth; Max-Age=300; Expires={...}; Secure; HttpOnly; SameSite=Lax
+Set-Cookie: oauth_state={원본 state}; Path=/auth; Max-Age=300; Expires={...}; HttpOnly; SameSite=Lax
 Content-Type: application/json
 ```
+
+로컬 HTTP에서는 `COOKIE_SECURE=false`로 `Secure`를 생략하고, 운영 HTTPS에서는 `COOKIE_SECURE=true`로 설정한다.
 
 ```json
 {
@@ -102,7 +104,7 @@ Kakao 콘솔의 Redirect URI와 Spring 환경변수 `KAKAO_REDIRECT_URI`는 백�
 로컬 예시는 다음과 같다.
 
 ```text
-http://localhost:8080/auth/kakao/callback
+http://127.0.0.1:8080/auth/kakao/callback
 ```
 
 Kakao 인증이 끝나면 Kakao가 위 주소로 브라우저를 redirect하며, query parameter로 `code`와 `state`를 전달한다. 백엔드는 Kakao 로그인 화면으로 redirect를 시작하지 않고, state 발급 API만 제공한다.
@@ -302,7 +304,7 @@ SocialAccountRepository.findByProviderAndProviderUserId(...)
 - 원본 토큰: Controller가 쿠키에만 넣는다.
 - DB 저장값: `Hashing.sha256(token)`만 저장한다.
 - 만료: 기본 14일.
-- 쿠키: `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/auth`.
+- 쿠키: `HttpOnly`, 설정된 `Secure`, `SameSite=Lax`, `Path=/auth`.
 
 ### 신규 사용자 성공
 
@@ -310,7 +312,7 @@ SocialAccountRepository.findByProviderAndProviderUserId(...)
 
 ```http
 HTTP/1.1 201 Created
-Set-Cookie: refresh_token={원본 Refresh Token}; Path=/auth; Max-Age=1209600; Secure; HttpOnly; SameSite=Lax
+Set-Cookie: refresh_token={원본 Refresh Token}; Path=/auth; Max-Age=1209600; HttpOnly; SameSite=Lax
 Content-Type: application/json
 ```
 

@@ -1,12 +1,17 @@
+cors:
+  allowed-origins: http://127.0.0.1:3000
+
 auth:
   jwt:
     secret: test-only-jwt-secret-change-me-please-32
     access-token-ttl-seconds: 900
   refresh-token-ttl-days: 14
+  cookie:
+    secure: false
   oauth:
     state-ttl-seconds: 300
-    frontend-redirect-uri: http://localhost:3000
+    frontend-redirect-uri: http://127.0.0.1:3000
     kakao:
       client-id: test-client-id
       client-secret: test-client-secret
-      redirect-uri: http://localhost:8080/auth/kakao/callback
+      redirect-uri: http://127.0.0.1:8080/auth/kakao/callback
