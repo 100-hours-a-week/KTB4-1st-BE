@@ -24,14 +24,17 @@ public class UserPreferenceService {
 	private final UserPreferenceRepository userPreferenceRepository;
 
 	@Transactional
-	public void create(Long userId, UserPreferenceRequest request) {
+	public UserPreferenceResponse create(Long userId, UserPreferenceRequest request) {
 		User user = findActiveUser(userId);
 		if (userPreferenceRepository.existsByUser_Id(userId)) {
 			throw alreadyExists();
 		}
 
 		try {
-			userPreferenceRepository.saveAndFlush(new UserPreference(user, answers(request)));
+			UserPreference preference = userPreferenceRepository.saveAndFlush(
+					new UserPreference(user, answers(request))
+			);
+			return UserPreferenceResponse.from(preference);
 		} catch (DataIntegrityViolationException ignored) {
 			throw alreadyExists();
 		}

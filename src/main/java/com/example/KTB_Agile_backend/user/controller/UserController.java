@@ -4,6 +4,7 @@ import com.example.KTB_Agile_backend.user.dto.request.UserPreferenceRequest;
 import com.example.KTB_Agile_backend.user.dto.response.UserPreferenceResponse;
 import com.example.KTB_Agile_backend.user.service.AccountWithdrawalService;
 import com.example.KTB_Agile_backend.user.service.UserPreferenceService;
+import com.example.KTB_Agile_backend.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -32,12 +33,16 @@ public class UserController {
 	}
 
 	@PostMapping("/preferences")
-	public ResponseEntity<Void> createPreferences(
+	public ResponseEntity<ApiResponse<UserPreferenceResponse>> createPreferences(
 			Authentication authentication,
 			@Valid @RequestBody UserPreferenceRequest request
 	) {
-		userPreferenceService.create(Long.valueOf(authentication.getName()), request);
-		return ResponseEntity.status(HttpStatus.CREATED).build();
+		UserPreferenceResponse response = userPreferenceService.create(
+				Long.valueOf(authentication.getName()),
+				request
+		);
+		return ResponseEntity.status(HttpStatus.CREATED)
+				.body(new ApiResponse<>(response, null));
 	}
 
 	@PutMapping("/preferences")

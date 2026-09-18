@@ -37,8 +37,10 @@ class UserPreferenceServiceTest {
 		User user = new User("nickname");
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(user));
 		when(preferenceRepository.existsByUser_Id(42L)).thenReturn(false);
+		when(preferenceRepository.saveAndFlush(any(UserPreference.class)))
+				.thenAnswer(invocation -> invocation.getArgument(0));
 
-		service.create(42L, new UserPreferenceRequest(List.of(
+		var response = service.create(42L, new UserPreferenceRequest(List.of(
 				new UserPreferenceRequest.Answer("question-one", "answer-one"),
 				new UserPreferenceRequest.Answer("question-two", "answer-two")
 		)));
@@ -46,6 +48,7 @@ class UserPreferenceServiceTest {
 		ArgumentCaptor<UserPreference> captor = ArgumentCaptor.forClass(UserPreference.class);
 		verify(preferenceRepository).saveAndFlush(captor.capture());
 		assertThat(captor.getValue().getAnswers()).hasSize(2);
+		assertThat(response.answers()).hasSize(2);
 	}
 
 	@Test

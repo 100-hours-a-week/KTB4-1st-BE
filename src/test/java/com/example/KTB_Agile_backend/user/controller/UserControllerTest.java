@@ -11,6 +11,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -52,7 +53,13 @@ class UserControllerTest {
 	}
 
 	@Test
-	void createsPreferencesWithoutReturningAiOnlyValues() throws Exception {
+	void createsPreferencesAndReturnsCreatedPreference() throws Exception {
+		when(userPreferenceService.create(eq(42L), any())).thenReturn(new UserPreferenceResponse(
+				123L,
+				List.of(new UserPreferenceResponse.Answer("conversationStyle", "concise")),
+				LocalDateTime.of(2026, 9, 4, 15, 30)
+		));
+
 		mockMvc.perform(post("/users/preferences")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
 					.contentType(MediaType.APPLICATION_JSON)
@@ -65,7 +72,11 @@ class UserControllerTest {
 							}
 							"""))
 				.andExpect(status().isCreated())
-				.andExpect(content().string(""));
+				.andExpect(jsonPath("$.data.userPreferenceId").value(123))
+				.andExpect(jsonPath("$.data.answers[0].question").value("conversationStyle"))
+				.andExpect(jsonPath("$.data.answers[0].answer").value("concise"))
+				.andExpect(jsonPath("$.data.createdAt").value("2026-09-04T15:30:00"))
+				.andExpect(jsonPath("$.error").doesNotExist());
 
 		verify(userPreferenceService).create(eq(42L), any());
 	}
@@ -88,15 +99,19 @@ class UserControllerTest {
 
 	@Test
 	void getsPreferencesForAuthenticatedUser() throws Exception {
-		when(userPreferenceService.get(42L)).thenReturn(new UserPreferenceResponse(List.of(
-				new UserPreferenceResponse.Answer("conversationStyle", "concise")
-		)));
+		when(userPreferenceService.get(42L)).thenReturn(new UserPreferenceResponse(
+				123L,
+				List.of(new UserPreferenceResponse.Answer("conversationStyle", "concise")),
+				LocalDateTime.of(2026, 9, 4, 15, 30)
+		));
 
 		mockMvc.perform(get("/users/preferences")
 					.principal(new UsernamePasswordAuthenticationToken("42", null)))
 				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.userPreferenceId").value(123))
 				.andExpect(jsonPath("$.answers[0].question").value("conversationStyle"))
-				.andExpect(jsonPath("$.answers[0].answer").value("concise"));
+				.andExpect(jsonPath("$.answers[0].answer").value("concise"))
+				.andExpect(jsonPath("$.createdAt").value("2026-09-04T15:30:00"));
 
 		verify(userPreferenceService).get(42L);
 	}
