@@ -1,6 +1,8 @@
 package com.example.KTB_Agile_backend.user.controller;
 
 import com.example.KTB_Agile_backend.common.exception.GlobalExceptionHandler;
+import com.example.KTB_Agile_backend.user.dto.UserPreferenceAnswerOption;
+import com.example.KTB_Agile_backend.user.dto.UserPreferenceQuestion;
 import com.example.KTB_Agile_backend.user.dto.response.UserPreferenceResponse;
 import com.example.KTB_Agile_backend.user.service.AccountWithdrawalService;
 import com.example.KTB_Agile_backend.user.service.UserPreferenceService;
@@ -55,7 +57,10 @@ class UserControllerTest {
 	void createsPreferencesAndReturnsCreatedPreference() throws Exception {
 		when(userPreferenceService.create(eq(42L), any())).thenReturn(new UserPreferenceResponse(
 				123L,
-				List.of(new UserPreferenceResponse.Answer("conversationStyle", "concise")),
+				List.of(new UserPreferenceResponse.Answer(
+						UserPreferenceQuestion.CONVERSATION_STYLE,
+						UserPreferenceAnswerOption.CONCISE
+				)),
 				LocalDateTime.of(2026, 9, 4, 15, 30)
 		));
 
@@ -65,15 +70,15 @@ class UserControllerTest {
 					.content("""
 							{
 							  "answers": [
-								{"question": "conversationStyle", "answer": "concise"},
-								{"question": "descriptionStyle", "answer": "brief"}
+								{"question": "CONVERSATION_STYLE", "answer": "CONCISE"},
+								{"question": "DESCRIPTION_STYLE", "answer": "BRIEF"}
 							  ]
 							}
 							"""))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.data.userPreferenceId").value(123))
-				.andExpect(jsonPath("$.data.answers[0].question").value("conversationStyle"))
-				.andExpect(jsonPath("$.data.answers[0].answer").value("concise"))
+				.andExpect(jsonPath("$.data.answers[0].question").value("CONVERSATION_STYLE"))
+				.andExpect(jsonPath("$.data.answers[0].answer").value("CONCISE"))
 				.andExpect(jsonPath("$.data.createdAt").value("2026-09-04T15:30:00"))
 				.andExpect(jsonPath("$.error").doesNotExist());
 
@@ -93,7 +98,7 @@ class UserControllerTest {
 					.contentType(MediaType.APPLICATION_JSON)
 					.content("""
 							{
-							  "answers": [{"question": "conversationStyle", "answer": "detailed"}]
+							  "answers": [{"question": "DESCRIPTION_STYLE", "answer": "DETAILED"}]
 							}
 							"""))
 				.andExpect(status().isOk())
@@ -109,19 +114,34 @@ class UserControllerTest {
 	void getsPreferencesForAuthenticatedUser() throws Exception {
 		when(userPreferenceService.get(42L)).thenReturn(new UserPreferenceResponse(
 				123L,
-				List.of(new UserPreferenceResponse.Answer("conversationStyle", "concise")),
+				List.of(new UserPreferenceResponse.Answer(
+						UserPreferenceQuestion.CONVERSATION_STYLE,
+						UserPreferenceAnswerOption.CONCISE
+				)),
 				LocalDateTime.of(2026, 9, 4, 15, 30)
 		));
 
 		mockMvc.perform(get("/users/preferences")
 					.principal(new UsernamePasswordAuthenticationToken("42", null)))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.data.userPreferenceId").value(123))
-				.andExpect(jsonPath("$.data.answers[0].question").value("conversationStyle"))
-				.andExpect(jsonPath("$.data.answers[0].answer").value("concise"))
-				.andExpect(jsonPath("$.data.createdAt").value("2026-09-04T15:30:00"))
-				.andExpect(jsonPath("$.error").doesNotExist());
+				.andExpect(jsonPath("$.userPreferenceId").value(123))
+				.andExpect(jsonPath("$.answers[0].question").value("CONVERSATION_STYLE"))
+				.andExpect(jsonPath("$.answers[0].answer").value("CONCISE"))
+				.andExpect(jsonPath("$.createdAt").value("2026-09-04T15:30:00"));
 
 		verify(userPreferenceService).get(42L);
+	}
+
+	@Test
+	void rejectsUnknownPreferenceValue() throws Exception {
+		mockMvc.perform(post("/users/preferences")
+					.principal(new UsernamePasswordAuthenticationToken("42", null))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{
+							  "answers": [{"question": "conversationStyle", "answer": "concise"}]
+							}
+							"""))
+				.andExpect(status().isBadRequest());
 	}
 }

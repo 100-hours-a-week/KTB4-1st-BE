@@ -21,12 +21,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(
-		name = "user_preferences",
-		uniqueConstraints = @UniqueConstraint(
+@Table( name = "user_preferences", uniqueConstraints = @UniqueConstraint(
 				name = "uk_user_preference_user",
-				columnNames = "user_id"
-		)
+				columnNames = "user_id")
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
