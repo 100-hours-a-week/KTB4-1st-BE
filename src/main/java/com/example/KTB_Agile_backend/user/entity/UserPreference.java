@@ -19,6 +19,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Entity
 @Table( name = "user_preferences", uniqueConstraints = @UniqueConstraint(
@@ -48,8 +49,8 @@ public class UserPreference extends BaseEntity {
 	private List<UserPreferenceAnswer> answers = new ArrayList<>();
 
 	public UserPreference(User user, List<UserPreferenceAnswer> answers) {
-		this.user = user;
-		this.answers.addAll(answers);
+		this.user = Objects.requireNonNull(user, "user must not be null");
+		this.answers.addAll(requireAnswers(answers));
 	}
 
 	public List<UserPreferenceAnswer> getAnswers() {
@@ -58,6 +59,14 @@ public class UserPreference extends BaseEntity {
 
 	public void replaceAnswers(List<UserPreferenceAnswer> answers) {
 		this.answers.clear();
-		this.answers.addAll(answers);
+		this.answers.addAll(requireAnswers(answers));
+	}
+
+	private static List<UserPreferenceAnswer> requireAnswers(List<UserPreferenceAnswer> answers) {
+		Objects.requireNonNull(answers, "answers must not be null");
+		if (answers.stream().anyMatch(Objects::isNull)) {
+			throw new IllegalArgumentException("answers must not contain null");
+		}
+		return answers;
 	}
 }

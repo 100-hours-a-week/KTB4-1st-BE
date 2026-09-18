@@ -20,6 +20,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
+import static java.util.Objects.requireNonNull;
+
 @Entity
 @Table(
 		name = "group_members",
@@ -60,19 +62,19 @@ public class GroupMember extends BaseEntity {
 	private LocalDateTime leftAt;
 
 	public GroupMember(Group group, User user, LocalDateTime locationVerifiedAt) {
-		this.group = group;
-		this.user = user;
+		this.group = requireNonNull(group, "group must not be null");
+		this.user = requireNonNull(user, "user must not be null");
 		join(locationVerifiedAt);
 	}
 
 	public void join(LocalDateTime verifiedAt) {
-		this.locationVerifiedAt = verifiedAt;
+		this.locationVerifiedAt = requireNonNull(verifiedAt, "verifiedAt must not be null");
 		this.status = GroupMemberStatus.ACTIVE;
 		this.leftAt = null;
 	}
 
 	public void leave(LocalDateTime leftAt) {
-		this.leftAt = leftAt;
+		this.leftAt = requireNonNull(leftAt, "leftAt must not be null");
 		this.status = GroupMemberStatus.LEFT;
 	}
 

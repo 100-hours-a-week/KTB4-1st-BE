@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class GroupMemberTests {
 
@@ -31,5 +32,16 @@ class GroupMemberTests {
 		assertThat(member.isActive()).isTrue();
 		assertThat(member.getLeftAt()).isNull();
 		assertThat(member.getLocationVerifiedAt()).isEqualTo(rejoinedAt);
+	}
+
+	@Test
+	void requiresVerificationAndLeaveTimes() {
+		Group group = Group.create("그룹", "주소", BigDecimal.ZERO, BigDecimal.ZERO, "");
+		User user = new User("사용자");
+
+		assertThrows(NullPointerException.class, () -> new GroupMember(group, user, null));
+
+		GroupMember member = new GroupMember(group, user, LocalDateTime.now());
+		assertThrows(NullPointerException.class, () -> member.leave(null));
 	}
 }

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class GroupTests {
 
@@ -30,5 +31,18 @@ class GroupTests {
 		group.delete();
 
 		assertThat(group.getDeletedAt()).isNotNull();
+	}
+
+	@Test
+	void rejectsBlankNameAndInvalidCoordinates() {
+		assertThrows(IllegalArgumentException.class, () ->
+				Group.create(" ", "주소", BigDecimal.ZERO, BigDecimal.ZERO, "")
+		);
+		assertThrows(IllegalArgumentException.class, () ->
+				Group.create("그룹", "주소", new BigDecimal("180.001"), BigDecimal.ZERO, "")
+		);
+		assertThrows(IllegalArgumentException.class, () ->
+				Group.create("그룹", "주소", BigDecimal.ZERO, new BigDecimal("90.001"), "")
+		);
 	}
 }

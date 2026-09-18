@@ -15,6 +15,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
+import static java.util.Objects.requireNonNull;
+
 @Entity
 @Table(name = "refresh_tokens")
 @Getter
@@ -37,12 +39,22 @@ public class RefreshToken extends SoftDeletableEntity {
 	private LocalDateTime expiresAt;
 
 	public RefreshToken(User user, String tokenHash, LocalDateTime expiresAt) {
-		this.user = user;
-		this.tokenHash = tokenHash;
-		this.expiresAt = expiresAt;
+		this.user = requireNonNull(user, "user must not be null");
+		this.tokenHash = requireText(tokenHash, "tokenHash", 255);
+		this.expiresAt = requireNonNull(expiresAt, "expiresAt must not be null");
 	}
 
 	public void revoke() {
 		markDeleted(LocalDateTime.now());
+	}
+
+	private static String requireText(String value, String field, int maxLength) {
+		if (value == null || value.isBlank()) {
+			throw new IllegalArgumentException(field + " must not be blank");
+		}
+		if (value.length() > maxLength) {
+			throw new IllegalArgumentException(field + " must be at most " + maxLength + " characters");
+		}
+		return value;
 	}
 }

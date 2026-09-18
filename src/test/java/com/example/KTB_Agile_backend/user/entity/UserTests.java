@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class UserTests {
 
@@ -26,5 +27,13 @@ class UserTests {
 
 		assertThat(user.getUserStatus()).isEqualTo(UserStatus.WITHDRAWN);
 		assertThat(user.getDeletedAt()).isEqualTo(withdrawnAt);
+	}
+
+	@Test
+	void rejectsBlankNicknameAndNullWithdrawalTime() {
+		assertThrows(IllegalArgumentException.class, () -> new User(" "));
+
+		User user = new User("nickname");
+		assertThrows(IllegalArgumentException.class, () -> user.withdraw(null));
 	}
 }

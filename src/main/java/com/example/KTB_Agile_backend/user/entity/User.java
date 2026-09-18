@@ -41,16 +41,30 @@ public class User extends SoftDeletableEntity {
 	private UserStatus userStatus = UserStatus.ACTIVE;
 
 	public User(String nickname) {
-		this.nickname = nickname;
+		this.nickname = requireText(nickname, "nickname", 200);
 	}
 
 	public User(String nickname, String profileImageUrl) {
 		this(nickname);
-		this.profileImageUrl = profileImageUrl;
+		this.profileImageUrl = requireMaxLength(profileImageUrl, "profileImageUrl", 100);
 	}
 
 	public void withdraw(LocalDateTime withdrawnAt) {
 		markDeleted(withdrawnAt);
 		this.userStatus = UserStatus.WITHDRAWN;
+	}
+
+	private static String requireText(String value, String field, int maxLength) {
+		if (value == null || value.isBlank()) {
+			throw new IllegalArgumentException(field + " must not be blank");
+		}
+		return requireMaxLength(value, field, maxLength);
+	}
+
+	private static String requireMaxLength(String value, String field, int maxLength) {
+		if (value != null && value.length() > maxLength) {
+			throw new IllegalArgumentException(field + " must be at most " + maxLength + " characters");
+		}
+		return value;
 	}
 }

@@ -233,7 +233,7 @@ DTO는 외부 provider 응답, 애플리케이션 내부 중간값, API 요청·
 | 파일 | 주요 필드 | 메소드/역할 |
 | --- | --- | --- |
 | [`User.java`](../src/main/java/com/example/KTB_Agile_backend/user/entity/User.java) | `id`, `profileImageUrl`, `nickname`, `userRole`, `createdAt`, `updatedAt`, `deletedAt`, `userStatus` | `User(String)`, `User(String, String)`: 사용자 생성. `withdraw(LocalDateTime)`: 탈퇴 시각을 기록하고 상태를 `WITHDRAWN`으로 바꾼다. 기본 role은 `USER`, 기본 status는 `ACTIVE`다. |
-| [`SocialAccount.java`](../src/main/java/com/example/KTB_Agile_backend/user/entity/SocialAccount.java) | `id`, `user`, `provider`, `providerUserId`, `linkedAt`, `lastLoginAt` | `SocialAccount(User, String, String)`: 소셜 계정 연결. `recordLogin()`: 마지막 로그인 시각을 현재 시각으로 갱신한다. `(provider, providerUserId)` 유니크 제약이 있다. |
+| [`SocialAccount.java`](../src/main/java/com/example/KTB_Agile_backend/user/entity/SocialAccount.java) | `id`, `user`, `provider`, `providerUserId`, `createdAt`, `lastLoginAt` | `SocialAccount(User, String, String)`: 소셜 계정 연결. `createdAt`은 연결 시각으로 사용하고, `recordLogin()`은 마지막 로그인 시각을 현재 시각으로 갱신한다. `(provider, providerUserId)` 유니크 제약이 있다. |
 | [`RefreshToken.java`](../src/main/java/com/example/KTB_Agile_backend/user/entity/RefreshToken.java) | `id`, `user`, `tokenHash`, `expiresAt`, `createdAt`, `deletedAt` | `RefreshToken(User, String, LocalDateTime)`: 해시 토큰을 생성. `revoke()`: `deletedAt`을 기록해 폐기한다. |
 | [`UserRole.java`](../src/main/java/com/example/KTB_Agile_backend/user/entity/UserRole.java) | `USER`, `ADMIN` | JWT role과 Spring Security authority로 사용할 역할 enum이다. |
 | [`UserStatus.java`](../src/main/java/com/example/KTB_Agile_backend/user/entity/UserStatus.java) | `ACTIVE`, `INACTIVE`, `WITHDRAWN` | 사용자 상태 enum이다. 로그인·토큰 재발급은 `ACTIVE`만 허용한다. |
