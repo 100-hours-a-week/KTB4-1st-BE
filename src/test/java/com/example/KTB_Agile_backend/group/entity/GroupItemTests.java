@@ -10,7 +10,7 @@ class GroupItemTests {
 
 	@Test
 	void softDeletesGroupItem() {
-		Group group = Group.create("그룹", "주소", BigDecimal.ZERO, BigDecimal.ZERO, null);
+		Group group = Group.create("그룹", "주소", BigDecimal.ZERO, BigDecimal.ZERO, "");
 		GroupItem groupItem = new GroupItem(group, 1L);
 
 		assertThat(groupItem.isActive()).isTrue();

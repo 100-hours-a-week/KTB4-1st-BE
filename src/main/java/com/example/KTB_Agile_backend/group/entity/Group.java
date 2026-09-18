@@ -14,18 +14,11 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-import static java.util.Objects.requireNonNull;
-
 @Entity
 @Table(name = "groups")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Group {
-
-	private static final BigDecimal MIN_LONGITUDE = BigDecimal.valueOf(-180);
-	private static final BigDecimal MAX_LONGITUDE = BigDecimal.valueOf(180);
-	private static final BigDecimal MIN_LATITUDE = BigDecimal.valueOf(-90);
-	private static final BigDecimal MAX_LATITUDE = BigDecimal.valueOf(90);
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -61,11 +54,11 @@ public class Group {
 			BigDecimal latitude,
 			String groupContent
 	) {
-		this.groupName = requiredText(groupName, "groupName", 30);
-		this.roadAddress = requiredText(roadAddress, "roadAddress", 100);
-		this.longitude = coordinate(longitude, "longitude", MIN_LONGITUDE, MAX_LONGITUDE);
-		this.latitude = coordinate(latitude, "latitude", MIN_LATITUDE, MAX_LATITUDE);
-		this.groupContent = optionalText(groupContent, 300);
+		this.groupName = groupName;
+		this.roadAddress = roadAddress;
+		this.longitude = longitude;
+		this.latitude = latitude;
+		this.groupContent = groupContent;
 	}
 
 	public static Group create(
@@ -82,45 +75,5 @@ public class Group {
 		if (deletedAt == null) {
 			deletedAt = LocalDateTime.now();
 		}
-	}
-
-	private static String requiredText(String value, String fieldName, int maxLength) {
-		if (value == null || value.isBlank()) {
-			throw new IllegalArgumentException(fieldName + " must not be blank");
-		}
-
-		String normalized = value.trim();
-		if (normalized.length() > maxLength) {
-			throw new IllegalArgumentException(fieldName + " must be at most " + maxLength + " characters");
-		}
-		return normalized;
-	}
-
-	private static String optionalText(String value, int maxLength) {
-		if (value == null) {
-			return "";
-		}
-
-		String normalized = value.trim();
-		if (normalized.length() > maxLength) {
-			throw new IllegalArgumentException("groupContent must be at most " + maxLength + " characters");
-		}
-		return normalized;
-	}
-
-	private static BigDecimal coordinate(
-			BigDecimal value,
-			String fieldName,
-			BigDecimal minimum,
-			BigDecimal maximum
-	) {
-		BigDecimal coordinate = requireNonNull(value, fieldName + " must not be null");
-		if (coordinate.scale() > 6) {
-			throw new IllegalArgumentException(fieldName + " must have at most 6 decimal places");
-		}
-		if (coordinate.compareTo(minimum) < 0 || coordinate.compareTo(maximum) > 0) {
-			throw new IllegalArgumentException(fieldName + " is out of range");
-		}
-		return coordinate;
 	}
 }

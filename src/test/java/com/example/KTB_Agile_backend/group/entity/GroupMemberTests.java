@@ -12,7 +12,7 @@ class GroupMemberTests {
 
 	@Test
 	void joinsLeavesAndRejoinsSameMember() {
-		Group group = Group.create("그룹", "주소", BigDecimal.ZERO, BigDecimal.ZERO, null);
+		Group group = Group.create("그룹", "주소", BigDecimal.ZERO, BigDecimal.ZERO, "");
 		GroupMember member = new GroupMember(
 				group,
 				new User("사용자"),
