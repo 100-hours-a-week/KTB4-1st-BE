@@ -99,7 +99,6 @@ User 1 ───── N GroupMember N ───── 1 Group
 책임:
 
 - 그룹명·도로명 주소·좌표·설명·생성 시각 관리
-- 생성 시 불변식 검증
 - `delete()`로 soft delete 상태 전환
 - 그룹 위치 기준점 제공
 
@@ -116,7 +115,7 @@ createdAt       LocalDateTime
 deletedAt       LocalDateTime nullable
 ```
 
-엔티티는 공개 setter를 두지 않고 `Group.create(...)`, `delete()`처럼 의도가 드러나는 메서드로 상태를 바꾼다. Controller가 전달한 문자열을 그대로 저장하지 않고 생성 메서드에서 trim·범위 검증을 한 번 더 수행한다.
+엔티티는 공개 setter를 두지 않고 `Group.create(...)`, `delete()`처럼 의도가 드러나는 메서드로 상태를 바꾼다. 요청 DTO에서 검증·정규화한 값을 `Group.create(...)`에 전달한다.
 
 ### `GroupMember`
 
@@ -150,7 +149,7 @@ leftAt                LocalDateTime nullable
 POST /groups
   → GroupController
   → GroupService.create(userId, request)
-      1. 요청값 검증 및 정규화
+      1. 요청 DTO에서 검증·정규화된 값 전달
       2. 활성 그룹 중복 확인
       3. Group 생성·저장
       4. 생성자를 GroupMember(ACTIVE)로 저장
@@ -273,12 +272,13 @@ UNPROCESSABLE_ENTITY 422
 
 ## 10. 테스트 순서
 
-1. `Group` 엔티티: 생성 불변식, trim, 좌표 범위, 설명 기본값, soft delete
-2. `GroupMember` 엔티티: 가입·탈퇴·재가입 상태 전환
-3. `GroupService` 단위 테스트: 생성자 멤버 동시 저장, 중복 그룹, 최대 그룹 수, 권한
-4. `GroupQueryService`/Repository 테스트: 빈 목록, 삭제 그룹 제외, 검색 cursor, 가입 여부
-5. `GroupController` 테스트: `ApiResponse`, 201 Location, 400/404/409/422
-6. H2 통합 테스트: unique 제약과 트랜잭션 rollback
+1. `CreateGroupRequest`: 요청 필드 검증·정규화
+2. `Group` 엔티티: 검증된 값 저장, soft delete
+3. `GroupMember` 엔티티: 가입·탈퇴·재가입 상태 전환
+4. `GroupService` 단위 테스트: 생성자 멤버 동시 저장, 중복 그룹, 최대 그룹 수, 권한
+5. `GroupQueryService`/Repository 테스트: 빈 목록, 삭제 그룹 제외, 검색 cursor, 가입 여부
+6. `GroupController` 테스트: `ApiResponse`, 201 Location, 400/404/409/422
+7. H2 통합 테스트: unique 제약과 트랜잭션 rollback
 
 첫 구현에서 가장 작은 의미 있는 검증은 `GroupService.create()`가 그룹과 생성자 멤버를 함께 저장하고, 중복 요청에는 409를 반환하는 테스트다.
 

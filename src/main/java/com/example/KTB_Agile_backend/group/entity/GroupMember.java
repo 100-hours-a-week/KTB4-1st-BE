@@ -21,8 +21,6 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
-import static java.util.Objects.requireNonNull;
-
 @Entity
 @Table(
 		name = "group_members",
@@ -67,19 +65,19 @@ public class GroupMember {
 	private LocalDateTime leftAt;
 
 	public GroupMember(Group group, User user, LocalDateTime locationVerifiedAt) {
-		this.group = requireNonNull(group, "group must not be null");
-		this.user = requireNonNull(user, "user must not be null");
+		this.group = group;
+		this.user = user;
 		join(locationVerifiedAt);
 	}
 
 	public void join(LocalDateTime verifiedAt) {
-		this.locationVerifiedAt = requireNonNull(verifiedAt, "verifiedAt must not be null");
+		this.locationVerifiedAt = verifiedAt;
 		this.status = GroupMemberStatus.ACTIVE;
 		this.leftAt = null;
 	}
 
 	public void leave(LocalDateTime leftAt) {
-		this.leftAt = requireNonNull(leftAt, "leftAt must not be null");
+		this.leftAt = leftAt;
 		this.status = GroupMemberStatus.LEFT;
 	}
 
