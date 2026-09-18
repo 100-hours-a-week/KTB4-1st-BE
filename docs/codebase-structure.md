@@ -46,8 +46,8 @@ HTTP 요청
 | 파일 | 타입 | 메소드/역할 |
 | --- | --- | --- |
 | [`KtbAgileBackendApplication.java`](../src/main/java/com/example/KTB_Agile_backend/KtbAgileBackendApplication.java) | Spring Boot 진입 클래스 | `main(String[] args)`: `SpringApplication.run`으로 애플리케이션을 시작한다. |
-| [`application.yaml`](../src/main/resources/application.yaml) | 런타임 설정 | 애플리케이션 이름, JWT secret, Access Token TTL, Refresh Token TTL, OAuth state TTL, callback 이후 프론트엔드 redirect URI, Kakao client 설정을 환경 변수로 받는다. |
-| [`test application.yaml`](../src/test/resources/application.yaml) | 테스트 설정 | 테스트용 JWT·Kakao 값, TTL, 프론트엔드 redirect URI를 제공한다. |
+| [`application.yaml`](../src/main/resources/application.yaml) | 런타임 설정 | 애플리케이션 이름, JWT secret, Access Token TTL, Refresh Token TTL, OAuth state TTL, 쿠키 Secure 여부, callback 이후 프론트엔드 redirect URI, Kakao client 설정을 환경 변수로 받는다. |
+| [`test application.yaml`](../src/test/resources/application.yaml) | 테스트 설정 | 테스트용 CORS origin, JWT·Kakao 값, TTL, 로컬 쿠키 설정, 프론트엔드 redirect URI를 제공한다. |
 | [`build.gradle`](../build.gradle) | Gradle 빌드 설정 | Spring Web MVC, Validation, Security, OAuth2 JOSE, Spring Data JPA, H2/MySQL, Lombok 의존성과 테스트 실행을 설정한다. |
 | [`settings.gradle`](../settings.gradle) | Gradle 프로젝트 설정 | 루트 프로젝트 이름을 `KTB-Agile-backend`로 지정한다. |
 | [`Dockerfile`](../Dockerfile) | 컨테이너 빌드 설정 | Gradle로 layered boot jar를 만들고, non-root 사용자로 8080 포트에서 실행한다. |
@@ -59,7 +59,8 @@ HTTP 요청
 | `auth.jwt.access-token-ttl-seconds` | `900`초 | JWT `exp`와 응답 `expiresIn` |
 | `auth.refresh-token-ttl-days` | `14`일 | Refresh Token DB 만료 시각과 쿠키 `Max-Age` |
 | `auth.oauth.state-ttl-seconds` | `300`초 | OAuth state DB 만료 시각, state 응답, state 쿠키 |
-| `auth.oauth.frontend-redirect-uri` | `http://localhost:3000` | Kakao callback 성공 후 `302 Location` 대상 |
+| `auth.cookie.secure` | `false` | 세 인증 쿠키의 `Secure` 속성. 운영 HTTPS에서는 `true`로 설정 |
+| `auth.oauth.frontend-redirect-uri` | `http://127.0.0.1:3000` | Kakao callback 성공 후 `302 Location` 대상 |
 
 ## 3. `auth` 영역
 
@@ -71,14 +72,14 @@ HTTP 요청
 
 | 메소드 | 역할 |
 | --- | --- |
-| `AuthController(AuthService, long, long, String)` | 주입받은 TTL을 `Duration`으로 변환하고 callback 이후 프론트엔드 redirect URI를 보관한다. |
+| `AuthController(AuthService, long, long, boolean, String)` | 주입받은 TTL을 `Duration`으로 변환하고 쿠키 Secure 여부와 callback 이후 프론트엔드 redirect URI를 보관한다. |
 | `issueOAuthState()` | `AuthService.issueOAuthState()`를 호출하고 `OAuthStateResponse`를 JSON으로 반환한다. 동시에 `oauth_state` HttpOnly 쿠키를 설정한다. |
 | `kakaoCallback(String, String, String)` | Kakao가 redirect한 `code`, `state`, `oauth_state` 쿠키를 받아 공통 로그인 흐름을 실행한다. 성공 시 Refresh Token 쿠키와 `302 Location`을 반환해 `auth.oauth.frontend-redirect-uri`로 보낸다. |
 | `oauthLogin(OAuthLoginRequest, String)` | 요청 DTO와 `oauth_state` 쿠키를 `AuthService.oauthLoginWithTokens`에 전달한다. 신규 사용자는 `201 Created`, 기존 사용자는 `200 OK`로 응답하고 Refresh Token을 쿠키에 설정한다. |
 | `reissueToken(String)` | `refresh_token` 쿠키를 `AuthService.reissueToken`에 전달하고 `TokenReissueResponse`를 반환한다. |
 | `logout(String)` | `refresh_token` 쿠키를 `AuthService.logout`에 전달한 뒤 Refresh Token 쿠키를 삭제하고 `204 No Content`를 반환한다. 실제 URL 접근에는 SecurityConfig의 Access Token 인증도 필요하다. |
-| `stateCookie(String)` | state 쿠키를 `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/auth`, 설정된 TTL로 만든다. |
-| `refreshTokenCookie(String)` | Refresh Token 쿠키를 `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/auth`, 14일 TTL로 만든다. |
+| `stateCookie(String)` | state 쿠키를 `HttpOnly`, 설정된 `Secure`, `SameSite=Lax`, `Path=/auth`, 설정된 TTL로 만든다. |
+| `refreshTokenCookie(String)` | Refresh Token 쿠키를 `HttpOnly`, 설정된 `Secure`, `SameSite=Lax`, `Path=/auth`, 14일 TTL로 만든다. |
 | `deleteRefreshTokenCookie()` | 같은 이름·경로의 Refresh Token 쿠키를 빈 값과 `Max-Age=0`으로 만든다. |
 
 ### 3.2 인증 서비스

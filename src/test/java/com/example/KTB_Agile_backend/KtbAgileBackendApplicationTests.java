@@ -28,11 +28,11 @@ class KtbAgileBackendApplicationTests {
 	@Test
 	void allowsFrontendCorsPreflight() throws Exception {
 		mockMvc.perform(options("/auth/refresh")
-					.header(HttpHeaders.ORIGIN, "http://localhost:3000")
+					.header(HttpHeaders.ORIGIN, "http://127.0.0.1:3000")
 					.header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
 					.header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "content-type"))
 				.andExpect(status().isOk())
-				.andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:3000"))
+				.andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://127.0.0.1:3000"))
 				.andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true"));
 	}
 

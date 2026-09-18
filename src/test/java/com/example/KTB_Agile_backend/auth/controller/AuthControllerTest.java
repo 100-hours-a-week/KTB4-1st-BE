@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,7 +39,7 @@ class AuthControllerTest {
 	void setUp() {
 		authService = mock(AuthService.class);
 		mockMvc = MockMvcBuilders
-				.standaloneSetup(new AuthController(authService, 14, 300, "http://localhost:3000"))
+				.standaloneSetup(new AuthController(authService, 14, 300, false, "http://127.0.0.1:3000"))
 				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
 	}
@@ -53,7 +54,8 @@ class AuthControllerTest {
 				.andExpect(jsonPath("$.data.expiresIn").value(300))
 				.andExpect(header().string(HttpHeaders.SET_COOKIE,
 						containsString("oauth_state=state-value")))
-				.andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("HttpOnly")));
+				.andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("HttpOnly")))
+				.andExpect(header().string(HttpHeaders.SET_COOKIE, not(containsString("Secure"))));
 	}
 
 	@Test
@@ -83,7 +85,8 @@ class AuthControllerTest {
 				.andExpect(jsonPath("$.data.user.userId").value(1))
 				.andExpect(header().string(HttpHeaders.SET_COOKIE,
 						containsString("refresh_token=refresh-token")))
-				.andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=1209600")));
+				.andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=1209600")))
+				.andExpect(header().string(HttpHeaders.SET_COOKIE, not(containsString("Secure"))));
 
 		verify(authService).oauthLoginWithTokens(any(), eq("state-value"));
 	}
@@ -105,7 +108,7 @@ class AuthControllerTest {
 					.queryParam("state", "state-value")
 					.cookie(new jakarta.servlet.http.Cookie("oauth_state", "state-value")))
 				.andExpect(status().isFound())
-				.andExpect(header().string(HttpHeaders.LOCATION, "http://localhost:3000"))
+				.andExpect(header().string(HttpHeaders.LOCATION, "http://127.0.0.1:3000"))
 				.andExpect(header().string(HttpHeaders.SET_COOKIE,
 						containsString("refresh_token=refresh-token")))
 				.andExpect(content().string(""));
@@ -125,7 +128,8 @@ class AuthControllerTest {
 				.andExpect(status().isNoContent())
 				.andExpect(header().string(HttpHeaders.SET_COOKIE,
 						containsString("refresh_token=;")))
-				.andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")));
+				.andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")))
+				.andExpect(header().string(HttpHeaders.SET_COOKIE, not(containsString("Secure"))));
 
 		verify(authService).logout("refresh-token");
 	}

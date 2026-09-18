@@ -35,17 +35,20 @@ public class AuthController {
 	private final AuthService authService;
 	private final Duration oauthStateTtl;
 	private final Duration refreshTokenTtl;
+	private final boolean secureCookies;
 	private final URI frontendRedirectUri;
 
 	public AuthController(
 			AuthService authService,
 			@Value("${auth.refresh-token-ttl-days}") long refreshTokenTtlDays,
 			@Value("${auth.oauth.state-ttl-seconds}") long stateTtlSeconds,
+			@Value("${auth.cookie.secure:false}") boolean secureCookies,
 			@Value("${auth.oauth.frontend-redirect-uri}") String frontendRedirectUri
 	) {
 		this.authService = authService;
 		this.oauthStateTtl = Duration.ofSeconds(stateTtlSeconds);
 		this.refreshTokenTtl = Duration.ofDays(refreshTokenTtlDays);
+		this.secureCookies = secureCookies;
 		this.frontendRedirectUri = URI.create(frontendRedirectUri);
 	}
 
@@ -114,7 +117,7 @@ public class AuthController {
 	private ResponseCookie stateCookie(String state) {
 		return ResponseCookie.from(OAUTH_STATE_COOKIE, state)
 				.httpOnly(true)
-				.secure(true)
+				.secure(secureCookies)
 				.sameSite("Lax")
 				.path(COOKIE_PATH)
 				.maxAge(oauthStateTtl)
@@ -124,7 +127,7 @@ public class AuthController {
 	private ResponseCookie refreshTokenCookie(String refreshToken) {
 		return ResponseCookie.from(REFRESH_TOKEN_COOKIE, refreshToken)
 				.httpOnly(true)
-				.secure(true)
+				.secure(secureCookies)
 				.sameSite("Lax")
 				.path(COOKIE_PATH)
 				.maxAge(refreshTokenTtl)
@@ -134,7 +137,7 @@ public class AuthController {
 	private ResponseCookie deleteRefreshTokenCookie() {
 		return ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
 				.httpOnly(true)
-				.secure(true)
+				.secure(secureCookies)
 				.sameSite("Lax")
 				.path(COOKIE_PATH)
 				.maxAge(Duration.ZERO)
