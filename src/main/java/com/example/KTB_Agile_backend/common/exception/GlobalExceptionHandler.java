@@ -21,7 +21,14 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(ApiException.class)
 	public ResponseEntity<ApiResponse<Void>> handleApiException(ApiException exception) {
-		return response(exception.status(), exception.error());
+		ErrorResponse error = new ErrorResponse(
+				exception.code().value(),
+				exception.getMessage(),
+				exception.details().stream()
+						.map(detail -> new ErrorResponse.Field(detail.field(), detail.reason()))
+						.toList()
+		);
+		return response(exception.status(), error);
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
@@ -32,17 +39,18 @@ public class GlobalExceptionHandler {
 						error.getDefaultMessage() == null ? "유효하지 않은 입력값입니다." : error.getDefaultMessage()
 				))
 				.toList();
-		String message = details.stream().anyMatch(detail -> "authorizationCode".equals(detail.field()))
-				? "인가 코드가 유효하지 않습니다."
-				: "요청 값이 올바르지 않습니다.";
-		return response(ErrorCode.BAD_REQUEST.status(),
-				new ErrorResponse(ErrorCode.BAD_REQUEST.value(), message, details));
+		return response(ErrorCode.REQUEST_VALIDATION_FAILED.status(),
+				new ErrorResponse(
+						ErrorCode.REQUEST_VALIDATION_FAILED.value(),
+						ErrorCode.REQUEST_VALIDATION_FAILED.message(),
+						details
+				));
 	}
 
 	@ExceptionHandler(HttpMessageNotReadableException.class)
 	public ResponseEntity<ApiResponse<Void>> handleUnreadableMessage() {
-		return response(ErrorCode.BAD_REQUEST.status(),
-				new ErrorResponse(ErrorCode.BAD_REQUEST.value(), "요청 본문 형식이 올바르지 않습니다.", List.of()));
+		return response(ErrorCode.REQUEST_BODY_INVALID.status(),
+				new ErrorResponse(ErrorCode.REQUEST_BODY_INVALID.value(), ErrorCode.REQUEST_BODY_INVALID.message(), List.of()));
 	}
 
 	@ExceptionHandler(Exception.class)
@@ -54,7 +62,7 @@ public class GlobalExceptionHandler {
 		return response(ErrorCode.INTERNAL_SERVER_ERROR.status(),
 				new ErrorResponse(
 						ErrorCode.INTERNAL_SERVER_ERROR.value(),
-						internalMessage(request.getRequestURI()),
+						ErrorCode.INTERNAL_SERVER_ERROR.message(),
 						List.of()
 				));
 	}
@@ -66,12 +74,4 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.status(status).body(new ApiResponse<>(null, error));
 	}
 
-	private static String internalMessage(String requestUri) {
-		return switch (requestUri) {
-			case "/auth/oauth" -> "인증 처리 중 서버 오류가 발생했습니다.";
-			case "/auth/refresh" -> "토큰 재발급 중 서버 오류가 발생했습니다.";
-			case "/auth/logout" -> "로그아웃 처리 중 서버 오류가 발생했습니다.";
-			default -> "서버 오류가 발생했습니다.";
-		};
-	}
 }

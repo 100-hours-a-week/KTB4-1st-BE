@@ -4,7 +4,6 @@ import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
 import com.example.KTB_Agile_backend.common.response.ErrorResponse;
 import tools.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -83,14 +82,12 @@ public class SecurityConfig {
 						.authenticationEntryPoint((request, response, cause) -> writeError(
 								response,
 								objectMapper,
-								ErrorCode.UNAUTHORIZED,
-								unauthorizedMessage(request)
+								ErrorCode.AUTHENTICATION_REQUIRED
 						))
 						.accessDeniedHandler((request, response, cause) -> writeError(
 								response,
 								objectMapper,
-								ErrorCode.FORBIDDEN,
-								"접근 권한이 없습니다."
+								ErrorCode.FORBIDDEN
 						))
 				)
 				.addFilterBefore(
@@ -100,25 +97,17 @@ public class SecurityConfig {
 		return http.build();
 	}
 
-	private static String unauthorizedMessage(HttpServletRequest request) {
-		String requestUri = request.getRequestURI();
-		return requestUri != null && requestUri.endsWith("/auth/logout")
-				? "로그인이 필요하거나 Access Token이 만료되었거나 유효하지 않습니다."
-				: "로그인이 필요합니다.";
-	}
-
 	private static void writeError(
 			HttpServletResponse response,
 			ObjectMapper objectMapper,
-			ErrorCode code,
-			String message
+			ErrorCode code
 	) throws IOException {
 		response.setStatus(code.status().value());
 		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 		response.setCharacterEncoding(StandardCharsets.UTF_8.name());
 		objectMapper.writeValue(
 				response.getWriter(),
-				new ApiResponse<Void>(null, new ErrorResponse(code.value(), message, java.util.List.of()))
+				new ApiResponse<Void>(null, new ErrorResponse(code.value(), code.message(), List.of()))
 		);
 	}
 }

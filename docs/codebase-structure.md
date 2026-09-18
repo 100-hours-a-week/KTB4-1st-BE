@@ -96,8 +96,8 @@ HTTP 요청
 | `oauthLoginWithTokens(OAuthLoginRequest, String)` | provider 정규화 → state 검증·소비 → provider 사용자 조회 → 사용자 계정 생성·조회 → 활성 상태 확인 → Access/Refresh Token 발급 → `AuthTokenResult` 생성 순서를 실행한다. |
 | `reissueToken(String)` | Refresh Token을 검증해 사용자를 얻고, 활성 사용자인지 확인한 뒤 새 Access Token만 발급한다. |
 | `logout(String)` | `RefreshTokenService.revoke`에 Refresh Token 폐기를 위임한다. |
-| `findProviderClient(String)` | 주입된 `OAuthProviderClient` 목록에서 provider 이름이 일치하는 client를 찾는다. 없으면 `BAD_REQUEST`를 발생시킨다. |
-| `validateUserInfo(OAuthUserInfo, String)` | provider, provider 사용자 ID, nickname이 정상인지 확인한다. 실패하면 `UNAUTHORIZED`를 발생시킨다. |
+| `findProviderClient(String)` | 주입된 `OAuthProviderClient` 목록에서 provider 이름이 일치하는 client를 찾는다. 없으면 `AUTH_PROVIDER_UNSUPPORTED`를 발생시킨다. |
+| `validateUserInfo(OAuthUserInfo, String)` | provider, provider 사용자 ID, nickname이 정상인지 확인한다. 실패하면 `AUTHENTICATION_FAILED`를 발생시킨다. |
 | `ensureActive(User)` | 사용자 상태가 `ACTIVE`이고 `deletedAt`이 없는지 확인한다. |
 | `normalizeProvider(String)` | null·공백을 거부하고 앞뒤 공백 제거 후 대문자로 변환한다. |
 | `authenticationFailed()` | OAuth 인증 실패용 `ApiException`을 만든다. |
@@ -114,7 +114,7 @@ OAuth state를 생성하고, 요청 state와 쿠키 state를 비교한 뒤 서�
 | `issue(String)` | 32바이트 난수를 URL-safe Base64 문자열로 만들고, SHA-256 해시·provider·만료 시각을 저장한 뒤 원본 state를 반환한다. |
 | `consume(String, String, String)` | 쿠키와 요청 state가 같은지 constant-time 비교를 하고, state 해시를 저장소에 전달해 만료되지 않고 미소비 상태인지 원자적으로 소비한다. |
 | `normalizeProvider(String)` | provider를 검증하고 대문자로 정규화한다. |
-| `authenticationFailed()` | state 검증 실패용 `UNAUTHORIZED` 예외를 만든다. |
+| `authenticationFailed()` | state 검증 실패용 `AUTH_OAUTH_STATE_INVALID` 예외를 만든다. |
 
 #### `RefreshTokenService`
 
@@ -128,7 +128,7 @@ OAuth state를 생성하고, 요청 state와 쿠키 state를 비교한 뒤 서�
 | `issue(User)` | 32바이트 난수 토큰을 발급하고 SHA-256 해시와 만료 시각을 `RefreshToken`으로 저장한 뒤 원본 토큰을 반환한다. |
 | `requireValidUser(String)` | 입력 토큰을 해시해 미폐기 DB 레코드를 찾고 만료 여부를 확인한 뒤 연결된 사용자를 반환한다. 만료 토큰은 폐기 처리 후 예외를 발생시킨다. |
 | `revoke(String)` | 토큰이 없으면 아무 작업도 하지 않고, 있으면 해시로 찾아 `deletedAt`을 기록한다. |
-| `invalidRefreshToken()` | Refresh Token 검증 실패용 `UNAUTHORIZED` 예외를 만든다. |
+| `invalidRefreshToken()` | Refresh Token 검증 실패용 `AUTH_REFRESH_TOKEN_INVALID` 예외를 만든다. |
 
 #### 보조 타입
 
@@ -162,7 +162,7 @@ OAuth provider별 구현을 같은 방식으로 호출하기 위한 인터페이
 | `provider()` | `KAKAO`를 반환한다. |
 | `getUserInfo(String)` | Kakao token API에 인가 코드를 보내 `KakaoTokenResponse`를 받고, 받은 access token으로 Kakao user API를 호출한다. 응답을 `OAuthUserInfo`로 변환한다. |
 | `firstNonBlank(String...)` | 첫 번째 non-blank 값을 찾는다. nickname이 없으면 `kakao-{providerUserId}`를 사용한다. |
-| `authenticationFailed(Throwable)` | Kakao API 응답 오류를 `UNAUTHORIZED`로 감싼다. |
+| `authenticationFailed(Throwable)` | Kakao API 응답 오류를 `AUTH_OAUTH_AUTHENTICATION_FAILED`로 감싼다. |
 
 호출하는 외부 API는 다음과 같다.
 
@@ -308,8 +308,7 @@ OAuth provider 사용자와 내부 `User`/`SocialAccount`를 연결한다.
 | --- | --- |
 | `jwtDecoder(String jwtSecret)` | 동일한 HMAC secret과 HS256 알고리즘으로 JWT Decoder Bean을 만든다. secret이 32바이트보다 짧으면 실패한다. |
 | `securityFilterChain(HttpSecurity, JwtDecoder, ObjectMapper)` | CSRF·form login·HTTP Basic을 끄고 stateless 세션을 적용한다. `/auth/oauth/**`, `/auth/kakao/callback`, `/auth/refresh`, `/error`를 공개하고 나머지는 인증을 요구하며 JWT 필터와 오류 처리기를 등록한다. |
-| `unauthorizedMessage(HttpServletRequest)` | `/auth/logout`과 일반 요청에 서로 다른 401 메시지를 선택한다. |
-| `writeError(HttpServletResponse, ObjectMapper, ErrorCode, String)` | Security 단계에서 발생한 401/403을 공통 `ApiResponse` JSON으로 작성한다. |
+| `writeError(HttpServletResponse, ObjectMapper, ErrorCode)` | Security 단계에서 발생한 401/403을 `ErrorCode`의 기본 메시지와 함께 공통 `ApiResponse` JSON으로 작성한다. URI별 메시지를 선택하지 않는다. |
 
 현재 접근 권한은 다음과 같다.
 
@@ -328,9 +327,10 @@ OAuth provider 사용자와 내부 `User`/`SocialAccount`를 연결한다.
 | --- | --- |
 | [`ApiResponse.java`](../src/main/java/com/example/KTB_Agile_backend/common/response/ApiResponse.java) | `record ApiResponse<T>(T data, ErrorResponse error)`. 모든 Controller 성공·실패 body를 `data`와 `error`로 감싼다. |
 | [`ErrorResponse.java`](../src/main/java/com/example/KTB_Agile_backend/common/response/ErrorResponse.java) | `code`, `message`, `details`를 담는다. 중첩 `Field` record는 `field`, `reason`을 담는다. |
-| [`ErrorCode.java`](../src/main/java/com/example/KTB_Agile_backend/common/exception/ErrorCode.java) | `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `INTERNAL_SERVER_ERROR`, `SOCIAL_ACCOUNT_CONFLICT`와 HTTP status를 매핑한다. `value()`, `status()`로 꺼낸다. |
-| [`ApiException.java`](../src/main/java/com/example/KTB_Agile_backend/common/exception/ApiException.java) | 오류 코드·메시지·상세 필드·원인 예외를 보관한다. `status()`는 HTTP status를, `error()`는 응답용 오류를 반환한다. |
-| [`GlobalExceptionHandler.java`](../src/main/java/com/example/KTB_Agile_backend/common/exception/GlobalExceptionHandler.java) | `handleApiException`: 도메인 예외를 응답으로 변환. `handleValidation`: `@Valid` 필드 오류를 변환. `handleUnreadableMessage`: JSON 본문 형식 오류를 변환. `handleUnexpectedException`: 로그를 남기고 내부 오류를 일반 메시지로 감춘다. `response`: 공통 응답 생성. `internalMessage`: URI별 500 메시지를 선택한다. |
+| [`ErrorCode.java`](../src/main/java/com/example/KTB_Agile_backend/common/exception/ErrorCode.java) | 도메인 의미가 있는 오류 코드와 HTTP status·기본 메시지를 매핑한다. `value()`, `status()`, `message()`로 꺼낸다. |
+| [`ErrorDetail.java`](../src/main/java/com/example/KTB_Agile_backend/common/exception/ErrorDetail.java) | 예외 계층에서 사용하는 필드별 오류 정보인 `field`, `reason`을 담는다. |
+| [`ApiException.java`](../src/main/java/com/example/KTB_Agile_backend/common/exception/ApiException.java) | 오류 코드·메시지·상세 필드·원인 예외만 보관한다. HTTP 응답 DTO는 생성하지 않는다. |
+| [`GlobalExceptionHandler.java`](../src/main/java/com/example/KTB_Agile_backend/common/exception/GlobalExceptionHandler.java) | `ApiException`·검증 오류·본문 형식 오류·예상하지 못한 오류를 공통 `ApiResponse`로 변환한다. 예상하지 못한 오류는 URI와 무관하게 일반 500 메시지를 반환한다. |
 
 공통 오류 body의 기본 형태는 다음과 같다.
 
@@ -338,7 +338,7 @@ OAuth provider 사용자와 내부 `User`/`SocialAccount`를 연결한다.
 {
   "data": null,
   "error": {
-    "code": "BAD_REQUEST",
+    "code": "REQUEST_VALIDATION_FAILED",
     "message": "요청 값이 올바르지 않습니다.",
     "details": []
   }

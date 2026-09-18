@@ -69,9 +69,6 @@ public class RefreshTokenService {
 	}
 
 	private static ApiException invalidRefreshToken() {
-		return new ApiException(
-				ErrorCode.UNAUTHORIZED,
-				"Refresh Token이 만료되었거나 유효하지 않습니다."
-		);
+		return new ApiException(ErrorCode.AUTH_REFRESH_TOKEN_INVALID);
 	}
 }

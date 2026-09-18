@@ -113,6 +113,6 @@ class AccountProvisioningServiceTest {
 		));
 
 		assertEquals(HttpStatus.CONFLICT, exception.status());
-		assertEquals("SOCIAL_ACCOUNT_CONFLICT", exception.error().code());
+		assertEquals("SOCIAL_ACCOUNT_CONFLICT", exception.code().value());
 	}
 }
