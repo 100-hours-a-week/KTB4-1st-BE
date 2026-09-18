@@ -14,9 +14,10 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
 	Optional<RefreshToken> findByTokenHashAndDeletedAtIsNull(String tokenHash);
 
 	@Modifying
-	@Query("""
+		@Query("""
 			update RefreshToken token
-			set token.deletedAt = :revokedAt
+			set token.deletedAt = :revokedAt,
+			    token.updatedAt = :revokedAt
 			where token.user.id = :userId
 			  and token.deletedAt is null
 			""")

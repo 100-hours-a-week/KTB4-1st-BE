@@ -1,5 +1,6 @@
 package com.example.KTB_Agile_backend.group.entity;
 
+import com.example.KTB_Agile_backend.common.entity.BaseEntity;
 import com.example.KTB_Agile_backend.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -17,8 +18,6 @@ import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-
 import java.time.LocalDateTime;
 
 @Entity
@@ -35,7 +34,7 @@ import java.time.LocalDateTime;
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class GroupMember {
+public class GroupMember extends BaseEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -56,10 +55,6 @@ public class GroupMember {
 	@Enumerated(EnumType.STRING)
 	@Column(name = "user_status", nullable = false, length = 20)
 	private GroupMemberStatus status;
-
-	@CreationTimestamp
-	@Column(name = "created_at", nullable = false, updatable = false)
-	private LocalDateTime createdAt;
 
 	@Column(name = "left_at")
 	private LocalDateTime leftAt;
