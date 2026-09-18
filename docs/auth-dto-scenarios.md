@@ -38,7 +38,7 @@ class AuthController {
 | `KakaoUserResponse` | Kakao 사용자 API 응답을 타입으로 받는다. | Kakao 사용자 정보를 조회할 때 |
 | `AuthResponse` | Access Token, 신규 사용자 여부, 사용자 요약 정보를 반환한다. | OAuth 로그인 성공 시 |
 | `UserProfile` | 로그인 응답에 포함되는 사용자 요약 정보다. | `AuthResponse` 내부 |
-| `TokenReissueResponse` | 새 Access Token과 만료 시간을 반환한다. | Refresh Token으로 재발급할 때 |
+| `TokenReissueResponse` | 새 Access Token, 만료 시간, 거래 취향 설정 필요 여부를 반환한다. | Refresh Token으로 재발급할 때 |
 | `ApiResponse<T>` | 성공 데이터와 오류 영역을 동일한 응답 형식으로 감싼다. | Controller의 공통 응답 형식 |
 | `ErrorResponse` | 오류 코드, 메시지, validation field 오류를 전달한다. | 4xx/5xx 오류 응답 |
 

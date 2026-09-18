@@ -410,6 +410,7 @@ AuthController.reissueToken(refreshToken)
           -> RefreshTokenRepository.findByTokenHashAndDeletedAtIsNull
       -> ensureActive(user)
       -> AccessTokenIssuer.issue(user)
+      -> UserPreferenceRepository.existsByUser_Id(user.id)
       -> TokenReissueResponse
 ```
 
@@ -420,7 +421,8 @@ AuthController.reissueToken(refreshToken)
   "data": {
     "accessToken": "{새 애플리케이션 JWT}",
     "tokenType": "Bearer",
-    "expiresIn": 900
+    "expiresIn": 900,
+    "needsPreferenceSetup": true
   },
   "error": null
 }
