@@ -23,7 +23,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -82,7 +81,13 @@ class UserControllerTest {
 	}
 
 	@Test
-	void updatesPreferencesAndReturnsNoContent() throws Exception {
+	void updatesPreferencesAndReturnsUpdatedPreference() throws Exception {
+		when(userPreferenceService.update(eq(42L), any())).thenReturn(new UserPreferenceResponse(
+				123L,
+				List.of(new UserPreferenceResponse.Answer("conversationStyle", "detailed")),
+				LocalDateTime.of(2026, 9, 4, 15, 30)
+		));
+
 		mockMvc.perform(put("/users/preferences")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
 					.contentType(MediaType.APPLICATION_JSON)
@@ -91,8 +96,11 @@ class UserControllerTest {
 							  "answers": [{"question": "conversationStyle", "answer": "detailed"}]
 							}
 							"""))
-				.andExpect(status().isNoContent())
-				.andExpect(content().string(""));
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.userPreferenceId").value(123))
+				.andExpect(jsonPath("$.data.answers[0].answer").value("detailed"))
+				.andExpect(jsonPath("$.data.createdAt").value("2026-09-04T15:30:00"))
+				.andExpect(jsonPath("$.error").doesNotExist());
 
 		verify(userPreferenceService).update(eq(42L), any());
 	}
@@ -108,10 +116,11 @@ class UserControllerTest {
 		mockMvc.perform(get("/users/preferences")
 					.principal(new UsernamePasswordAuthenticationToken("42", null)))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.userPreferenceId").value(123))
-				.andExpect(jsonPath("$.answers[0].question").value("conversationStyle"))
-				.andExpect(jsonPath("$.answers[0].answer").value("concise"))
-				.andExpect(jsonPath("$.createdAt").value("2026-09-04T15:30:00"));
+				.andExpect(jsonPath("$.data.userPreferenceId").value(123))
+				.andExpect(jsonPath("$.data.answers[0].question").value("conversationStyle"))
+				.andExpect(jsonPath("$.data.answers[0].answer").value("concise"))
+				.andExpect(jsonPath("$.data.createdAt").value("2026-09-04T15:30:00"))
+				.andExpect(jsonPath("$.error").doesNotExist());
 
 		verify(userPreferenceService).get(42L);
 	}
