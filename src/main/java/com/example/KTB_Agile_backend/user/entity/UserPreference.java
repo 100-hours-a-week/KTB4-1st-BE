@@ -64,4 +64,9 @@ public class UserPreference {
 	public List<UserPreferenceAnswer> getAnswers() {
 		return List.copyOf(answers);
 	}
+
+	public void replaceAnswers(List<UserPreferenceAnswer> answers) {
+		this.answers.clear();
+		this.answers.addAll(answers);
+	}
 }

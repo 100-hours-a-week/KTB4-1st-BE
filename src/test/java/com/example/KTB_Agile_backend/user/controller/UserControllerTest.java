@@ -17,10 +17,13 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -67,7 +70,7 @@ class UserControllerTest {
 								{"question": "descriptionStyle", "answer": "brief"}
 							  ]
 							}
-								"""))
+							"""))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.data.userPreferenceId").value(123))
 				.andExpect(jsonPath("$.data.answers[0].question").value("conversationStyle"))
@@ -76,5 +79,40 @@ class UserControllerTest {
 				.andExpect(jsonPath("$.error").doesNotExist());
 
 		verify(userPreferenceService).create(eq(42L), any());
+	}
+
+	@Test
+	void updatesPreferencesAndReturnsNoContent() throws Exception {
+		mockMvc.perform(put("/users/preferences")
+					.principal(new UsernamePasswordAuthenticationToken("42", null))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{
+							  "answers": [{"question": "conversationStyle", "answer": "detailed"}]
+							}
+							"""))
+				.andExpect(status().isNoContent())
+				.andExpect(content().string(""));
+
+		verify(userPreferenceService).update(eq(42L), any());
+	}
+
+	@Test
+	void getsPreferencesForAuthenticatedUser() throws Exception {
+		when(userPreferenceService.get(42L)).thenReturn(new UserPreferenceResponse(
+				123L,
+				List.of(new UserPreferenceResponse.Answer("conversationStyle", "concise")),
+				LocalDateTime.of(2026, 9, 4, 15, 30)
+		));
+
+		mockMvc.perform(get("/users/preferences")
+					.principal(new UsernamePasswordAuthenticationToken("42", null)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.userPreferenceId").value(123))
+				.andExpect(jsonPath("$.answers[0].question").value("conversationStyle"))
+				.andExpect(jsonPath("$.answers[0].answer").value("concise"))
+				.andExpect(jsonPath("$.createdAt").value("2026-09-04T15:30:00"));
+
+		verify(userPreferenceService).get(42L);
 	}
 }

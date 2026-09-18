@@ -2,8 +2,10 @@ package com.example.KTB_Agile_backend.user.service;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.user.dto.request.UserPreferenceRequest;
+import com.example.KTB_Agile_backend.user.dto.response.UserPreferenceResponse;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.entity.UserPreference;
+import com.example.KTB_Agile_backend.user.entity.UserPreferenceAnswer;
 import com.example.KTB_Agile_backend.user.repository.UserPreferenceRepository;
 import com.example.KTB_Agile_backend.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -82,5 +84,45 @@ class UserPreferenceServiceTest {
 		));
 
 		assertThat(exception.status()).isEqualTo(HttpStatus.CONFLICT);
+	}
+
+	@Test
+	void replacesExistingAnswers() {
+		UserRepository userRepository = mock(UserRepository.class);
+		UserPreferenceRepository preferenceRepository = mock(UserPreferenceRepository.class);
+		UserPreferenceService service = new UserPreferenceService(userRepository, preferenceRepository);
+		User user = new User("nickname");
+		UserPreference preference = new UserPreference(user, List.of(
+				new UserPreferenceAnswer("old-question", "old-answer")
+		));
+		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(user));
+		when(preferenceRepository.findByUser_Id(42L)).thenReturn(Optional.of(preference));
+
+		service.update(42L, new UserPreferenceRequest(List.of(
+				new UserPreferenceRequest.Answer("new-question", "new-answer")
+		)));
+
+		assertThat(preference.getAnswers()).hasSize(1);
+		assertThat(preference.getAnswers().get(0).getQuestion()).isEqualTo("new-question");
+		assertThat(preference.getAnswers().get(0).getAnswer()).isEqualTo("new-answer");
+	}
+
+	@Test
+	void returnsExistingAnswers() {
+		UserRepository userRepository = mock(UserRepository.class);
+		UserPreferenceRepository preferenceRepository = mock(UserPreferenceRepository.class);
+		UserPreferenceService service = new UserPreferenceService(userRepository, preferenceRepository);
+		User user = new User("nickname");
+		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(user));
+		when(preferenceRepository.findByUser_Id(42L)).thenReturn(Optional.of(new UserPreference(
+				user,
+				List.of(new UserPreferenceAnswer("question", "answer"))
+		)));
+
+		UserPreferenceResponse response = service.get(42L);
+
+		assertThat(response.answers()).containsExactly(
+				new UserPreferenceResponse.Answer("question", "answer")
+		);
 	}
 }
