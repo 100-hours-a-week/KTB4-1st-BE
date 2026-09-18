@@ -3,6 +3,7 @@ package com.example.KTB_Agile_backend.user.service;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.user.dto.request.UserPreferenceRequest;
+import com.example.KTB_Agile_backend.user.dto.response.UserPreferenceResponse;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.entity.UserPreference;
 import com.example.KTB_Agile_backend.user.entity.UserPreferenceAnswer;
@@ -23,7 +24,7 @@ public class UserPreferenceService {
 	private final UserPreferenceRepository userPreferenceRepository;
 
 	@Transactional
-	public void create(Long userId, UserPreferenceRequest request) {
+	public UserPreferenceResponse create(Long userId, UserPreferenceRequest request) {
 		User user = userRepository.findActiveById(userId)
 				.orElseThrow(UserPreferenceService::unauthorized);
 		if (userPreferenceRepository.existsByUser_Id(userId)) {
@@ -34,10 +35,21 @@ public class UserPreferenceService {
 				.map(answer -> new UserPreferenceAnswer(answer.question(), answer.answer()))
 				.toList();
 		try {
-			userPreferenceRepository.saveAndFlush(new UserPreference(user, answers));
+			UserPreference preference = userPreferenceRepository.saveAndFlush(new UserPreference(user, answers));
+			return toResponse(preference);
 		} catch (DataIntegrityViolationException ignored) {
 			throw alreadyExists();
 		}
+	}
+
+	private static UserPreferenceResponse toResponse(UserPreference preference) {
+		return new UserPreferenceResponse(
+				preference.getId(),
+				preference.getAnswers().stream()
+						.map(answer -> new UserPreferenceResponse.Answer(answer.getQuestion(), answer.getAnswer()))
+						.toList(),
+				preference.getCreatedAt()
+		);
 	}
 
 	private static ApiException unauthorized() {
