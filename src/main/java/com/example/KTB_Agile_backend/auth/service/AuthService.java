@@ -12,6 +12,7 @@ import com.example.KTB_Agile_backend.common.exception.ErrorDetail;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.entity.UserStatus;
+import com.example.KTB_Agile_backend.user.repository.UserPreferenceRepository;
 import com.example.KTB_Agile_backend.user.service.AccountProvisioningService;
 import com.example.KTB_Agile_backend.user.service.AccountResult;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class AuthService {
 	private final AccountProvisioningService accountProvisioningService;
 	private final AccessTokenIssuer accessTokenIssuer;
 	private final RefreshTokenService refreshTokenService;
+	private final UserPreferenceRepository userPreferenceRepository;
 
 	public String issueOAuthState() {
 		return oauthStateService.issue(DEFAULT_PROVIDER);
@@ -73,7 +75,8 @@ public class AuthService {
 		return new TokenReissueResponse(
 				accessTokenIssuer.issue(user),
 				TOKEN_TYPE,
-				accessTokenIssuer.expiresInSeconds()
+				accessTokenIssuer.expiresInSeconds(),
+				!userPreferenceRepository.existsByUser_Id(user.getId())
 		);
 	}
 

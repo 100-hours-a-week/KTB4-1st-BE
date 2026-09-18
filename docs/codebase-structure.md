@@ -222,7 +222,7 @@ DTO는 외부 provider 응답, 애플리케이션 내부 중간값, API 요청·
 | [`OAuthStateResponse.java`](../src/main/java/com/example/KTB_Agile_backend/auth/dto/response/OAuthStateResponse.java) | `state`, `expiresIn` | 로그인 시작 API가 내려주는 state와 만료 시간(초)이다. |
 | [`AuthResponse.java`](../src/main/java/com/example/KTB_Agile_backend/auth/dto/response/AuthResponse.java) | `accessToken`, `tokenType`, `expiresIn`, `isNewUser`, `user` | `POST /auth/oauth` 성공 시 JSON body에 내려가는 Access Token과 사용자 요약 정보다. Kakao callback은 이 값을 body에 넣지 않고 302 redirect 후 `/auth/refresh`를 사용한다. |
 | [`UserProfile.java`](../src/main/java/com/example/KTB_Agile_backend/auth/dto/response/UserProfile.java) | `userId`, `nickname`, `profileImageUrl` | `AuthResponse.user`에 들어가는 사용자 요약 정보다. |
-| [`TokenReissueResponse.java`](../src/main/java/com/example/KTB_Agile_backend/auth/dto/response/TokenReissueResponse.java) | `accessToken`, `tokenType`, `expiresIn` | Refresh Token으로 재발급한 새 Access Token을 반환한다. |
+| [`TokenReissueResponse.java`](../src/main/java/com/example/KTB_Agile_backend/auth/dto/response/TokenReissueResponse.java) | `accessToken`, `tokenType`, `expiresIn`, `needsPreferenceSetup` | Refresh Token으로 재발급한 새 Access Token과 거래 취향 설정 필요 여부를 반환한다. |
 
 `RefreshTokenResponse`, `TokenReissueRequest`, `LogoutRequest`, `LogoutResponse`는 현재 없다. Refresh Token은 요청·응답 JSON이 아니라 쿠키로 처리하고, 로그아웃은 본문 없이 `204`를 반환하기 때문이다.
 

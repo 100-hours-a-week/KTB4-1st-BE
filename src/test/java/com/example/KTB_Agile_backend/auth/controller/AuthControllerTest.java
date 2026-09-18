@@ -1,6 +1,7 @@
 package com.example.KTB_Agile_backend.auth.controller;
 
 import com.example.KTB_Agile_backend.auth.dto.response.AuthResponse;
+import com.example.KTB_Agile_backend.auth.dto.response.TokenReissueResponse;
 import com.example.KTB_Agile_backend.auth.dto.response.UserProfile;
 import com.example.KTB_Agile_backend.auth.service.AuthService;
 import com.example.KTB_Agile_backend.auth.service.AuthTokenResult;
@@ -167,6 +168,19 @@ class AuthControllerTest {
 				.andExpect(jsonPath("$.error.code").value("AUTH_REFRESH_TOKEN_INVALID"))
 				.andExpect(jsonPath("$.error.message").value("Refresh Token이 만료되었거나 유효하지 않습니다."))
 				.andExpect(jsonPath("$.error.details").isEmpty());
+	}
+
+	@Test
+	void returnsPreferenceSetupStatusWhenRefreshingAccessToken() throws Exception {
+		when(authService.reissueToken("refresh-token"))
+				.thenReturn(new TokenReissueResponse("access-token", "Bearer", 900, true));
+
+		mockMvc.perform(post("/auth/refresh")
+					.cookie(new jakarta.servlet.http.Cookie("refresh_token", "refresh-token")))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.accessToken").value("access-token"))
+				.andExpect(jsonPath("$.data.needsPreferenceSetup").value(true))
+				.andExpect(jsonPath("$.error").value(nullValue()));
 	}
 
 	@Test

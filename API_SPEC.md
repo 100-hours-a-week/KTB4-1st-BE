@@ -300,7 +300,8 @@ Cookie: refresh_token=<refreshToken>
   "data": {
     "accessToken": "<new-accessToken>",
     "tokenType": "Bearer",
-    "expiresIn": 900
+    "expiresIn": 900,
+    "needsPreferenceSetup": true
   },
   "error": null
 }
@@ -482,7 +483,7 @@ JWT secret, Kakao client secret, Kakao Admin key는 Postman 요청에 넣지 않
 | OAuth state 발급 | GET | /auth/oauth/state | Accept: application/json (선택) | 없음 | 응답 시 oauth_state 쿠키 발급<br>HttpOnly; Secure; SameSite=Lax; Path=/auth; Max-Age=300 | 200 | {<br>  "data": {<br>    "state": "state 값",<br>    "expiresIn": 300<br>  },<br>  "error": null<br>} |
 | 회원가입 | POST | /auth/oauth | Content-Type: application/json<br>Accept: application/json (선택)<br>Cookie: oauth_state=state 값 | {<br>  "provider": "KAKAO",<br>  "authorizationCode": "카카오 인가 코드",<br>  "state": "state 값"<br>} | 필수<br>provider: String<br>authorizationCode: String<br>state: String<br><br>body.state와 oauth_state 쿠키가 같아야 합니다.<br>응답 시 refresh_token 쿠키 발급<br>HttpOnly; Secure; SameSite=Lax; Path=/auth; Max-Age=1209600 | 201 | {<br>  "data": {<br>    "accessToken": "우리 서비스 Access Token",<br>    "tokenType": "Bearer",<br>    "expiresIn": 900,<br>    "isNewUser": true,<br>    "user": {<br>      "userId": 101,<br>      "nickname": "닉네임",<br>      "profileImageUrl": "https://example.com/profile.png"<br>    }<br>  },<br>  "error": null<br>} |
 | 로그인 | POST | /auth/oauth | Content-Type: application/json<br>Accept: application/json (선택)<br>Cookie: oauth_state=state 값 | {<br>  "provider": "KAKAO",<br>  "authorizationCode": "카카오 인가 코드",<br>  "state": "state 값"<br>} | 필수<br>provider: String<br>authorizationCode: String<br>state: String<br><br>기존 사용자라면 isNewUser는 false입니다.<br>응답 시 refresh_token 쿠키 발급<br>HttpOnly; Secure; SameSite=Lax; Path=/auth; Max-Age=1209600 | 200 | {<br>  "data": {<br>    "accessToken": "우리 서비스 Access Token",<br>    "tokenType": "Bearer",<br>    "expiresIn": 900,<br>    "isNewUser": false,<br>    "user": {<br>      "userId": 101,<br>      "nickname": "닉네임",<br>      "profileImageUrl": "https://example.com/profile.png"<br>    }<br>  },<br>  "error": null<br>} |
-| Access Token 재발급 | POST | /auth/refresh | Accept: application/json (선택)<br>Cookie: refresh_token=refresh token 값 | 없음 | refresh_token 쿠키 필수<br>Authorization 헤더 불필요 | 200 | {<br>  "data": {<br>    "accessToken": "새 Access Token",<br>    "tokenType": "Bearer",<br>    "expiresIn": 900<br>  },<br>  "error": null<br>} |
+| Access Token 재발급 | POST | /auth/refresh | Accept: application/json (선택)<br>Cookie: refresh_token=refresh token 값 | 없음 | refresh_token 쿠키 필수<br>Authorization 헤더 불필요 | 200 | {<br>  "data": {<br>    "accessToken": "새 Access Token",<br>    "tokenType": "Bearer",<br>    "expiresIn": 900,<br>    "needsPreferenceSetup": true<br>  },<br>  "error": null<br>} |
 | 로그아웃 | POST | /auth/logout | Accept: application/json (선택)<br>Authorization: Bearer Access Token<br>Cookie: refresh_token=refresh token 값 | 없음 | Access Token과 refresh_token 쿠키 필요<br>정상 처리 후 refresh_token 쿠키 삭제 | 204 | 응답 본문 없음 |
 | 회원 탈퇴 | DELETE | /users | Accept: application/json (선택)<br>Authorization: Bearer Access Token | 없음 | Access Token 필요<br>테스트 계정의 상태가 변경되므로 모든 테스트 마지막에 실행 | 204 | 응답 본문 없음 |
 
