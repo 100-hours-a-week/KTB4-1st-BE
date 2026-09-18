@@ -1,5 +1,7 @@
 package com.example.KTB_Agile_backend.user.dto.response;
 
+import com.example.KTB_Agile_backend.user.dto.UserPreferenceAnswerOption;
+import com.example.KTB_Agile_backend.user.dto.UserPreferenceQuestion;
 import com.example.KTB_Agile_backend.user.entity.UserPreference;
 
 import java.time.LocalDateTime;
@@ -15,12 +17,15 @@ public record UserPreferenceResponse(
 		return new UserPreferenceResponse(
 				preference.getId(),
 				preference.getAnswers().stream()
-						.map(answer -> new Answer(answer.getQuestion(), answer.getAnswer()))
+						.map(answer -> new Answer(
+								UserPreferenceQuestion.valueOf(answer.getQuestion()),
+								UserPreferenceAnswerOption.valueOf(answer.getAnswer())
+						))
 						.toList(),
 				preference.getCreatedAt()
 		);
 	}
 
-	public record Answer(String question, String answer) {
+	public record Answer(UserPreferenceQuestion question, UserPreferenceAnswerOption answer) {
 	}
 }

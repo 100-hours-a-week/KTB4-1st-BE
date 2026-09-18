@@ -28,8 +28,8 @@ class UserPreferenceRepositoryTest {
 		userPreferenceRepository.saveAndFlush(new UserPreference(
 				user,
 				List.of(
-						new UserPreferenceAnswer("question-one", "answer-one"),
-						new UserPreferenceAnswer("question-two", "answer-two")
+						new UserPreferenceAnswer("CONVERSATION_STYLE", "CONCISE"),
+						new UserPreferenceAnswer("DESCRIPTION_STYLE", "BRIEF")
 				)
 		));
 
@@ -40,7 +40,7 @@ class UserPreferenceRepositoryTest {
 		assertThat(preference.getCreatedAt()).isNotNull();
 		assertThat(userPreferenceRepository.existsByUser_Id(user.getId())).isTrue();
 		assertThat(preference.getAnswers()).extracting(UserPreferenceAnswer::getQuestion)
-				.containsExactly("question-one", "question-two");
+				.containsExactly("CONVERSATION_STYLE", "DESCRIPTION_STYLE");
 	}
 
 	@Test
@@ -48,13 +48,25 @@ class UserPreferenceRepositoryTest {
 		User user = userRepository.saveAndFlush(new User("nickname"));
 		userPreferenceRepository.saveAndFlush(new UserPreference(
 				user,
-				List.of(new UserPreferenceAnswer("question", "answer"))
+				List.of(new UserPreferenceAnswer("CONVERSATION_STYLE", "CONCISE"))
 		));
 
 		assertThrows(DataIntegrityViolationException.class, () ->
 				userPreferenceRepository.saveAndFlush(new UserPreference(
 						user,
-						List.of(new UserPreferenceAnswer("other-question", "other-answer"))
+						List.of(new UserPreferenceAnswer("DESCRIPTION_STYLE", "BRIEF"))
+				))
+		);
+	}
+
+	@Test
+	void rejectsUnknownQuestionAtDatabase() {
+		User user = userRepository.saveAndFlush(new User("nickname"));
+
+		assertThrows(DataIntegrityViolationException.class, () ->
+				userPreferenceRepository.saveAndFlush(new UserPreference(
+						user,
+						List.of(new UserPreferenceAnswer("UNKNOWN", "CONCISE"))
 				))
 		);
 	}

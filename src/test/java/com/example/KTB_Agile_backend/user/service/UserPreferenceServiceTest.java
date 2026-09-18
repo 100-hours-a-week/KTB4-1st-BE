@@ -1,6 +1,8 @@
 package com.example.KTB_Agile_backend.user.service;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
+import com.example.KTB_Agile_backend.user.dto.UserPreferenceAnswerOption;
+import com.example.KTB_Agile_backend.user.dto.UserPreferenceQuestion;
 import com.example.KTB_Agile_backend.user.dto.request.UserPreferenceRequest;
 import com.example.KTB_Agile_backend.user.dto.response.UserPreferenceResponse;
 import com.example.KTB_Agile_backend.user.entity.User;
@@ -41,8 +43,14 @@ class UserPreferenceServiceTest {
 				.thenAnswer(invocation -> invocation.getArgument(0));
 
 		var response = service.create(42L, new UserPreferenceRequest(List.of(
-				new UserPreferenceRequest.Answer("question-one", "answer-one"),
-				new UserPreferenceRequest.Answer("question-two", "answer-two")
+				new UserPreferenceRequest.Answer(
+						UserPreferenceQuestion.CONVERSATION_STYLE,
+						UserPreferenceAnswerOption.CONCISE
+				),
+				new UserPreferenceRequest.Answer(
+						UserPreferenceQuestion.DESCRIPTION_STYLE,
+						UserPreferenceAnswerOption.MODERATE
+				)
 		)));
 
 		ArgumentCaptor<UserPreference> captor = ArgumentCaptor.forClass(UserPreference.class);
@@ -61,7 +69,10 @@ class UserPreferenceServiceTest {
 
 		ApiException exception = assertThrows(ApiException.class, () -> service.create(
 				42L,
-				new UserPreferenceRequest(List.of(new UserPreferenceRequest.Answer("question", "answer")))
+				new UserPreferenceRequest(List.of(new UserPreferenceRequest.Answer(
+						UserPreferenceQuestion.CONVERSATION_STYLE,
+						UserPreferenceAnswerOption.CONCISE
+				)))
 		));
 
 		assertThat(exception.status()).isEqualTo(HttpStatus.CONFLICT);
@@ -80,7 +91,10 @@ class UserPreferenceServiceTest {
 
 		ApiException exception = assertThrows(ApiException.class, () -> service.create(
 				42L,
-				new UserPreferenceRequest(List.of(new UserPreferenceRequest.Answer("question", "answer")))
+				new UserPreferenceRequest(List.of(new UserPreferenceRequest.Answer(
+						UserPreferenceQuestion.CONVERSATION_STYLE,
+						UserPreferenceAnswerOption.CONCISE
+				)))
 		));
 
 		assertThat(exception.status()).isEqualTo(HttpStatus.CONFLICT);
@@ -93,18 +107,21 @@ class UserPreferenceServiceTest {
 		UserPreferenceService service = new UserPreferenceService(userRepository, preferenceRepository);
 		User user = new User("nickname");
 		UserPreference preference = new UserPreference(user, List.of(
-				new UserPreferenceAnswer("old-question", "old-answer")
+				new UserPreferenceAnswer("CONVERSATION_STYLE", "CONCISE")
 		));
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(user));
 		when(preferenceRepository.findByUser_Id(42L)).thenReturn(Optional.of(preference));
 
 		service.update(42L, new UserPreferenceRequest(List.of(
-				new UserPreferenceRequest.Answer("new-question", "new-answer")
+				new UserPreferenceRequest.Answer(
+						UserPreferenceQuestion.OPINION_STYLE,
+						UserPreferenceAnswerOption.CLEAR
+				)
 		)));
 
 		assertThat(preference.getAnswers()).hasSize(1);
-		assertThat(preference.getAnswers().get(0).getQuestion()).isEqualTo("new-question");
-		assertThat(preference.getAnswers().get(0).getAnswer()).isEqualTo("new-answer");
+		assertThat(preference.getAnswers().get(0).getQuestion()).isEqualTo("OPINION_STYLE");
+		assertThat(preference.getAnswers().get(0).getAnswer()).isEqualTo("CLEAR");
 	}
 
 	@Test
@@ -116,13 +133,16 @@ class UserPreferenceServiceTest {
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(user));
 		when(preferenceRepository.findByUser_Id(42L)).thenReturn(Optional.of(new UserPreference(
 				user,
-				List.of(new UserPreferenceAnswer("question", "answer"))
+				List.of(new UserPreferenceAnswer("CONVERSATION_STYLE", "CONCISE"))
 		)));
 
 		UserPreferenceResponse response = service.get(42L);
 
 		assertThat(response.answers()).containsExactly(
-				new UserPreferenceResponse.Answer("question", "answer")
+				new UserPreferenceResponse.Answer(
+						UserPreferenceQuestion.CONVERSATION_STYLE,
+						UserPreferenceAnswerOption.CONCISE
+				)
 		);
 	}
 }

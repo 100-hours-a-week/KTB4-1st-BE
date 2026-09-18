@@ -64,7 +64,7 @@ public class UserPreferenceService {
 
 	private static List<UserPreferenceAnswer> answers(UserPreferenceRequest request) {
 		return request.answers().stream()
-				.map(answer -> new UserPreferenceAnswer(answer.question(), answer.answer()))
+				.map(answer -> new UserPreferenceAnswer(answer.question().name(), answer.answer().name()))
 				.toList();
 	}
 

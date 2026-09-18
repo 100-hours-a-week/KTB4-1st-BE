@@ -13,13 +13,13 @@ class UserPreferenceTests {
 		UserPreference preference = new UserPreference(
 				new User("nickname"),
 				List.of(
-						new UserPreferenceAnswer("conversationStyle", "concise"),
-						new UserPreferenceAnswer("descriptionStyle", "brief"),
-						new UserPreferenceAnswer("futureQuestion", "futureAnswer")
+						new UserPreferenceAnswer("CONVERSATION_STYLE", "CONCISE"),
+						new UserPreferenceAnswer("DESCRIPTION_STYLE", "BRIEF"),
+						new UserPreferenceAnswer("OPINION_STYLE", "CLEAR")
 				)
 		);
 
 		assertThat(preference.getAnswers()).hasSize(3);
-		assertThat(preference.getAnswers().get(2).getAnswer()).isEqualTo("futureAnswer");
+		assertThat(preference.getAnswers().get(2).getAnswer()).isEqualTo("CLEAR");
 	}
 }
