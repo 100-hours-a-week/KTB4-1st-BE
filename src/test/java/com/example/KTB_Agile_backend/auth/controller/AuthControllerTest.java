@@ -147,8 +147,8 @@ class AuthControllerTest {
 							"""))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.data").value(nullValue()))
-				.andExpect(jsonPath("$.error.code").value("BAD_REQUEST"))
-				.andExpect(jsonPath("$.error.message").value("인가 코드가 유효하지 않습니다."))
+				.andExpect(jsonPath("$.error.code").value("REQUEST_VALIDATION_FAILED"))
+				.andExpect(jsonPath("$.error.message").value("요청 값이 올바르지 않습니다."))
 				.andExpect(jsonPath("$.error.details[0].field").value("authorizationCode"))
 				.andExpect(jsonPath("$.error.details[0].reason").value("유효하지 않은 인가 코드입니다."));
 	}
@@ -157,15 +157,14 @@ class AuthControllerTest {
 	void returnsStandardUnauthorizedForInvalidRefreshToken() throws Exception {
 		when(authService.reissueToken("invalid-token"))
 				.thenThrow(new ApiException(
-						ErrorCode.UNAUTHORIZED,
-						"Refresh Token이 만료되었거나 유효하지 않습니다."
+						ErrorCode.AUTH_REFRESH_TOKEN_INVALID
 				));
 
 		mockMvc.perform(post("/auth/refresh")
 					.cookie(new jakarta.servlet.http.Cookie("refresh_token", "invalid-token")))
 				.andExpect(status().isUnauthorized())
 				.andExpect(jsonPath("$.data").value(nullValue()))
-				.andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"))
+				.andExpect(jsonPath("$.error.code").value("AUTH_REFRESH_TOKEN_INVALID"))
 				.andExpect(jsonPath("$.error.message").value("Refresh Token이 만료되었거나 유효하지 않습니다."))
 				.andExpect(jsonPath("$.error.details").isEmpty());
 	}
@@ -179,7 +178,7 @@ class AuthControllerTest {
 					.cookie(new jakarta.servlet.http.Cookie("refresh_token", "refresh-token")))
 				.andExpect(status().isInternalServerError())
 				.andExpect(jsonPath("$.error.code").value("INTERNAL_SERVER_ERROR"))
-				.andExpect(jsonPath("$.error.message").value("토큰 재발급 중 서버 오류가 발생했습니다."))
+				.andExpect(jsonPath("$.error.message").value("서버 오류가 발생했습니다."))
 				.andExpect(jsonPath("$.error.details").isEmpty());
 	}
 }

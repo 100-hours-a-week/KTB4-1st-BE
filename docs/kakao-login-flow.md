@@ -186,7 +186,7 @@ Cookie: oauth_state={state}
    - `consumedAt is null`
 7. update 결과가 1이 아니면 인증 실패다.
 
-따라서 다음은 모두 같은 `UNAUTHORIZED` 인증 실패 경로다.
+따라서 다음은 모두 `AUTH_OAUTH_STATE_INVALID` 인증 실패 경로다.
 
 - `oauth_state` 쿠키 누락
 - body의 `state` 누락 또는 쿠키와 불일치
@@ -264,7 +264,7 @@ SocialAccountRepository.findByProviderAndProviderUserId("KAKAO", providerUserId)
   └─ 존재
       └─ UserRepository.findActiveById(userId)
            ├─ 성공: SocialAccount.recordLogin() -> AccountResult(user, false)
-           └─ 실패: UNAUTHORIZED
+           └─ 실패: AUTHENTICATION_FAILED
 ```
 
 기존 사용자의 nickname과 profile image는 이 로그인 흐름에서 갱신하지 않고, 마지막 로그인 시각만 갱신한다.
@@ -356,14 +356,14 @@ Content-Type: application/json
 
 | 상황 | 발생 위치 | HTTP 응답 |
 | --- | --- | --- |
-| `provider`, `authorizationCode`, `state`가 null/blank | `@Valid OAuthLoginRequest` | `400 BAD_REQUEST`, `data: null`, `error.details`에 필드별 오류 |
-| JSON 형식 자체가 잘못됨 | `GlobalExceptionHandler.handleUnreadableMessage` | `400 BAD_REQUEST` |
-| state 쿠키 없음, body state 불일치, 만료·재사용 | `OAuthStateService.consume` | `401 UNAUTHORIZED`, 인가 코드 관련 인증 실패 메시지 |
-| 지원하지 않는 provider | `AuthService.findProviderClient` | `400 BAD_REQUEST`, `details[0].field = provider` |
-| Kakao token/user API가 4xx/5xx 응답 | `KakaoOAuthProviderClient` | `401 UNAUTHORIZED`, provider 인증 실패 메시지 |
+| `provider`, `authorizationCode`, `state`가 null/blank | `@Valid OAuthLoginRequest` | `400 REQUEST_VALIDATION_FAILED`, `data: null`, `error.details`에 필드별 오류 |
+| JSON 형식 자체가 잘못됨 | `GlobalExceptionHandler.handleUnreadableMessage` | `400 REQUEST_BODY_INVALID` |
+| state 쿠키 없음, body state 불일치, 만료·재사용 | `OAuthStateService.consume` | `401 AUTH_OAUTH_STATE_INVALID` |
+| 지원하지 않는 provider | `AuthService.findProviderClient` | `400 AUTH_PROVIDER_UNSUPPORTED`, `details[0].field = provider` |
+| Kakao token/user API가 4xx/5xx 응답 | `KakaoOAuthProviderClient` | `401 AUTH_OAUTH_AUTHENTICATION_FAILED`, provider 인증 실패 메시지 |
 | Kakao access token 또는 user id 누락 | Kakao client 내부 `IllegalStateException` | `/auth/oauth` 기준 `500 INTERNAL_SERVER_ERROR` |
-| provider 사용자 정보의 ID/nickname 누락 | `AuthService.validateUserInfo` | `401 UNAUTHORIZED` |
-| 연결된 내부 사용자가 비활성·탈퇴 상태 | `AccountProvisioningService`/`AuthService.ensureActive` | `401 UNAUTHORIZED` |
+| provider 사용자 정보의 ID/nickname 누락 | `AuthService.validateUserInfo` | `401 AUTHENTICATION_FAILED` |
+| 연결된 내부 사용자가 비활성·탈퇴 상태 | `AccountProvisioningService`/`AuthService.ensureActive` | `401 AUTHENTICATION_FAILED` |
 | 소셜 계정 동시 연결 충돌 | `AccountProvisioningService` | `409 SOCIAL_ACCOUNT_CONFLICT` |
 | 위에서 예상하지 못한 서버 예외 | `GlobalExceptionHandler.handleUnexpectedException` | `500 INTERNAL_SERVER_ERROR`, 내부 원인은 body에 노출하지 않음 |
 
@@ -373,12 +373,12 @@ Content-Type: application/json
 {
   "data": null,
   "error": {
-    "code": "UNAUTHORIZED",
-    "message": "인증에 실패했습니다. 인가 코드가 만료되었거나 유효하지 않습니다.",
+    "code": "AUTH_OAUTH_AUTHENTICATION_FAILED",
+    "message": "OAuth 인증에 실패했습니다.",
     "details": [
       {
         "field": "authorizationCode",
-        "reason": "만료되었거나 이미 사용된 인가 코드입니다."
+        "reason": "인가 코드가 만료되었거나 유효하지 않습니다."
       }
     ]
   }
@@ -459,8 +459,8 @@ Access Token이 없거나 잘못됐거나 만료됐다면 Controller가 호출�
 {
   "data": null,
   "error": {
-    "code": "UNAUTHORIZED",
-    "message": "로그인이 필요하거나 Access Token이 만료되었거나 유효하지 않습니다.",
+    "code": "AUTHENTICATION_REQUIRED",
+    "message": "로그인이 필요합니다.",
     "details": []
   }
 }

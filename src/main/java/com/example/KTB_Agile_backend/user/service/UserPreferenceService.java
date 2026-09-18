@@ -91,19 +91,19 @@ public class UserPreferenceService {
 	}
 
 	private static ApiException invalidQuestions() {
-		return new ApiException(ErrorCode.BAD_REQUEST, "질문 3개를 모두 입력해야 합니다.");
+		return new ApiException(ErrorCode.USER_PREFERENCE_INVALID);
 	}
 
 	private static ApiException unauthorized() {
-		return new ApiException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.");
+		return new ApiException(ErrorCode.AUTHENTICATION_REQUIRED);
 	}
 
 	private static ApiException alreadyExists() {
-		return new ApiException(ErrorCode.USER_PREFERENCE_ALREADY_EXISTS, "사용자 설명은 회원가입 시 한 번만 설정할 수 있습니다.");
+		return new ApiException(ErrorCode.USER_PREFERENCE_ALREADY_EXISTS);
 	}
 
 	private static ApiException notFound() {
-		return new ApiException(ErrorCode.USER_PREFERENCE_NOT_FOUND, "사용자 취향이 설정되지 않았습니다.");
+		return new ApiException(ErrorCode.USER_PREFERENCE_NOT_FOUND);
 	}
 
 }
