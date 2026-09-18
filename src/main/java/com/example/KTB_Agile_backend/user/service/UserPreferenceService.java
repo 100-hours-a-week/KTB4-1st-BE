@@ -41,9 +41,11 @@ public class UserPreferenceService {
 	}
 
 	@Transactional
-	public void update(Long userId, UserPreferenceRequest request) {
+	public UserPreferenceResponse update(Long userId, UserPreferenceRequest request) {
 		findActiveUser(userId);
-		findPreference(userId).replaceAnswers(answers(request));
+		UserPreference preference = findPreference(userId);
+		preference.replaceAnswers(answers(request));
+		return UserPreferenceResponse.from(preference);
 	}
 
 	@Transactional(readOnly = true)
