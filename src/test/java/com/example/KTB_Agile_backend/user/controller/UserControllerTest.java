@@ -69,10 +69,11 @@ class UserControllerTest {
 					.contentType(MediaType.APPLICATION_JSON)
 					.content("""
 							{
-							  "answers": [
-								{"question": "CONVERSATION_STYLE", "answer": "CONCISE"},
-								{"question": "DESCRIPTION_STYLE", "answer": "BRIEF"}
-							  ]
+								"answers": [
+									{"question": "CONVERSATION_STYLE", "answer": "CONCISE"},
+									{"question": "DESCRIPTION_STYLE", "answer": "BRIEF"},
+									{"question": "OPINION_STYLE", "answer": "CLEAR"}
+								  ]
 							}
 							"""))
 				.andExpect(status().isCreated())
@@ -89,7 +90,10 @@ class UserControllerTest {
 	void updatesPreferencesAndReturnsUpdatedPreference() throws Exception {
 		when(userPreferenceService.update(eq(42L), any())).thenReturn(new UserPreferenceResponse(
 				123L,
-				List.of(new UserPreferenceResponse.Answer("conversationStyle", "detailed")),
+				List.of(new UserPreferenceResponse.Answer(
+						UserPreferenceQuestion.DESCRIPTION_STYLE,
+						UserPreferenceAnswerOption.DETAILED
+				)),
 				LocalDateTime.of(2026, 9, 4, 15, 30)
 		));
 
@@ -97,13 +101,17 @@ class UserControllerTest {
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
 					.contentType(MediaType.APPLICATION_JSON)
 					.content("""
-							{
-							  "answers": [{"question": "DESCRIPTION_STYLE", "answer": "DETAILED"}]
-							}
+								{
+								  "answers": [
+									{"question": "CONVERSATION_STYLE", "answer": "CONCISE"},
+									{"question": "DESCRIPTION_STYLE", "answer": "DETAILED"},
+									{"question": "OPINION_STYLE", "answer": "CLEAR"}
+								  ]
+								}
 							"""))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.userPreferenceId").value(123))
-				.andExpect(jsonPath("$.data.answers[0].answer").value("detailed"))
+				.andExpect(jsonPath("$.data.answers[0].answer").value("DETAILED"))
 				.andExpect(jsonPath("$.data.createdAt").value("2026-09-04T15:30:00"))
 				.andExpect(jsonPath("$.error").doesNotExist());
 
@@ -124,10 +132,10 @@ class UserControllerTest {
 		mockMvc.perform(get("/users/preferences")
 					.principal(new UsernamePasswordAuthenticationToken("42", null)))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.userPreferenceId").value(123))
-				.andExpect(jsonPath("$.answers[0].question").value("CONVERSATION_STYLE"))
-				.andExpect(jsonPath("$.answers[0].answer").value("CONCISE"))
-				.andExpect(jsonPath("$.createdAt").value("2026-09-04T15:30:00"));
+				.andExpect(jsonPath("$.data.userPreferenceId").value(123))
+				.andExpect(jsonPath("$.data.answers[0].question").value("CONVERSATION_STYLE"))
+				.andExpect(jsonPath("$.data.answers[0].answer").value("CONCISE"))
+				.andExpect(jsonPath("$.data.createdAt").value("2026-09-04T15:30:00"));
 
 		verify(userPreferenceService).get(42L);
 	}
@@ -143,5 +151,23 @@ class UserControllerTest {
 							}
 							"""))
 				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void rejectsIncompletePreferenceQuestions() throws Exception {
+		mockMvc.perform(post("/users/preferences")
+					.principal(new UsernamePasswordAuthenticationToken("42", null))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{
+							  "answers": [
+								{"question": "CONVERSATION_STYLE", "answer": "CONCISE"},
+								{"question": "DESCRIPTION_STYLE", "answer": "BRIEF"}
+							  ]
+							}
+							"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.error.details[0].reason")
+						.value("질문 3개를 모두 입력해야 합니다."));
 	}
 }

@@ -2,6 +2,7 @@ package com.example.KTB_Agile_backend.user.service;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
+import com.example.KTB_Agile_backend.user.dto.UserPreferenceQuestion;
 import com.example.KTB_Agile_backend.user.dto.request.UserPreferenceRequest;
 import com.example.KTB_Agile_backend.user.dto.response.UserPreferenceResponse;
 import com.example.KTB_Agile_backend.user.entity.User;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +27,7 @@ public class UserPreferenceService {
 
 	@Transactional
 	public UserPreferenceResponse create(Long userId, UserPreferenceRequest request) {
+		List<UserPreferenceAnswer> preferenceAnswers = answers(request);
 		User user = findActiveUser(userId);
 		if (userPreferenceRepository.existsByUser_Id(userId)) {
 			throw alreadyExists();
@@ -32,7 +35,7 @@ public class UserPreferenceService {
 
 		try {
 			UserPreference preference = userPreferenceRepository.saveAndFlush(
-					new UserPreference(user, answers(request))
+					new UserPreference(user, preferenceAnswers)
 			);
 			return UserPreferenceResponse.from(preference);
 		} catch (DataIntegrityViolationException ignored) {
@@ -42,9 +45,10 @@ public class UserPreferenceService {
 
 	@Transactional
 	public UserPreferenceResponse update(Long userId, UserPreferenceRequest request) {
+		List<UserPreferenceAnswer> preferenceAnswers = answers(request);
 		findActiveUser(userId);
 		UserPreference preference = findPreference(userId);
-		preference.replaceAnswers(answers(request));
+		preference.replaceAnswers(preferenceAnswers);
 		return UserPreferenceResponse.from(preference);
 	}
 
@@ -65,9 +69,29 @@ public class UserPreferenceService {
 	}
 
 	private static List<UserPreferenceAnswer> answers(UserPreferenceRequest request) {
+		if (!hasAllQuestions(request.answers())) {
+			throw invalidQuestions();
+		}
+
 		return request.answers().stream()
 				.map(answer -> new UserPreferenceAnswer(answer.question().name(), answer.answer().name()))
 				.toList();
+	}
+
+	private static boolean hasAllQuestions(List<UserPreferenceRequest.Answer> answers) {
+		int requiredQuestionCount = UserPreferenceQuestion.values().length;
+		return answers != null
+				&& answers.size() == requiredQuestionCount
+				&& answers.stream().allMatch(answer -> answer != null && answer.question() != null)
+				&& answers.stream()
+					.map(UserPreferenceRequest.Answer::question)
+					.filter(Objects::nonNull)
+					.distinct()
+					.count() == requiredQuestionCount;
+	}
+
+	private static ApiException invalidQuestions() {
+		return new ApiException(ErrorCode.BAD_REQUEST, "질문 3개를 모두 입력해야 합니다.");
 	}
 
 	private static ApiException unauthorized() {

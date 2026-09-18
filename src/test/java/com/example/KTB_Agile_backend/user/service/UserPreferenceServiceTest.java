@@ -32,7 +32,7 @@ import static org.mockito.Mockito.when;
 class UserPreferenceServiceTest {
 
 	@Test
-	void savesAnyNumberOfAnswersForAnActiveUser() {
+	void savesAllThreeAnswersForAnActiveUser() {
 		UserRepository userRepository = mock(UserRepository.class);
 		UserPreferenceRepository preferenceRepository = mock(UserPreferenceRepository.class);
 		UserPreferenceService service = new UserPreferenceService(userRepository, preferenceRepository);
@@ -42,21 +42,12 @@ class UserPreferenceServiceTest {
 		when(preferenceRepository.saveAndFlush(any(UserPreference.class)))
 				.thenAnswer(invocation -> invocation.getArgument(0));
 
-		var response = service.create(42L, new UserPreferenceRequest(List.of(
-				new UserPreferenceRequest.Answer(
-						UserPreferenceQuestion.CONVERSATION_STYLE,
-						UserPreferenceAnswerOption.CONCISE
-				),
-				new UserPreferenceRequest.Answer(
-						UserPreferenceQuestion.DESCRIPTION_STYLE,
-						UserPreferenceAnswerOption.MODERATE
-				)
-		)));
+		var response = service.create(42L, allAnswers());
 
 		ArgumentCaptor<UserPreference> captor = ArgumentCaptor.forClass(UserPreference.class);
 		verify(preferenceRepository).saveAndFlush(captor.capture());
-		assertThat(captor.getValue().getAnswers()).hasSize(2);
-		assertThat(response.answers()).hasSize(2);
+		assertThat(captor.getValue().getAnswers()).hasSize(3);
+		assertThat(response.answers()).hasSize(3);
 	}
 
 	@Test
@@ -69,10 +60,7 @@ class UserPreferenceServiceTest {
 
 		ApiException exception = assertThrows(ApiException.class, () -> service.create(
 				42L,
-				new UserPreferenceRequest(List.of(new UserPreferenceRequest.Answer(
-						UserPreferenceQuestion.CONVERSATION_STYLE,
-						UserPreferenceAnswerOption.CONCISE
-				)))
+				allAnswers()
 		));
 
 		assertThat(exception.status()).isEqualTo(HttpStatus.CONFLICT);
@@ -91,10 +79,7 @@ class UserPreferenceServiceTest {
 
 		ApiException exception = assertThrows(ApiException.class, () -> service.create(
 				42L,
-				new UserPreferenceRequest(List.of(new UserPreferenceRequest.Answer(
-						UserPreferenceQuestion.CONVERSATION_STYLE,
-						UserPreferenceAnswerOption.CONCISE
-				)))
+				allAnswers()
 		));
 
 		assertThat(exception.status()).isEqualTo(HttpStatus.CONFLICT);
@@ -112,16 +97,72 @@ class UserPreferenceServiceTest {
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(user));
 		when(preferenceRepository.findByUser_Id(42L)).thenReturn(Optional.of(preference));
 
-		service.update(42L, new UserPreferenceRequest(List.of(
+		service.update(42L, allAnswers());
+
+		assertThat(preference.getAnswers()).hasSize(3);
+		assertThat(preference.getAnswers().get(2).getQuestion()).isEqualTo("OPINION_STYLE");
+		assertThat(preference.getAnswers().get(2).getAnswer()).isEqualTo("CLEAR");
+	}
+
+	@Test
+	void rejectsIncompleteQuestions() {
+		UserPreferenceRepository preferenceRepository = mock(UserPreferenceRepository.class);
+		UserPreferenceService service = new UserPreferenceService(mock(UserRepository.class), preferenceRepository);
+
+		ApiException exception = assertThrows(ApiException.class, () -> service.create(42L, new UserPreferenceRequest(List.of(
+				new UserPreferenceRequest.Answer(
+						UserPreferenceQuestion.CONVERSATION_STYLE,
+						UserPreferenceAnswerOption.CONCISE
+				),
+				new UserPreferenceRequest.Answer(
+						UserPreferenceQuestion.DESCRIPTION_STYLE,
+						UserPreferenceAnswerOption.BRIEF
+				)
+		))));
+
+		assertThat(exception.status()).isEqualTo(HttpStatus.BAD_REQUEST);
+		verify(preferenceRepository, never()).saveAndFlush(any());
+	}
+
+	@Test
+	void rejectsDuplicateQuestions() {
+		UserPreferenceRepository preferenceRepository = mock(UserPreferenceRepository.class);
+		UserPreferenceService service = new UserPreferenceService(mock(UserRepository.class), preferenceRepository);
+
+		ApiException exception = assertThrows(ApiException.class, () -> service.create(42L, new UserPreferenceRequest(List.of(
+				new UserPreferenceRequest.Answer(
+						UserPreferenceQuestion.CONVERSATION_STYLE,
+						UserPreferenceAnswerOption.CONCISE
+				),
+				new UserPreferenceRequest.Answer(
+						UserPreferenceQuestion.CONVERSATION_STYLE,
+						UserPreferenceAnswerOption.COMFORTABLE
+				),
 				new UserPreferenceRequest.Answer(
 						UserPreferenceQuestion.OPINION_STYLE,
 						UserPreferenceAnswerOption.CLEAR
 				)
-		)));
+		))));
 
-		assertThat(preference.getAnswers()).hasSize(1);
-		assertThat(preference.getAnswers().get(0).getQuestion()).isEqualTo("OPINION_STYLE");
-		assertThat(preference.getAnswers().get(0).getAnswer()).isEqualTo("CLEAR");
+		assertThat(exception.status()).isEqualTo(HttpStatus.BAD_REQUEST);
+		verify(preferenceRepository, never()).saveAndFlush(any());
+	}
+
+	private static UserPreferenceRequest allAnswers() {
+		return new UserPreferenceRequest(List.of(
+				new UserPreferenceRequest.Answer(
+						UserPreferenceQuestion.CONVERSATION_STYLE,
+						UserPreferenceAnswerOption.CONCISE
+				),
+				new UserPreferenceRequest.Answer(
+						UserPreferenceQuestion.DESCRIPTION_STYLE,
+						UserPreferenceAnswerOption.MODERATE
+				),
+				new UserPreferenceRequest.Answer(
+						UserPreferenceQuestion.OPINION_STYLE,
+						UserPreferenceAnswerOption.CLEAR
+				)
+		));
 	}
 
 	@Test
