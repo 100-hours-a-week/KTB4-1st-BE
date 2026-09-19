@@ -5,7 +5,7 @@
 - 실제 OAuth provider는 Kakao만 사용한다.
 - 로그인 성공 시 Access Token은 응답 본문으로 반환한다.
 - Refresh Token은 응답 본문에 넣지 않고 HttpOnly 쿠키로 전달한다.
-- Access Token 재발급과 로그아웃은 Refresh Token 쿠키를 사용한다.
+- Access Token 재발급은 Refresh Token 쿠키를 사용한다. 로그아웃은 유효한 Access Token으로 endpoint 인증을 통과한 뒤 Refresh Token 쿠키를 사용한다.
 - 첫 Kakao 로그인에서는 서버가 User와 SocialAccount을 생성한다.
 - JWT의 role은 서버가 발급하며, 클라이언트 요청 DTO로 받지 않는다.
 
@@ -38,7 +38,7 @@ class AuthController {
 | `KakaoUserResponse` | Kakao 사용자 API 응답을 타입으로 받는다. | Kakao 사용자 정보를 조회할 때 |
 | `AuthResponse` | Access Token, 신규 사용자 여부, 사용자 요약 정보를 반환한다. | OAuth 로그인 성공 시 |
 | `UserProfile` | 로그인 응답에 포함되는 사용자 요약 정보다. | `AuthResponse` 내부 |
-| `TokenReissueResponse` | 새 Access Token과 만료 시간을 반환한다. | Refresh Token으로 재발급할 때 |
+| `TokenReissueResponse` | 새 Access Token, 만료 시간, 거래 취향 설정 필요 여부를 반환한다. | Refresh Token으로 재발급할 때 |
 | `ApiResponse<T>` | 성공 데이터와 오류 영역을 동일한 응답 형식으로 감싼다. | Controller의 공통 응답 형식 |
 | `ErrorResponse` | 오류 코드, 메시지, validation field 오류를 전달한다. | 4xx/5xx 오류 응답 |
 
@@ -52,13 +52,14 @@ class AuthController {
 
 ### 2. Kakao OAuth 로그인
 
-1. 클라이언트가 `OAuthLoginRequest`로 provider, authorization code, state를 보낸다.
-2. `state`가 없거나 공백이면 `@NotBlank` validation으로 거부한다.
-3. 서버가 쿠키 state와 요청 state를 비교하고 일회성 소비한다.
-4. `KakaoTokenResponse`로 Kakao access token을 받고, `KakaoUserResponse`로 사용자 정보를 받는다.
-5. 서버는 이를 `OAuthUserInfo`로 변환한다.
-6. 최초 로그인이라면 User와 SocialAccount을 생성한다.
-7. `AuthResponse`로 Access Token과 사용자 요약 정보를 반환하고 Refresh Token은 쿠키에 저장한다.
+1. Kakao가 백엔드 `GET /auth/kakao/callback`으로 authorization code와 state를 redirect한다. 또는 클라이언트가 `POST /auth/oauth`로 `OAuthLoginRequest`를 직접 보낼 수 있다.
+2. callback Controller는 query parameter를 `OAuthLoginRequest`로 구성하고, 두 방식 모두 같은 로그인 서비스를 호출한다.
+3. POST 방식의 body 필드는 `@NotBlank` validation으로 검증하고, callback 방식의 `code`와 `state`는 필수 query parameter로 받는다.
+4. 서버가 쿠키 state와 요청 state를 비교하고 일회성 소비한다.
+5. `KakaoTokenResponse`로 Kakao access token을 받고, `KakaoUserResponse`로 사용자 정보를 받는다.
+6. 서버는 이를 `OAuthUserInfo`로 변환한다.
+7. 최초 로그인이라면 User와 SocialAccount을 생성한다.
+8. callback 방식은 Refresh Token을 쿠키에 저장한 뒤 `FRONTEND_REDIRECT_URI`로 `302 Found` redirect한다. 프론트엔드는 redirect 후 `/auth/refresh`를 호출해 `AuthResponse`가 아닌 `TokenReissueResponse`의 Access Token을 받는다. POST 방식은 `AuthResponse`를 JSON으로 반환한다.
 
 ### 3. Access Token 재발급
 
@@ -70,9 +71,12 @@ Refresh Token이 쿠키에 있으므로 `TokenReissueRequest`는 만들지 않�
 
 ### 4. 로그아웃
 
-1. 서버가 Refresh Token 쿠키를 조회한다.
-2. 저장된 Refresh Token을 폐기한다.
-3. Refresh Token 쿠키를 삭제하고 `204 No Content`를 반환한다.
+1. `/auth/logout`은 공개 경로가 아니므로 서버가 Access Token을 먼저 인증한다.
+2. 인증을 통과하면 서버가 Refresh Token 쿠키를 조회한다.
+3. 저장된 Refresh Token을 폐기한다.
+4. Refresh Token 쿠키를 삭제하고 `204 No Content`를 반환한다.
+
+Access Token이 없거나 유효하지 않으면 Controller가 호출되지 않고 `401 UNAUTHORIZED`가 반환되며, Refresh Token 쿠키도 삭제되지 않는다.
 
 본문이 없으므로 `LogoutRequest`와 `LogoutResponse`는 만들지 않는다.
 

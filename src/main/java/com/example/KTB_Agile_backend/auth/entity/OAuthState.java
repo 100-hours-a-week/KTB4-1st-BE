@@ -1,5 +1,6 @@
 package com.example.KTB_Agile_backend.auth.entity;
 
+import com.example.KTB_Agile_backend.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -9,15 +10,15 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
+import java.time.LocalDateTime;
 
-import java.time.Instant;
+import static java.util.Objects.requireNonNull;
 
 @Entity
 @Table(name = "oauth_states")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class OAuthState {
+public class OAuthState extends BaseEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,18 +32,24 @@ public class OAuthState {
 	private String provider;
 
 	@Column(name = "expires_at", nullable = false)
-	private Instant expiresAt;
-
-	@CreationTimestamp
-	@Column(name = "created_at", nullable = false, updatable = false)
-	private Instant createdAt;
+	private LocalDateTime expiresAt;
 
 	@Column(name = "consumed_at")
-	private Instant consumedAt;
+	private LocalDateTime consumedAt;
 
-	public OAuthState(String stateHash, String provider, Instant expiresAt) {
-		this.stateHash = stateHash;
-		this.provider = provider;
-		this.expiresAt = expiresAt;
+	public OAuthState(String stateHash, String provider, LocalDateTime expiresAt) {
+		this.stateHash = requireText(stateHash, "stateHash", 64);
+		this.provider = requireText(provider, "provider", 20);
+		this.expiresAt = requireNonNull(expiresAt, "expiresAt must not be null");
+	}
+
+	private static String requireText(String value, String field, int maxLength) {
+		if (value == null || value.isBlank()) {
+			throw new IllegalArgumentException(field + " must not be blank");
+		}
+		if (value.length() > maxLength) {
+			throw new IllegalArgumentException(field + " must be at most " + maxLength + " characters");
+		}
+		return value;
 	}
 }

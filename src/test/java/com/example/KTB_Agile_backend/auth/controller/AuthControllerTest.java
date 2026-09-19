@@ -1,6 +1,7 @@
 package com.example.KTB_Agile_backend.auth.controller;
 
 import com.example.KTB_Agile_backend.auth.dto.response.AuthResponse;
+import com.example.KTB_Agile_backend.auth.dto.response.TokenReissueResponse;
 import com.example.KTB_Agile_backend.auth.dto.response.UserProfile;
 import com.example.KTB_Agile_backend.auth.service.AuthService;
 import com.example.KTB_Agile_backend.auth.service.AuthTokenResult;
@@ -15,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -25,6 +27,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -35,9 +38,9 @@ class AuthControllerTest {
 
 	@BeforeEach
 	void setUp() {
-		 authService = mock(AuthService.class);
-		 mockMvc = MockMvcBuilders
-				.standaloneSetup(new AuthController(authService, 14, 300))
+		authService = mock(AuthService.class);
+		mockMvc = MockMvcBuilders
+				.standaloneSetup(new AuthController(authService, 14, 300, false, "http://127.0.0.1:3000"))
 				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
 	}
@@ -52,7 +55,8 @@ class AuthControllerTest {
 				.andExpect(jsonPath("$.data.expiresIn").value(300))
 				.andExpect(header().string(HttpHeaders.SET_COOKIE,
 						containsString("oauth_state=state-value")))
-				.andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("HttpOnly")));
+				.andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("HttpOnly")))
+				.andExpect(header().string(HttpHeaders.SET_COOKIE, not(containsString("Secure"))));
 	}
 
 	@Test
@@ -82,13 +86,14 @@ class AuthControllerTest {
 				.andExpect(jsonPath("$.data.user.userId").value(1))
 				.andExpect(header().string(HttpHeaders.SET_COOKIE,
 						containsString("refresh_token=refresh-token")))
-				.andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=1209600")));
+				.andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=1209600")))
+				.andExpect(header().string(HttpHeaders.SET_COOKIE, not(containsString("Secure"))));
 
 		verify(authService).oauthLoginWithTokens(any(), eq("state-value"));
 	}
 
 	@Test
-	void handlesKakaoCallbackAndReturnsAccessTokenWithRefreshCookie() throws Exception {
+	void handlesKakaoCallbackAndRedirectsToFrontendWithRefreshCookie() throws Exception {
 		AuthResponse authResponse = new AuthResponse(
 				"access-token",
 				"Bearer",
@@ -103,10 +108,11 @@ class AuthControllerTest {
 					.queryParam("code", "authorization-code")
 					.queryParam("state", "state-value")
 					.cookie(new jakarta.servlet.http.Cookie("oauth_state", "state-value")))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.data.accessToken").value("access-token"))
+				.andExpect(status().isFound())
+				.andExpect(header().string(HttpHeaders.LOCATION, "http://127.0.0.1:3000"))
 				.andExpect(header().string(HttpHeaders.SET_COOKIE,
-						containsString("refresh_token=refresh-token")));
+						containsString("refresh_token=refresh-token")))
+				.andExpect(content().string(""));
 
 		verify(authService).oauthLoginWithTokens(
 				argThat(request -> request.provider().equals("KAKAO")
@@ -123,7 +129,8 @@ class AuthControllerTest {
 				.andExpect(status().isNoContent())
 				.andExpect(header().string(HttpHeaders.SET_COOKIE,
 						containsString("refresh_token=;")))
-				.andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")));
+				.andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")))
+				.andExpect(header().string(HttpHeaders.SET_COOKIE, not(containsString("Secure"))));
 
 		verify(authService).logout("refresh-token");
 	}
@@ -141,8 +148,8 @@ class AuthControllerTest {
 							"""))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.data").value(nullValue()))
-				.andExpect(jsonPath("$.error.code").value("BAD_REQUEST"))
-				.andExpect(jsonPath("$.error.message").value("인가 코드가 유효하지 않습니다."))
+				.andExpect(jsonPath("$.error.code").value("REQUEST_VALIDATION_FAILED"))
+				.andExpect(jsonPath("$.error.message").value("요청 값이 올바르지 않습니다."))
 				.andExpect(jsonPath("$.error.details[0].field").value("authorizationCode"))
 				.andExpect(jsonPath("$.error.details[0].reason").value("유효하지 않은 인가 코드입니다."));
 	}
@@ -151,17 +158,29 @@ class AuthControllerTest {
 	void returnsStandardUnauthorizedForInvalidRefreshToken() throws Exception {
 		when(authService.reissueToken("invalid-token"))
 				.thenThrow(new ApiException(
-						ErrorCode.UNAUTHORIZED,
-						"Refresh Token이 만료되었거나 유효하지 않습니다."
+						ErrorCode.AUTH_REFRESH_TOKEN_INVALID
 				));
 
 		mockMvc.perform(post("/auth/refresh")
 					.cookie(new jakarta.servlet.http.Cookie("refresh_token", "invalid-token")))
 				.andExpect(status().isUnauthorized())
 				.andExpect(jsonPath("$.data").value(nullValue()))
-				.andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"))
+				.andExpect(jsonPath("$.error.code").value("AUTH_REFRESH_TOKEN_INVALID"))
 				.andExpect(jsonPath("$.error.message").value("Refresh Token이 만료되었거나 유효하지 않습니다."))
 				.andExpect(jsonPath("$.error.details").isEmpty());
+	}
+
+	@Test
+	void returnsPreferenceSetupStatusWhenRefreshingAccessToken() throws Exception {
+		when(authService.reissueToken("refresh-token"))
+				.thenReturn(new TokenReissueResponse("access-token", "Bearer", 900, true));
+
+		mockMvc.perform(post("/auth/refresh")
+					.cookie(new jakarta.servlet.http.Cookie("refresh_token", "refresh-token")))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.accessToken").value("access-token"))
+				.andExpect(jsonPath("$.data.needsPreferenceSetup").value(true))
+				.andExpect(jsonPath("$.error").value(nullValue()));
 	}
 
 	@Test
@@ -173,7 +192,7 @@ class AuthControllerTest {
 					.cookie(new jakarta.servlet.http.Cookie("refresh_token", "refresh-token")))
 				.andExpect(status().isInternalServerError())
 				.andExpect(jsonPath("$.error.code").value("INTERNAL_SERVER_ERROR"))
-				.andExpect(jsonPath("$.error.message").value("토큰 재발급 중 서버 오류가 발생했습니다."))
+				.andExpect(jsonPath("$.error.message").value("서버 오류가 발생했습니다."))
 				.andExpect(jsonPath("$.error.details").isEmpty());
 	}
 }

@@ -7,6 +7,7 @@ import com.example.KTB_Agile_backend.auth.dto.response.AuthResponse;
 import com.example.KTB_Agile_backend.auth.dto.response.TokenReissueResponse;
 import com.example.KTB_Agile_backend.auth.token.AccessTokenIssuer;
 import com.example.KTB_Agile_backend.user.entity.User;
+import com.example.KTB_Agile_backend.user.repository.UserPreferenceRepository;
 import com.example.KTB_Agile_backend.user.service.AccountProvisioningService;
 import com.example.KTB_Agile_backend.user.service.AccountResult;
 import org.junit.jupiter.api.Test;
@@ -33,12 +34,14 @@ class AuthServiceTest {
 		AccountProvisioningService accountProvisioningService = mock(AccountProvisioningService.class);
 		AccessTokenIssuer accessTokenIssuer = mock(AccessTokenIssuer.class);
 		RefreshTokenService refreshTokenService = mock(RefreshTokenService.class);
+		UserPreferenceRepository userPreferenceRepository = mock(UserPreferenceRepository.class);
 		AuthService authService = new AuthService(
 				stateService,
 				List.of(providerClient),
 				accountProvisioningService,
 				accessTokenIssuer,
-				refreshTokenService
+				refreshTokenService,
+				userPreferenceRepository
 		);
 
 		when(providerClient.provider()).thenReturn("KAKAO");
@@ -66,23 +69,27 @@ class AuthServiceTest {
 	void reissuesAccessTokenWithValidatedRefreshToken() {
 		AccessTokenIssuer accessTokenIssuer = mock(AccessTokenIssuer.class);
 		RefreshTokenService refreshTokenService = mock(RefreshTokenService.class);
+		UserPreferenceRepository userPreferenceRepository = mock(UserPreferenceRepository.class);
 		AuthService authService = new AuthService(
 				mock(OAuthStateService.class),
 				List.of(),
 				mock(AccountProvisioningService.class),
 				accessTokenIssuer,
-				refreshTokenService
+				refreshTokenService,
+				userPreferenceRepository
 		);
 		User user = new User("kim");
 		when(refreshTokenService.requireValidUser("refresh-token")).thenReturn(user);
 		when(accessTokenIssuer.issue(user)).thenReturn("new-access-token");
 		when(accessTokenIssuer.expiresInSeconds()).thenReturn(900L);
+		when(userPreferenceRepository.existsByUser_Id(user.getId())).thenReturn(false);
 
 		TokenReissueResponse response = authService.reissueToken("refresh-token");
 
 		assertEquals("new-access-token", response.accessToken());
 		assertEquals("Bearer", response.tokenType());
 		assertEquals(900L, response.expiresIn());
+		assertTrue(response.needsPreferenceSetup());
 	}
 
 	@Test
@@ -93,7 +100,8 @@ class AuthServiceTest {
 				List.of(),
 				mock(AccountProvisioningService.class),
 				mock(AccessTokenIssuer.class),
-				refreshTokenService
+				refreshTokenService,
+				mock(UserPreferenceRepository.class)
 		);
 
 		authService.logout("refresh-token");

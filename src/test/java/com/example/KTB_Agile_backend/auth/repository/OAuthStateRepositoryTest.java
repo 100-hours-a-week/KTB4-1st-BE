@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -17,7 +17,7 @@ class OAuthStateRepositoryTest {
 
 	@Test
 	void consumesStateOnlyOnce() {
-		Instant now = Instant.parse("2026-09-16T00:00:00Z");
+		LocalDateTime now = LocalDateTime.parse("2026-09-16T00:00:00");
 		oauthStateRepository.saveAndFlush(
 				new OAuthState("a".repeat(64), "KAKAO", now.plusSeconds(300))
 		);

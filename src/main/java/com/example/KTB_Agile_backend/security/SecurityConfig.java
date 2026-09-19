@@ -4,12 +4,12 @@ import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
 import com.example.KTB_Agile_backend.common.response.ErrorResponse;
 import tools.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -20,10 +20,14 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 @Configuration
 @EnableMethodSecurity
@@ -44,12 +48,28 @@ public class SecurityConfig {
 	}
 
 	@Bean
+	CorsConfigurationSource corsConfigurationSource(
+			@Value("${cors.allowed-origins:http://127.0.0.1:3000}") List<String> allowedOrigins
+	) {
+		CorsConfiguration configuration = new CorsConfiguration();
+		configuration.setAllowedOrigins(allowedOrigins);
+		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+		configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
+		configuration.setAllowCredentials(true);
+
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", configuration);
+		return source;
+	}
+
+	@Bean
 	SecurityFilterChain securityFilterChain(
 			HttpSecurity http,
 			JwtDecoder jwtDecoder,
 			ObjectMapper objectMapper
 	) throws Exception {
 		http
+				.cors(Customizer.withDefaults())
 				.csrf(AbstractHttpConfigurer::disable)
 				.formLogin(AbstractHttpConfigurer::disable)
 				.httpBasic(AbstractHttpConfigurer::disable)
@@ -62,14 +82,12 @@ public class SecurityConfig {
 						.authenticationEntryPoint((request, response, cause) -> writeError(
 								response,
 								objectMapper,
-								ErrorCode.UNAUTHORIZED,
-								unauthorizedMessage(request)
+								ErrorCode.AUTHENTICATION_REQUIRED
 						))
 						.accessDeniedHandler((request, response, cause) -> writeError(
 								response,
 								objectMapper,
-								ErrorCode.FORBIDDEN,
-								"접근 권한이 없습니다."
+								ErrorCode.FORBIDDEN
 						))
 				)
 				.addFilterBefore(
@@ -79,25 +97,17 @@ public class SecurityConfig {
 		return http.build();
 	}
 
-	private static String unauthorizedMessage(HttpServletRequest request) {
-		String requestUri = request.getRequestURI();
-		return requestUri != null && requestUri.endsWith("/auth/logout")
-				? "로그인이 필요하거나 Access Token이 만료되었거나 유효하지 않습니다."
-				: "로그인이 필요합니다.";
-	}
-
 	private static void writeError(
 			HttpServletResponse response,
 			ObjectMapper objectMapper,
-			ErrorCode code,
-			String message
+			ErrorCode code
 	) throws IOException {
 		response.setStatus(code.status().value());
 		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 		response.setCharacterEncoding(StandardCharsets.UTF_8.name());
 		objectMapper.writeValue(
 				response.getWriter(),
-				new ApiResponse<Void>(null, new ErrorResponse(code.value(), message, java.util.List.of()))
+				new ApiResponse<Void>(null, new ErrorResponse(code.value(), code.message(), List.of()))
 		);
 	}
 }

@@ -2,8 +2,8 @@ package com.example.KTB_Agile_backend.auth.service;
 
 import com.example.KTB_Agile_backend.auth.state.OAuthStateStore;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
+import com.example.KTB_Agile_backend.common.exception.ErrorDetail;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
-import com.example.KTB_Agile_backend.common.response.ErrorResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Duration;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
@@ -20,8 +20,8 @@ import java.util.Locale;
 @Service
 public class OAuthStateService {
 
-	private static final List<ErrorResponse.Field> AUTHENTICATION_DETAILS = List.of(
-			new ErrorResponse.Field("authorizationCode", "만료되었거나 이미 사용된 인가 코드입니다.")
+	private static final List<ErrorDetail> AUTHENTICATION_DETAILS = List.of(
+			new ErrorDetail("state", "OAuth 인증 상태가 유효하지 않습니다.")
 	);
 
 	private final OAuthStateStore oauthStateStore;
@@ -45,7 +45,7 @@ public class OAuthStateService {
 		oauthStateStore.save(
 				Hashing.sha256(state),
 				normalizedProvider,
-				Instant.now().plus(stateTtl)
+				LocalDateTime.now().plus(stateTtl)
 		);
 		return state;
 	}
@@ -60,7 +60,7 @@ public class OAuthStateService {
 		}
 
 		String normalizedProvider = normalizeProvider(provider);
-		Instant now = Instant.now();
+		LocalDateTime now = LocalDateTime.now();
 		boolean consumed = oauthStateStore.consumeIfValid(
 				Hashing.sha256(stateCookie),
 				normalizedProvider,
@@ -74,9 +74,8 @@ public class OAuthStateService {
 	private static String normalizeProvider(String provider) {
 		if (provider == null || provider.isBlank()) {
 			throw new ApiException(
-					ErrorCode.BAD_REQUEST,
-					"요청 값이 올바르지 않습니다.",
-					List.of(new ErrorResponse.Field("provider", "provider는 필수 입력값입니다."))
+					ErrorCode.AUTH_PROVIDER_REQUIRED,
+					List.of(new ErrorDetail("provider", "provider는 필수 입력값입니다."))
 			);
 		}
 		return provider.trim().toUpperCase(Locale.ROOT);
@@ -84,8 +83,7 @@ public class OAuthStateService {
 
 	private static ApiException authenticationFailed() {
 		return new ApiException(
-				ErrorCode.UNAUTHORIZED,
-				"인증에 실패했습니다. 인가 코드가 만료되었거나 유효하지 않습니다.",
+				ErrorCode.AUTH_OAUTH_STATE_INVALID,
 				AUTHENTICATION_DETAILS
 		);
 	}

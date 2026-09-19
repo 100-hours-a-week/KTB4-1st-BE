@@ -1,6 +1,5 @@
 package com.example.KTB_Agile_backend.common.exception;
 
-import com.example.KTB_Agile_backend.common.response.ErrorResponse;
 import org.springframework.http.HttpStatus;
 
 import java.util.List;
@@ -8,7 +7,11 @@ import java.util.List;
 public class ApiException extends RuntimeException {
 
 	private final ErrorCode code;
-	private final ErrorResponse error;
+	private final List<ErrorDetail> details;
+
+	public ApiException(ErrorCode code) {
+		this(code, code.message());
+	}
 
 	public ApiException(ErrorCode code, String message) {
 		this(code, message, List.of());
@@ -17,7 +20,7 @@ public class ApiException extends RuntimeException {
 	public ApiException(
 			ErrorCode code,
 			String message,
-			List<ErrorResponse.Field> details
+			List<ErrorDetail> details
 	) {
 		this(code, message, details, null);
 	}
@@ -25,19 +28,31 @@ public class ApiException extends RuntimeException {
 	public ApiException(
 			ErrorCode code,
 			String message,
-			List<ErrorResponse.Field> details,
+			List<ErrorDetail> details,
 			Throwable cause
 	) {
 		super(message, cause);
 		this.code = code;
-		this.error = new ErrorResponse(code.value(), message, details == null ? List.of() : List.copyOf(details));
+		this.details = details == null ? List.of() : List.copyOf(details);
+	}
+
+	public ApiException(ErrorCode code, List<ErrorDetail> details) {
+		this(code, code.message(), details);
+	}
+
+	public ApiException(ErrorCode code, List<ErrorDetail> details, Throwable cause) {
+		this(code, code.message(), details, cause);
 	}
 
 	public HttpStatus status() {
 		return code.status();
 	}
 
-	public ErrorResponse error() {
-		return error;
+	public ErrorCode code() {
+		return code;
+	}
+
+	public List<ErrorDetail> details() {
+		return details;
 	}
 }
