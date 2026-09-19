@@ -5,12 +5,11 @@ WORKDIR /workspace
 COPY gradlew .
 COPY gradle gradle
 COPY build.gradle settings.gradle ./
-
-RUN chmod +x ./gradlew && ./gradlew dependencies --no-daemon
+COPY src src
 
 # test는 CI에서 통과했으므로 제외
-COPY src src
-RUN ./gradlew bootJar -x test --no-daemon
+RUN --mount=type=cache,target=/root/.gradle \
+    ./gradlew bootJar -x test --no-daemon
 
 WORKDIR /workspace/build/libs
 RUN java -Djarmode=tools -jar *.jar extract --layers --launcher --destination /workspace/extracted
