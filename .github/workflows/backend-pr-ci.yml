@@ -11,7 +11,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # 파일 변경 감지: 문서만 수정된 PR이면 validate 잡을 실행하지 않고 패스
   changes:
     name: Check Target Changes
     runs-on: ubuntu-24.04-arm
@@ -27,16 +26,19 @@ jobs:
         with:
           filters: |
             run_validation:
-              - '!**.md'
-              - '!docs/**'
-              - '!.gitignore'
+              - 'src/**'
+              - 'build.gradle'
+              - 'settings.gradle'
+              - 'gradle/**'
+              - 'Dockerfile'
 
   validate:
     name: Lint, Test & Docker Dry-run
+    needs: changes
+    if: needs.changes.outputs.run_validation == 'true'
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
-      pull-requests: write
     timeout-minutes: 10
 
     steps:
@@ -52,9 +54,6 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x ./gradlew
-
       - name: Run Static Code Analysis & Tests
         run: ./gradlew spotbugsMain pmdMain test --build-cache
 
@@ -63,7 +62,8 @@ jobs:
         if: ${{ !env.ACT && (success() || failure()) }}
         with:
           report_paths: '**/build/test-results/test/TEST-*.xml'
-          comment: true
+          comment: false
+          summary: true
           fail_on_failure: true
 
       - name: Setup Docker Buildx
@@ -76,4 +76,28 @@ jobs:
           platforms: linux/arm64
           push: false
           cache-from: type=gha,scope=backend
-          # pr 관련 이벤트에 항상 실행되는 워크플로우이기에, 캐시 hit 확률이 되려 낮아지고 리소스 낭비로 생각되어 cache-to 생략
+
+  # [필수 검사용 게이트 잡] 문서 PR이든 백엔드 PR이든 항상 실행되어 최종 상태를 보고
+  quality-gate:
+    name: Quality Gate Result
+    needs: [changes, validate]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate Checks
+        run: |
+          # 변경 감지(changes) 잡 자체가 실패한 경우 차단
+          if [ "${{ needs.changes.result }}" != "success" ]; then
+            echo "Changes filter job failed."
+            exit 1
+          fi
+
+          # validate 잡 결과 검증 (success이거나, 대상 파일이 없어 skipped된 경우만 통과)
+          VALIDATE_RESULT="${{ needs.validate.result }}"
+          if [ "$VALIDATE_RESULT" = "success" ] || [ "$VALIDATE_RESULT" = "skipped" ]; then
+            echo "Quality gate passed (Validate result: $VALIDATE_RESULT)."
+            exit 0
+          else
+            echo "Validation failed with status: $VALIDATE_RESULT"
+            exit 1
+          fi

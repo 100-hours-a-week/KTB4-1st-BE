@@ -8,6 +8,7 @@ on:
       - '**.md'
       - 'docs/**'
       - '.gitignore'
+      - '.github/**'
 
 concurrency:
   group: backend-dev-publish
@@ -72,7 +73,7 @@ jobs:
       - name: Prune old dev images
         uses: actions/delete-package-versions@v5
         with:
-          package-name: ${{ github.event.repository.name }}
+          package-name: ${{ steps.pkg.outputs.name }}
           package-type: 'container'
           min-versions-to-keep: 3
           ignore-versions: '^(?!dev-).*$'
