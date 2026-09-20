@@ -9,10 +9,10 @@ COPY src src
 
 # test는 CI에서 통과했으므로 제외
 RUN --mount=type=cache,target=/root/.gradle \
-    ./gradlew bootJar -x test --no-daemon
+    chmod +x ./gradlew && ./gradlew bootJar -x test --no-daemon --build-cache
 
 WORKDIR /workspace/build/libs
-RUN java -Djarmode=tools -jar *.jar extract --layers --launcher --destination /workspace/extracted
+RUN java -Djarmode=tools -jar $(ls *.jar | grep -v plain) extract --layers --launcher --destination /workspace/extracted
 
 FROM eclipse-temurin:25-jre-alpine AS runner
 WORKDIR /app
