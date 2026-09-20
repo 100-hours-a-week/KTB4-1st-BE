@@ -31,6 +31,7 @@ class GroupTests {
 		group.delete();
 
 		assertThat(group.getDeletedAt()).isNotNull();
+		assertThat(group.getActiveGroupName()).isNull();
 	}
 
 	@Test

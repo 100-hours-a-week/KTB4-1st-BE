@@ -14,11 +14,7 @@ class GroupMemberTests {
 	@Test
 	void joinsLeavesAndRejoinsSameMember() {
 		Group group = Group.create("그룹", "주소", BigDecimal.ZERO, BigDecimal.ZERO, "");
-		GroupMember member = new GroupMember(
-				group,
-				new User("사용자"),
-				LocalDateTime.of(2026, 9, 17, 10, 0)
-		);
+		GroupMember member = new GroupMember(group, new User("사용자"));
 
 		assertThat(member.isActive()).isTrue();
 
@@ -27,21 +23,18 @@ class GroupMemberTests {
 		assertThat(member.isActive()).isFalse();
 		assertThat(member.getLeftAt()).isEqualTo(leftAt);
 
-		LocalDateTime rejoinedAt = LocalDateTime.of(2026, 9, 17, 12, 0);
-		member.join(rejoinedAt);
+		member.join();
 		assertThat(member.isActive()).isTrue();
 		assertThat(member.getLeftAt()).isNull();
-		assertThat(member.getLocationVerifiedAt()).isEqualTo(rejoinedAt);
+		assertThat(member.getLocationVerifiedAt()).isNull();
 	}
 
 	@Test
-	void requiresVerificationAndLeaveTimes() {
+	void requiresLeaveTimes() {
 		Group group = Group.create("그룹", "주소", BigDecimal.ZERO, BigDecimal.ZERO, "");
 		User user = new User("사용자");
 
-		assertThrows(NullPointerException.class, () -> new GroupMember(group, user, null));
-
-		GroupMember member = new GroupMember(group, user, LocalDateTime.now());
+		GroupMember member = new GroupMember(group, user);
 		assertThrows(NullPointerException.class, () -> member.leave(null));
 	}
 }
