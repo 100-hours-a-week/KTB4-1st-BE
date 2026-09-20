@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -51,6 +52,12 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiResponse<Void>> handleUnreadableMessage() {
 		return response(ErrorCode.REQUEST_BODY_INVALID.status(),
 				new ErrorResponse(ErrorCode.REQUEST_BODY_INVALID.value(), ErrorCode.REQUEST_BODY_INVALID.message(), List.of()));
+	}
+
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	public ResponseEntity<ApiResponse<Void>> handleTypeMismatch() {
+		return response(ErrorCode.BAD_REQUEST.status(),
+				new ErrorResponse(ErrorCode.BAD_REQUEST.value(), ErrorCode.BAD_REQUEST.message(), List.of()));
 	}
 
 	@ExceptionHandler(Exception.class)

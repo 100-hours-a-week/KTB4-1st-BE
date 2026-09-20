@@ -51,7 +51,7 @@ public class GroupMember extends BaseEntity {
 	@JoinColumn(name = "user_id", nullable = false)
 	private User user;
 
-	@Column(name = "location_verified_at", nullable = false)
+	@Column(name = "location_verified_at")
 	private LocalDateTime locationVerifiedAt;
 
 	@Enumerated(EnumType.STRING)
@@ -61,14 +61,13 @@ public class GroupMember extends BaseEntity {
 	@Column(name = "left_at")
 	private LocalDateTime leftAt;
 
-	public GroupMember(Group group, User user, LocalDateTime locationVerifiedAt) {
+	public GroupMember(Group group, User user) {
 		this.group = requireNonNull(group, "group must not be null");
 		this.user = requireNonNull(user, "user must not be null");
-		join(locationVerifiedAt);
+		join();
 	}
 
-	public void join(LocalDateTime verifiedAt) {
-		this.locationVerifiedAt = requireNonNull(verifiedAt, "verifiedAt must not be null");
+	public void join() {
 		this.status = GroupMemberStatus.ACTIVE;
 		this.leftAt = null;
 	}
