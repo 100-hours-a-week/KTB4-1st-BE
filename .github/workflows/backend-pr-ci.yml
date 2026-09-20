@@ -30,7 +30,7 @@ jobs:
               - 'build.gradle'
               - 'settings.gradle'
               - 'gradle/**'
-              - 'Dockerfile'
+              - 'gradlew'
 
   validate:
     name: Lint, Test & Docker Dry-run
