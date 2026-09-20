@@ -2,6 +2,33 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '4.1.1'
 	id 'io.spring.dependency-management' version '1.1.7'
+	id 'com.github.spotbugs' version '6.5.11'
+	id 'pmd'
+}
+
+spotbugs {
+	effort = 'max'
+	reportLevel = 'high'
+}
+
+tasks.withType(com.github.spotbugs.snom.SpotBugsTask) {
+	reports {
+		// 원하는 리포트 형식 활성화 (HTML 또는 XML)
+		html.required = false
+		xml.required = false
+	}
+}
+
+pmd {
+	toolVersion = '7.16.0'
+	ignoreFailures = true	// 위반 사항 해결 후 false로 변경해주세요.
+	consoleOutput = true
+
+	rulesMinimumPriority = 5
+	ruleSets = [
+			'category/java/errorprone.xml',
+			'category/java/bestpractices.xml'
+	]
 }
 
 group = 'com.example'

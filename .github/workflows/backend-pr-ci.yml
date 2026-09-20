@@ -1,0 +1,103 @@
+name: Backend PR Quality Gate
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Check Target Changes
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      run_validation: ${{ steps.filter.outputs.run_validation }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Filter Changed Paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            run_validation:
+              - 'src/**'
+              - 'build.gradle'
+              - 'settings.gradle'
+              - 'gradle/**'
+              - 'gradlew'
+
+  validate:
+    name: Lint, Test & Docker Dry-run
+    needs: changes
+    if: needs.changes.outputs.run_validation == 'true'
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Setup JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Run Static Code Analysis & Tests
+        run: ./gradlew spotbugsMain pmdMain test --build-cache
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v6
+        if: ${{ !env.ACT && (success() || failure()) }}
+        with:
+          report_paths: '**/build/test-results/test/TEST-*.xml'
+          comment: false
+          summary: true
+          fail_on_failure: true
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Validate Docker Packaging (Dry-run)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/arm64
+          push: false
+          cache-from: type=gha,scope=backend
+
+  # [필수 검사용 게이트 잡] 문서 PR이든 백엔드 PR이든 항상 실행되어 최종 상태를 보고
+  quality-gate:
+    name: Quality Gate Result
+    needs: [changes, validate]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate Checks
+        run: |
+          # 변경 감지(changes) 잡 자체가 실패한 경우 차단
+          if [ "${{ needs.changes.result }}" != "success" ]; then
+            echo "Changes filter job failed."
+            exit 1
+          fi
+
+          # validate 잡 결과 검증 (success이거나, 대상 파일이 없어 skipped된 경우만 통과)
+          VALIDATE_RESULT="${{ needs.validate.result }}"
+          if [ "$VALIDATE_RESULT" = "success" ] || [ "$VALIDATE_RESULT" = "skipped" ]; then
+            echo "Quality gate passed (Validate result: $VALIDATE_RESULT)."
+            exit 0
+          else
+            echo "Validation failed with status: $VALIDATE_RESULT"
+            exit 1
+          fi
