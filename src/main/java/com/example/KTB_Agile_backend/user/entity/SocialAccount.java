@@ -1,6 +1,6 @@
 package com.example.KTB_Agile_backend.user.entity;
 
-import com.example.KTB_Agile_backend.common.entity.BaseEntity;
+import com.example.KTB_Agile_backend.common.entity.UpdatableEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -20,7 +20,7 @@ import static java.util.Objects.requireNonNull;
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class SocialAccount extends BaseEntity {
+public class SocialAccount extends UpdatableEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)

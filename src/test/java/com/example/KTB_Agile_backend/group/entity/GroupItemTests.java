@@ -1,5 +1,7 @@
 package com.example.KTB_Agile_backend.group.entity;
 
+import com.example.KTB_Agile_backend.item.entity.Item;
+import com.example.KTB_Agile_backend.user.entity.User;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -12,7 +14,8 @@ class GroupItemTests {
 	@Test
 	void softDeletesGroupItem() {
 		Group group = Group.create("그룹", "주소", BigDecimal.ZERO, BigDecimal.ZERO, "");
-		GroupItem groupItem = new GroupItem(group, 1L);
+		Item item = new Item(new User("사용자"), "물품", "설명");
+		GroupItem groupItem = new GroupItem(group, item);
 
 		assertThat(groupItem.isActive()).isTrue();
 
@@ -23,9 +26,9 @@ class GroupItemTests {
 	}
 
 	@Test
-	void rejectsNonPositiveItemId() {
+	void rejectsNullItem() {
 		Group group = Group.create("그룹", "주소", BigDecimal.ZERO, BigDecimal.ZERO, "");
 
-		assertThrows(IllegalArgumentException.class, () -> new GroupItem(group, 0L));
+		assertThrows(NullPointerException.class, () -> new GroupItem(group, null));
 	}
 }

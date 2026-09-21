@@ -1,6 +1,6 @@
 package com.example.KTB_Agile_backend.user.entity;
 
-import com.example.KTB_Agile_backend.common.entity.BaseEntity;
+import com.example.KTB_Agile_backend.common.entity.UpdatableEntity;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -28,7 +28,7 @@ import java.util.Objects;
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class UserPreference extends BaseEntity {
+public class UserPreference extends UpdatableEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,8 +41,8 @@ public class UserPreference extends BaseEntity {
 
 	@ElementCollection(fetch = FetchType.LAZY)
 	@CollectionTable(
-			name = "user_preference_answers",
-			joinColumns = @JoinColumn(name = "user_preference_id")
+				name = "user_preference_answers",
+				joinColumns = @JoinColumn(name = "user_preference_id")
 	)
 	@OrderColumn(name = "answer_order")
 	@Getter(AccessLevel.NONE)
