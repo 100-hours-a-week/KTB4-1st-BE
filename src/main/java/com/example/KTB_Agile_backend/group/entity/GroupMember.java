@@ -64,9 +64,10 @@ public class GroupMember extends BaseEntity {
 	public GroupMember(Group group, User user) {
 		this.group = requireNonNull(group, "group must not be null");
 		this.user = requireNonNull(user, "user must not be null");
-		join();
+		this.status = GroupMemberStatus.ACTIVE;
 	}
 
+	@SuppressWarnings("PMD.NullAssignment")
 	public void join() {
 		this.status = GroupMemberStatus.ACTIVE;
 		this.leftAt = null;

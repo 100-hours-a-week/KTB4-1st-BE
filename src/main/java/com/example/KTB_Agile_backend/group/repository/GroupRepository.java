@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.Lock;
 import java.util.List;
 import java.util.Optional;
 
+@SuppressWarnings("PMD.AvoidDuplicateLiterals")
 public interface GroupRepository extends JpaRepository<Group, Long> {
 
 	@Lock(LockModeType.PESSIMISTIC_WRITE)

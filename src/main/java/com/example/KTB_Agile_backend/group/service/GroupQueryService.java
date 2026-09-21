@@ -24,6 +24,7 @@ public class GroupQueryService {
 	private static final int INITIAL_PAGE_SIZE = 20;
 	private static final int CURSOR_PAGE_SIZE = 10;
 	private static final int RECOMMENDATION_PAGE_SIZE = 10;
+	private static final int RECOMMENDATION_CURSOR_PARTS = 2;
 
 	private final GroupRepository groupRepository;
 
@@ -92,12 +93,16 @@ public class GroupQueryService {
 			}
 			return id;
 		} catch (IllegalArgumentException exception) {
-			throw new ApiException(ErrorCode.BAD_REQUEST, "cursor가 올바르지 않습니다.");
+			throw new ApiException(
+					ErrorCode.BAD_REQUEST,
+					"cursor가 올바르지 않습니다.",
+					List.of(),
+					exception
+			);
 		}
 	}
 
 	private static String encodeCursor(Long groupId) {
-		// ponytail: Base64 ID cursor keeps this stateless; sign it if cursor tampering becomes a concern.
 		return Base64.getUrlEncoder().withoutPadding().encodeToString(
 				String.valueOf(groupId).getBytes(StandardCharsets.UTF_8));
 	}
@@ -110,7 +115,7 @@ public class GroupQueryService {
 		try {
 			String[] values = new String(
 					Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8).split(":", -1);
-			if (values.length != 2) {
+			if (values.length != RECOMMENDATION_CURSOR_PARTS) {
 				throw new IllegalArgumentException();
 			}
 
@@ -121,7 +126,12 @@ public class GroupQueryService {
 			}
 			return new RecommendationCursor(memberCount, groupId);
 		} catch (IllegalArgumentException exception) {
-			throw new ApiException(ErrorCode.BAD_REQUEST, "cursor가 올바르지 않습니다.");
+			throw new ApiException(
+					ErrorCode.BAD_REQUEST,
+					"cursor가 올바르지 않습니다.",
+					List.of(),
+					exception
+			);
 		}
 	}
 

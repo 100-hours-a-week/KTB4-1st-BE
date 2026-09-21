@@ -18,7 +18,7 @@ import java.util.List;
 @Component
 public class KakaoOAuthProviderClient implements OAuthProviderClient {
 
-	private static final String PROVIDER = "KAKAO";
+	private static final String PROVIDER_NAME = "KAKAO";
 
 	private final RestClient restClient = RestClient.create();
 	private final String clientId;
@@ -37,7 +37,7 @@ public class KakaoOAuthProviderClient implements OAuthProviderClient {
 
 	@Override
 	public String provider() {
-		return PROVIDER;
+		return PROVIDER_NAME;
 	}
 
 	@Override
@@ -105,7 +105,7 @@ public class KakaoOAuthProviderClient implements OAuthProviderClient {
 		String profileImageUrl = firstNonBlank(
 				profile == null ? null : profile.profileImageUrl()
 		);
-		return new OAuthUserInfo(PROVIDER, providerUserId, nickname, profileImageUrl);
+		return new OAuthUserInfo(PROVIDER_NAME, providerUserId, nickname, profileImageUrl);
 	}
 
 	private static String firstNonBlank(String... values) {

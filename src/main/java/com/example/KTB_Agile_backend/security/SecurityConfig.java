@@ -33,10 +33,12 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+	private static final int MIN_JWT_SECRET_BYTES = 32;
+
 	@Bean
 	JwtDecoder jwtDecoder(@Value("${auth.jwt.secret}") String jwtSecret) {
 		byte[] secret = jwtSecret.getBytes(StandardCharsets.UTF_8);
-		if (secret.length < 32) {
+		if (secret.length < MIN_JWT_SECRET_BYTES) {
 			throw new IllegalArgumentException("JWT secret must be at least 32 bytes");
 		}
 
