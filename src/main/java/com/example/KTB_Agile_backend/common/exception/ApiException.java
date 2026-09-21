@@ -6,8 +6,10 @@ import java.util.List;
 
 public class ApiException extends RuntimeException {
 
-	private final ErrorCode code;
-	private final List<ErrorDetail> details;
+	private static final long serialVersionUID = 1L;
+
+	private final ErrorCode errorCode;
+	private final List<ErrorDetail> errorDetails;
 
 	public ApiException(ErrorCode code) {
 		this(code, code.message());
@@ -32,8 +34,8 @@ public class ApiException extends RuntimeException {
 			Throwable cause
 	) {
 		super(message, cause);
-		this.code = code;
-		this.details = details == null ? List.of() : List.copyOf(details);
+		this.errorCode = code;
+		this.errorDetails = details == null ? List.of() : List.copyOf(details);
 	}
 
 	public ApiException(ErrorCode code, List<ErrorDetail> details) {
@@ -45,14 +47,14 @@ public class ApiException extends RuntimeException {
 	}
 
 	public HttpStatus status() {
-		return code.status();
+		return errorCode.status();
 	}
 
 	public ErrorCode code() {
-		return code;
+		return errorCode;
 	}
 
 	public List<ErrorDetail> details() {
-		return details;
+		return errorDetails;
 	}
 }

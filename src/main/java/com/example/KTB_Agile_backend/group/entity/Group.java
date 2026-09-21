@@ -67,6 +67,7 @@ public class Group extends SoftDeletableEntity {
 		return new Group(groupName, roadAddress, longitude, latitude, groupContent);
 	}
 
+	@SuppressWarnings("PMD.NullAssignment")
 	public void delete() {
 		if (!isDeleted()) {
 			this.activeGroupName = null;

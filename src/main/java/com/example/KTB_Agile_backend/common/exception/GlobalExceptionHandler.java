@@ -65,7 +65,9 @@ public class GlobalExceptionHandler {
 			Exception exception,
 			HttpServletRequest request
 	) {
-		log.error("Unhandled API exception: {} {}", request.getMethod(), request.getRequestURI(), exception);
+		if (log.isErrorEnabled()) {
+			log.error("Unhandled API exception: {} {}", request.getMethod(), request.getRequestURI(), exception);
+		}
 		return response(ErrorCode.INTERNAL_SERVER_ERROR.status(),
 				new ErrorResponse(
 						ErrorCode.INTERNAL_SERVER_ERROR.value(),

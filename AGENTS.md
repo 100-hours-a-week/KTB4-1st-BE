@@ -64,6 +64,33 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
 
+## 5. Branch, chat, and PR naming
 
+- 이 저장소에서는 Codex 기본 `codex/` 브랜치 접두사를 사용하지 않는다.
+- 작업 브랜치는 `<type>/<short-description>` 형식을 사용한다.
+- PR 제목은 커밋 메시지 형식과 동일하게 작성한다.
+- PR 생성 전 Codex 작업명은 `<type>/<short-description>`으로 지정한다.
+- PR 생성 후 Codex 작업명은 `PR #<number> <type>/<short-description>`으로 지정한다.
+- 허용되는 `<type>`은 아래 커밋 규칙과 동일하다.
+- `<short-description>`은 짧은 한국어 단어를 하이픈으로 연결한다.
 
-## Code Review Rules
+## 6. 커밋 메시지 컨벤션
+
+- 커밋 메시지는 `type: 제목 (#이슈번호)` 형식을 사용한다.
+- 허용되는 `type`: `build`, `chore`, `content`, `docs`, `feat`, `fix`, `refactor`, `style`, `test`, `deploy`
+- 제목은 sentence-case, start-case, pascal-case, upper-case, lower-case 중 하나를 사용한다.
+- 제목은 5자 이상이며 마침표로 끝내지 않는다.
+- 전체 헤더는 72자를 초과하지 않는다.
+- 본문은 선택 사항이다.
+
+예시:
+
+```text
+feat: 카카오 로그인 구현 (#123)
+```
+
+## 7. PR 및 리뷰 규칙
+
+- PR 제목은 커밋 메시지와 동일한 형식을 사용한다.
+- 하나의 PR은 하나의 목적만 다룬다.
+- 코드 리뷰가 완료된 후 병합한다.

@@ -21,7 +21,7 @@ tasks.withType(com.github.spotbugs.snom.SpotBugsTask) {
 
 pmd {
 	toolVersion = '7.16.0'
-	ignoreFailures = true	// 위반 사항 해결 후 false로 변경해주세요.
+	ignoreFailures = false
 	consoleOutput = true
 
 	rulesMinimumPriority = 5

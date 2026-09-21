@@ -18,6 +18,8 @@ import java.time.Instant;
 @Component
 public class JwtAccessTokenIssuer implements AccessTokenIssuer {
 
+	private static final int MIN_JWT_SECRET_BYTES = 32;
+
 	private final JwtEncoder jwtEncoder;
 	private final Duration accessTokenTtl;
 
@@ -25,7 +27,7 @@ public class JwtAccessTokenIssuer implements AccessTokenIssuer {
 			@Value("${auth.jwt.secret}") String jwtSecret,
 			@Value("${auth.jwt.access-token-ttl-seconds}") long accessTokenTtlSeconds
 	) {
-		if (jwtSecret.getBytes(StandardCharsets.UTF_8).length < 32) {
+		if (jwtSecret.getBytes(StandardCharsets.UTF_8).length < MIN_JWT_SECRET_BYTES) {
 			throw new IllegalArgumentException("JWT secret must be at least 32 bytes");
 		}
 		this.jwtEncoder = NimbusJwtEncoder.withSecretKey(

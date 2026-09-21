@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 @Getter
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
+@SuppressWarnings("PMD.AbstractClassWithoutAbstractMethod")
 public abstract class BaseEntity {
 
 	@CreatedDate
