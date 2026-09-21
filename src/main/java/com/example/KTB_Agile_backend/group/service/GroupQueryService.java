@@ -4,7 +4,7 @@ import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.group.dto.response.GroupPageResponse;
 import com.example.KTB_Agile_backend.group.dto.response.GroupSummary;
-import com.example.KTB_Agile_backend.group.entity.Group;
+import com.example.KTB_Agile_backend.group.entity.GroupMemberStatus;
 import com.example.KTB_Agile_backend.group.repository.GroupRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -23,35 +23,60 @@ public class GroupQueryService {
 
 	private static final int INITIAL_PAGE_SIZE = 20;
 	private static final int CURSOR_PAGE_SIZE = 10;
+	private static final int RECOMMENDATION_PAGE_SIZE = 10;
 
 	private final GroupRepository groupRepository;
 
 	@Transactional(readOnly = true)
-	public GroupPageResponse search(String keyword, String cursor) {
+	public GroupPageResponse search(Long userId, String keyword, String cursor) {
 		Long cursorId = decodeCursor(cursor);
 		int size = cursorId == null ? INITIAL_PAGE_SIZE : CURSOR_PAGE_SIZE;
 		String normalizedKeyword = keyword == null ? "" : keyword.strip();
 		Pageable pageable = PageRequest.of(0, size + 1, Sort.by(Sort.Direction.DESC, "id"));
-		List<Group> groups = cursorId == null
-				? groupRepository.findByDeletedAtIsNullAndGroupNameContainingOrderByIdDesc(
-						normalizedKeyword, pageable)
-				: groupRepository.findByDeletedAtIsNullAndGroupNameContainingAndIdLessThanOrderByIdDesc(
-						normalizedKeyword, cursorId, pageable);
+		List<GroupSummary> groups = cursorId == null
+				? groupRepository.findSearchSummaries(
+						userId, GroupMemberStatus.ACTIVE, normalizedKeyword, pageable)
+				: groupRepository.findSearchSummariesAfter(
+						userId, GroupMemberStatus.ACTIVE, normalizedKeyword, cursorId, pageable);
 
 		boolean hasNext = groups.size() > size;
-		List<Group> pageGroups = hasNext
+		List<GroupSummary> pageGroups = hasNext
 				? groups.subList(0, size)
 				: groups;
 		String nextCursor = hasNext
-				? encodeCursor(pageGroups.get(pageGroups.size() - 1).getId())
+				? encodeCursor(pageGroups.get(pageGroups.size() - 1).groupId())
 				: null;
 
 		return new GroupPageResponse(
-				pageGroups.stream().map(GroupSummary::from).toList(),
-				size,
-				hasNext,
-				nextCursor
+				pageGroups,
+				nextCursor,
+				hasNext
 		);
+	}
+
+	@Transactional(readOnly = true)
+	public GroupPageResponse recommendations(Long userId, String cursor) {
+		RecommendationCursor recommendationCursor = decodeRecommendationCursor(cursor);
+		Pageable pageable = PageRequest.of(0, RECOMMENDATION_PAGE_SIZE + 1);
+		List<GroupSummary> groups = recommendationCursor == null
+				? groupRepository.findRecommendations(userId, GroupMemberStatus.ACTIVE, pageable)
+				: groupRepository.findRecommendationsAfter(
+						userId,
+						GroupMemberStatus.ACTIVE,
+						recommendationCursor.memberCount(),
+						recommendationCursor.groupId(),
+						pageable
+				);
+
+		boolean hasNext = groups.size() > RECOMMENDATION_PAGE_SIZE;
+		List<GroupSummary> pageGroups = hasNext
+				? groups.subList(0, RECOMMENDATION_PAGE_SIZE)
+				: groups;
+		String nextCursor = hasNext
+				? encodeRecommendationCursor(pageGroups.get(pageGroups.size() - 1))
+				: null;
+
+		return new GroupPageResponse(pageGroups, nextCursor, hasNext);
 	}
 
 	private static Long decodeCursor(String cursor) {
@@ -75,5 +100,37 @@ public class GroupQueryService {
 		// ponytail: Base64 ID cursor keeps this stateless; sign it if cursor tampering becomes a concern.
 		return Base64.getUrlEncoder().withoutPadding().encodeToString(
 				String.valueOf(groupId).getBytes(StandardCharsets.UTF_8));
+	}
+
+	private static RecommendationCursor decodeRecommendationCursor(String cursor) {
+		if (cursor == null || cursor.isBlank()) {
+			return null;
+		}
+
+		try {
+			String[] values = new String(
+					Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8).split(":", -1);
+			if (values.length != 2) {
+				throw new IllegalArgumentException();
+			}
+
+			long memberCount = Long.parseLong(values[0]);
+			long groupId = Long.parseLong(values[1]);
+			if (memberCount < 0 || groupId <= 0) {
+				throw new IllegalArgumentException();
+			}
+			return new RecommendationCursor(memberCount, groupId);
+		} catch (IllegalArgumentException exception) {
+			throw new ApiException(ErrorCode.BAD_REQUEST, "cursor가 올바르지 않습니다.");
+		}
+	}
+
+	private static String encodeRecommendationCursor(GroupSummary group) {
+		String value = group.memberCount() + ":" + group.groupId();
+		return Base64.getUrlEncoder().withoutPadding().encodeToString(
+				value.getBytes(StandardCharsets.UTF_8));
+	}
+
+	private record RecommendationCursor(long memberCount, long groupId) {
 	}
 }

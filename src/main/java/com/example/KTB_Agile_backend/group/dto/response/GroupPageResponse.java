@@ -4,9 +4,8 @@ import java.util.List;
 
 public record GroupPageResponse(
 		List<GroupSummary> groups,
-		int size,
-		boolean hasNext,
-		String nextCursor
+		String nextCursor,
+		boolean hasNext
 ) {
 
 	public GroupPageResponse {

@@ -2,12 +2,12 @@ package com.example.KTB_Agile_backend.group.controller;
 
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
 import com.example.KTB_Agile_backend.group.dto.request.CreateGroupRequest;
-import com.example.KTB_Agile_backend.group.dto.response.GroupCreatedResponse;
 import com.example.KTB_Agile_backend.group.dto.response.GroupPageResponse;
 import com.example.KTB_Agile_backend.group.service.GroupQueryService;
 import com.example.KTB_Agile_backend.group.service.GroupService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -31,22 +31,31 @@ public class GroupController {
 
 	@GetMapping
 	public ResponseEntity<ApiResponse<GroupPageResponse>> search(
+			Authentication authentication,
 			@RequestParam(defaultValue = "") String keyword,
 			@RequestParam(required = false) String cursor
 	) {
-		return ResponseEntity.ok(new ApiResponse<>(groupQueryService.search(keyword, cursor), null));
+		Long userId = Long.valueOf(authentication.getName());
+		return ResponseEntity.ok(new ApiResponse<>(groupQueryService.search(userId, keyword, cursor), null));
+	}
+
+	@GetMapping("/recommendations")
+	public ResponseEntity<ApiResponse<GroupPageResponse>> recommendations(
+			Authentication authentication,
+			@RequestParam(required = false) String cursor
+	) {
+		Long userId = Long.valueOf(authentication.getName());
+		return ResponseEntity.ok(new ApiResponse<>(
+				groupQueryService.recommendations(userId, cursor), null));
 	}
 
 	@PostMapping
-	public ResponseEntity<ApiResponse<GroupCreatedResponse>> create(
+	public ResponseEntity<Void> create(
 			Authentication authentication,
 			@Valid @RequestBody CreateGroupRequest request
 	) {
-		GroupCreatedResponse response = groupService.create(
-				Long.valueOf(authentication.getName()), request);
-
-		return ResponseEntity.created(URI.create("/groups/" + response.groupId()))
-				.body(new ApiResponse<>(response, null));
+		groupService.create(Long.valueOf(authentication.getName()), request);
+		return ResponseEntity.status(HttpStatus.CREATED).build();
 	}
 
 	@PostMapping("/{groupId}/members")
@@ -55,7 +64,7 @@ public class GroupController {
 			@PathVariable Long groupId
 	) {
 		groupService.join(Long.valueOf(authentication.getName()), groupId);
-		return ResponseEntity.noContent().build();
+		return ResponseEntity.created(URI.create("/groups/" + groupId + "/members/me")).build();
 	}
 
 	@DeleteMapping("/{groupId}/members/me")

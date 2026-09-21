@@ -51,7 +51,7 @@ GET    /users/me/groups              내 그룹 목록
 
 그룹 삭제는 별도 API로 호출하지 않는다. `DELETE /groups/{id}/members/me`로 마지막 `ACTIVE` 멤버가 탈퇴할 때 그룹이 자동으로 soft delete된다.
 
-성공 응답은 `POST /groups`가 `201 Created`와 `Location`, `groupId`·`createdAt`을 반환하고, 가입·탈퇴는 `204 No Content`로 본문을 반환하지 않는다.
+성공 응답은 `POST /groups`가 `201 Created`와 빈 본문을 반환하고, 가입은 `201 Created`와 멤버십 `Location`, 탈퇴는 `204 No Content`를 반환한다. 생성·가입 후 화면은 그룹 목록을 다시 조회한다.
 
 `POST /groups/{id}/location-verifications`는 현재 API 범위에 포함하지 않는다. 좌표 필드는 향후 위치 인증을 추가할 수 있도록 먼저 저장해 둔다.
 
@@ -71,7 +71,6 @@ group/
 │   │   ├── JoinGroupRequest.java
 │   │   └── LocationVerificationRequest.java
 │   └── response/
-│       ├── GroupCreatedResponse.java
 │       ├── GroupMemberResponse.java
 │       ├── GroupPageResponse.java
 │       ├── GroupSummary.java
@@ -174,8 +173,8 @@ POST /groups
       2. 생성자의 ACTIVE 그룹 수가 5개 미만인지 확인
       3. Group 생성·저장
       4. 생성자를 GroupMember(ACTIVE)로 저장
-      5. groupId·createdAt 반환
-  → 201 + ApiResponse + Location
+      5. 생성 성공 처리
+  → 201 Created + 빈 본문
 ```
 
 트랜잭션 경계는 `GroupService.create()` 하나다. 그룹 저장은 성공했지만 첫 멤버 저장이 실패하는 반쪽 상태를 허용하지 않는다.
@@ -294,7 +293,7 @@ UNPROCESSABLE_ENTITY 422
 3. `GroupMember` 엔티티: 가입·탈퇴·재가입 상태 전환
 4. `GroupService` 단위 테스트: 생성자 멤버 동시 저장, 활성 이름 중복 차단·삭제 후 재사용, 사용자별 ACTIVE 그룹 5개 제한, LEFT 멤버 재가입, 마지막 멤버 탈퇴 시 자동 삭제
 5. `GroupQueryService`/Repository 테스트: 빈 목록, 삭제 그룹 제외, 검색 cursor
-6. `GroupController` 테스트: `ApiResponse`, 201 Location, 400/404/409/422
+6. `GroupController` 테스트: 생성 201 빈 본문·가입 201 Location, 400/404/409/422
 7. MySQL 통합 테스트: unique 제약과 트랜잭션 rollback
 
 첫 구현에서 가장 작은 의미 있는 검증은 가입 유스케이스가 사용자별 ACTIVE 그룹 5개 초과 요청에는 409를 반환하고, LEFT 멤버 재가입 시 기존 row를 ACTIVE로 되돌리는 테스트다.
@@ -328,4 +327,3 @@ UNPROCESSABLE_ENTITY 422
 
 1. **경로 prefix**: 시트의 `/api/groups`를 전역 context path로 적용할지, 현재 코드처럼 `/groups`로 구현할지
 2. **향후 위치 인증**: 좌표 거리 기반 인증의 허용 반경·토큰 TTL·가입 전제조건
-3. **생성 응답의 Location**: `/groups/{id}` 상세 조회 API를 함께 만들지, 존재하는 리소스 경로로 바꿀지

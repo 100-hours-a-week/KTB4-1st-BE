@@ -1,8 +1,8 @@
 package com.example.KTB_Agile_backend.group.controller;
 
 import com.example.KTB_Agile_backend.common.exception.GlobalExceptionHandler;
-import com.example.KTB_Agile_backend.group.dto.response.GroupCreatedResponse;
 import com.example.KTB_Agile_backend.group.dto.response.GroupPageResponse;
+import com.example.KTB_Agile_backend.group.dto.response.GroupSummary;
 import com.example.KTB_Agile_backend.group.service.GroupQueryService;
 import com.example.KTB_Agile_backend.group.service.GroupService;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -45,25 +46,55 @@ class GroupControllerTest {
 
 	@Test
 	void searchesGroups() throws Exception {
-		when(groupQueryService.search("마을", null))
-				.thenReturn(new GroupPageResponse(List.of(), 20, false, null));
+		when(groupQueryService.search(42L, "마을", null))
+				.thenReturn(new GroupPageResponse(List.of(), null, false));
 
 		mockMvc.perform(get("/groups")
 					.param("keyword", "마을")
 					.principal(new UsernamePasswordAuthenticationToken("42", null)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.groups").isArray())
-				.andExpect(jsonPath("$.data.size").value(20))
 				.andExpect(jsonPath("$.data.hasNext").value(false));
 
-		verify(groupQueryService).search("마을", null);
+		verify(groupQueryService).search(42L, "마을", null);
+	}
+
+	@Test
+	void recommendsGroups() throws Exception {
+		when(groupQueryService.recommendations(42L, null)).thenReturn(new GroupPageResponse(
+				List.of(new GroupSummary(
+						101L,
+						"분당 정자동 나눔방",
+						"경기도 성남시 분당구 정자동 178-1",
+						"정자동 주민들을 위한 물품 교환 그룹입니다.",
+						24L,
+						12L,
+						LocalDateTime.of(2026, 9, 4, 13, 30),
+						false
+				)),
+				"cursor",
+				true
+		));
+
+		mockMvc.perform(get("/groups/recommendations")
+					.principal(new UsernamePasswordAuthenticationToken("42", null)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.groups[0].groupId").value(101))
+				.andExpect(jsonPath("$.data.groups[0].memberCount").value(24))
+				.andExpect(jsonPath("$.data.groups[0].itemCount").value(12))
+				.andExpect(jsonPath("$.data.groups[0].isJoined").value(false))
+				.andExpect(jsonPath("$.data.nextCursor").value("cursor"))
+				.andExpect(jsonPath("$.data.hasNext").value(true));
+
+		verify(groupQueryService).recommendations(42L, null);
 	}
 
 	@Test
 	void joinsGroup() throws Exception {
 		mockMvc.perform(post("/groups/7/members")
 					.principal(new UsernamePasswordAuthenticationToken("42", null)))
-				.andExpect(status().isNoContent());
+				.andExpect(status().isCreated())
+				.andExpect(header().string("Location", "/groups/7/members/me"));
 
 		verify(groupService).join(42L, 7L);
 	}
@@ -79,11 +110,6 @@ class GroupControllerTest {
 
 	@Test
 	void createsGroup() throws Exception {
-		when(groupService.create(eq(42L), any())).thenReturn(new GroupCreatedResponse(
-				7L,
-				LocalDateTime.of(2026, 9, 20, 12, 0)
-		));
-
 		mockMvc.perform(post("/groups")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
 					.contentType(MediaType.APPLICATION_JSON)
@@ -97,10 +123,7 @@ class GroupControllerTest {
 							}
 							"""))
 				.andExpect(status().isCreated())
-				.andExpect(header().string("Location", "/groups/7"))
-				.andExpect(jsonPath("$.data.groupId").value(7))
-				.andExpect(jsonPath("$.data.createdAt").value("2026-09-20T12:00:00"))
-				.andExpect(jsonPath("$.error").doesNotExist());
+				.andExpect(content().string(""));
 
 		verify(groupService).create(eq(42L), any());
 	}
