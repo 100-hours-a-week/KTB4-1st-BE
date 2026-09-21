@@ -3,7 +3,6 @@ package com.example.KTB_Agile_backend.group.service;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.group.dto.request.CreateGroupRequest;
-import com.example.KTB_Agile_backend.group.dto.response.GroupCreatedResponse;
 import com.example.KTB_Agile_backend.group.entity.Group;
 import com.example.KTB_Agile_backend.group.entity.GroupMember;
 import com.example.KTB_Agile_backend.group.entity.GroupMemberStatus;
@@ -29,7 +28,7 @@ public class GroupService {
 	private final UserRepository userRepository;
 
 	@Transactional
-	public GroupCreatedResponse create(Long userId, CreateGroupRequest request) {
+	public void create(Long userId, CreateGroupRequest request) {
 		User user = userRepository.findActiveById(userId)
 				.orElseThrow(() -> new ApiException(ErrorCode.AUTHENTICATION_REQUIRED));
 
@@ -51,8 +50,6 @@ public class GroupService {
 			throw new ApiException(ErrorCode.CONFLICT, "이미 사용 중인 그룹명입니다.", java.util.List.of(), exception);
 		}
 		groupMemberRepository.save(new GroupMember(group, user));
-
-		return GroupCreatedResponse.from(group);
 	}
 
 	@Transactional
