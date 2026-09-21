@@ -1,6 +1,6 @@
 package com.example.KTB_Agile_backend.group.entity;
 
-import com.example.KTB_Agile_backend.common.entity.BaseEntity;
+import com.example.KTB_Agile_backend.common.entity.UpdatableEntity;
 import com.example.KTB_Agile_backend.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -36,7 +36,7 @@ import static java.util.Objects.requireNonNull;
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class GroupMember extends BaseEntity {
+public class GroupMember extends UpdatableEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)

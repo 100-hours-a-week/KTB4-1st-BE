@@ -1,6 +1,7 @@
 package com.example.KTB_Agile_backend.group.entity;
 
 import com.example.KTB_Agile_backend.common.entity.SoftDeletableEntity;
+import com.example.KTB_Agile_backend.item.entity.Item;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -44,15 +45,13 @@ public class GroupItem extends SoftDeletableEntity {
 	@JoinColumn(name = "group_id", nullable = false)
 	private Group group;
 
-	@Column(name = "item_id", nullable = false)
-	private Long itemId;
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "item_id", nullable = false)
+	private Item item;
 
-	public GroupItem(Group group, Long itemId) {
+	public GroupItem(Group group, Item item) {
 		this.group = requireNonNull(group, "group must not be null");
-		this.itemId = requireNonNull(itemId, "itemId must not be null");
-		if (itemId <= 0) {
-			throw new IllegalArgumentException("itemId must be positive");
-		}
+		this.item = requireNonNull(item, "item must not be null");
 	}
 
 	public void delete() {

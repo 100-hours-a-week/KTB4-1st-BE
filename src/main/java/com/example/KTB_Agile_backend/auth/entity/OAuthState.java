@@ -1,6 +1,6 @@
 package com.example.KTB_Agile_backend.auth.entity;
 
-import com.example.KTB_Agile_backend.common.entity.BaseEntity;
+import com.example.KTB_Agile_backend.common.entity.UpdatableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -18,7 +18,7 @@ import static java.util.Objects.requireNonNull;
 @Table(name = "oauth_states")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class OAuthState extends BaseEntity {
+public class OAuthState extends UpdatableEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)

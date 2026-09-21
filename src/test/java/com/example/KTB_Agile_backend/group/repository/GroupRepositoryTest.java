@@ -4,6 +4,7 @@ import com.example.KTB_Agile_backend.group.entity.Group;
 import com.example.KTB_Agile_backend.group.entity.GroupItem;
 import com.example.KTB_Agile_backend.group.entity.GroupMember;
 import com.example.KTB_Agile_backend.group.entity.GroupMemberStatus;
+import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.user.entity.User;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,10 @@ class GroupRepositoryTest {
 		entityManager.persist(viewer);
 		entityManager.persist(anotherUser);
 		entityManager.persist(thirdUser);
+		Item firstItem = new Item(anotherUser, "첫 물품", "첫 설명");
+		Item secondItem = new Item(thirdUser, "두 번째 물품", "두 번째 설명");
+		entityManager.persist(firstItem);
+		entityManager.persist(secondItem);
 
 		Group popular = groupRepository.saveAndFlush(createGroup("인기 그룹"));
 		Group joined = groupRepository.saveAndFlush(createGroup("가입 그룹"));
@@ -46,8 +51,8 @@ class GroupRepositoryTest {
 				new GroupMember(joined, viewer)
 		));
 
-		entityManager.persist(new GroupItem(popular, 1L));
-		entityManager.persist(new GroupItem(popular, 2L));
+		entityManager.persist(new GroupItem(popular, firstItem));
+		entityManager.persist(new GroupItem(popular, secondItem));
 		entityManager.flush();
 
 		var recommendations = groupRepository.findRecommendations(
@@ -69,7 +74,9 @@ class GroupRepositoryTest {
 		entityManager.persist(viewer);
 		Group group = groupRepository.saveAndFlush(createGroup("인기 마을"));
 		groupMemberRepository.saveAndFlush(new GroupMember(group, viewer));
-		entityManager.persist(new GroupItem(group, 1L));
+		Item item = new Item(viewer, "물품", "설명");
+		entityManager.persist(item);
+		entityManager.persist(new GroupItem(group, item));
 		entityManager.flush();
 
 		var searchResults = groupRepository.findSearchSummaries(

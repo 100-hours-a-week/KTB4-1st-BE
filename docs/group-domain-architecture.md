@@ -161,7 +161,7 @@ leftAt                LocalDateTime nullable
 
 ### `GroupItem`
 
-`group_items`는 `group_id`, `item_id`, `created_at`, `deleted_at`을 보유하는 연결 엔티티다. 그룹 엔티티가 물품 엔티티를 직접 로딩하지 않도록 하고, 물품 생성·수정 유스케이스가 그룹 ID 목록을 `GroupService` 또는 `GroupItemRepository`로 검증한다.
+`group_items`는 `group_id`, `item_id`, `created_at`, `deleted_at`을 보유하는 연결 엔티티다. `GroupItem.group`과 `GroupItem.item`은 단방향 `LAZY @ManyToOne`으로 매핑하고, `Group`에 물품 컬렉션을 펼치는 양방향 관계는 두지 않는다. 물품 생성·수정 유스케이스의 그룹 ID 검증은 `GroupService` 또는 `GroupItemRepository`에서 담당한다.
 
 ## 5. 생성 유스케이스
 

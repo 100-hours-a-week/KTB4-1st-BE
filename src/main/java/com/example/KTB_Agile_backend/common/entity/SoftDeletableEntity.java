@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 
 @Getter
 @MappedSuperclass
-public abstract class SoftDeletableEntity extends BaseEntity {
+public abstract class SoftDeletableEntity extends UpdatableEntity {
 
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
