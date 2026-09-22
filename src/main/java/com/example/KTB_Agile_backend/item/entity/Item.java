@@ -4,6 +4,8 @@ import com.example.KTB_Agile_backend.common.entity.SoftDeletableEntity;
 import com.example.KTB_Agile_backend.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -37,8 +39,9 @@ public class Item extends SoftDeletableEntity {
 	@Column(nullable = false)
 	private Integer quantity = 1;
 
+	@Enumerated(EnumType.STRING)
 	@Column(name = "item_state", nullable = false, length = 20)
-	private String itemState = "AVAILABLE";
+	private ItemState itemState = ItemState.AVAILABLE;
 
 	@Column(nullable = false, length = 100)
 	private String title;
@@ -62,6 +65,31 @@ public class Item extends SoftDeletableEntity {
 		this.user = requireNonNull(user, "user must not be null");
 		this.title = requireNonNull(title, "title must not be null");
 		this.content = requireNonNull(content, "content must not be null");
+	}
+
+	public Item(
+			User user,
+			String title,
+			String content,
+			Integer quantity,
+			ItemState itemState,
+			BigDecimal exchangeUrgencyScore,
+			BigDecimal valueGapToleranceScore
+	) {
+		this(user, title, content);
+		if (quantity == null || quantity < 1) {
+			throw new IllegalArgumentException("quantity must be positive");
+		}
+		this.quantity = quantity;
+		this.itemState = requireNonNull(itemState, "itemState must not be null");
+		this.exchangeUrgencyScore = requireNonNull(
+				exchangeUrgencyScore,
+				"exchangeUrgencyScore must not be null"
+		);
+		this.valueGapToleranceScore = requireNonNull(
+				valueGapToleranceScore,
+				"valueGapToleranceScore must not be null"
+		);
 	}
 
 }

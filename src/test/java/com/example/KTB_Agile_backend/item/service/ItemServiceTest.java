@@ -1,0 +1,259 @@
+package com.example.KTB_Agile_backend.item.service;
+
+import com.example.KTB_Agile_backend.common.exception.ApiException;
+import com.example.KTB_Agile_backend.group.entity.Group;
+import com.example.KTB_Agile_backend.group.entity.GroupMember;
+import com.example.KTB_Agile_backend.group.repository.GroupItemRepository;
+import com.example.KTB_Agile_backend.group.repository.GroupMemberRepository;
+import com.example.KTB_Agile_backend.group.repository.GroupRepository;
+import com.example.KTB_Agile_backend.image.entity.Image;
+import com.example.KTB_Agile_backend.image.repository.ImageRepository;
+import com.example.KTB_Agile_backend.item.dto.request.CreateItemRequest;
+import com.example.KTB_Agile_backend.item.entity.Item;
+import com.example.KTB_Agile_backend.item.entity.ItemState;
+import com.example.KTB_Agile_backend.item.repository.ItemLikeRepository;
+import com.example.KTB_Agile_backend.item.repository.ItemRepository;
+import com.example.KTB_Agile_backend.item.repository.ItemStatsRepository;
+import com.example.KTB_Agile_backend.user.entity.User;
+import com.example.KTB_Agile_backend.user.repository.UserRepository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.mockito.ArgumentCaptor;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class ItemServiceTest {
+
+	@Test
+	void createsItemWithAllGroupsAndImagesInOneTransaction() {
+		ItemRepository itemRepository = mock(ItemRepository.class);
+		ItemStatsRepository itemStatsRepository = mock(ItemStatsRepository.class);
+		ItemLikeRepository itemLikeRepository = mock(ItemLikeRepository.class);
+		GroupRepository groupRepository = mock(GroupRepository.class);
+		GroupMemberRepository groupMemberRepository = mock(GroupMemberRepository.class);
+		GroupItemRepository groupItemRepository = mock(GroupItemRepository.class);
+		ImageRepository imageRepository = mock(ImageRepository.class);
+		UserRepository userRepository = mock(UserRepository.class);
+		ItemService service = new ItemService(
+				itemRepository,
+				itemStatsRepository,
+				itemLikeRepository,
+				groupRepository,
+				groupMemberRepository,
+				groupItemRepository,
+				imageRepository,
+				userRepository
+		);
+		User user = mock(User.class);
+		when(user.getId()).thenReturn(42L);
+		Group firstGroup = group("첫 그룹");
+		Group secondGroup = group("두 번째 그룹");
+		Image image = new Image(user, "https://example.com/image.jpg");
+		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(user));
+		when(groupRepository.findAllByIdInAndDeletedAtIsNull(List.of(101L, 205L)))
+				.thenReturn(List.of(firstGroup, secondGroup));
+		when(groupMemberRepository.countByGroup_IdInAndUser_IdAndStatus(
+				eq(List.of(101L, 205L)), eq(42L), any()))
+				.thenReturn(2L);
+		when(imageRepository.findAllForUpdateByIdIn(List.of(1001L))).thenReturn(List.of(image));
+		when(itemRepository.saveAndFlush(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		var response = service.create(42L, request(List.of(101L, 205L), List.of(1001L)));
+
+		assertThat(response.itemId()).isNull();
+		assertThat(image.getItem()).isNotNull();
+		verify(itemStatsRepository).save(any());
+		ArgumentCaptor<Iterable<com.example.KTB_Agile_backend.group.entity.GroupItem>> groupItemsCaptor =
+				ArgumentCaptor.forClass(Iterable.class);
+		verify(groupItemRepository).saveAll(groupItemsCaptor.capture());
+		assertThat(((Iterable<?>) groupItemsCaptor.getValue())).hasSize(2);
+		verify(imageRepository).saveAll(List.of(image));
+	}
+
+	@Test
+	void rejectsWholeRequestWhenOneGroupIsNotAvailable() {
+		ItemRepository itemRepository = mock(ItemRepository.class);
+		GroupRepository groupRepository = mock(GroupRepository.class);
+		GroupMemberRepository groupMemberRepository = mock(GroupMemberRepository.class);
+		UserRepository userRepository = mock(UserRepository.class);
+		ItemService service = service(itemRepository, groupRepository, groupMemberRepository,
+				mock(ImageRepository.class), userRepository);
+		User requester = user(42L);
+		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(requester));
+		when(groupRepository.findAllByIdInAndDeletedAtIsNull(List.of(101L, 205L)))
+				.thenReturn(List.of(group("첫 그룹")));
+
+		ApiException exception = assertThrows(ApiException.class,
+				() -> service.create(42L, request(List.of(101L, 205L), List.of(1001L))));
+
+		assertThat(exception.status()).isEqualTo(HttpStatus.NOT_FOUND);
+		verify(itemRepository, never()).saveAndFlush(any());
+		verify(groupMemberRepository, never()).countByGroup_IdInAndUser_IdAndStatus(any(), any(), any());
+	}
+
+	@Test
+	void rejectsImageOwnedByAnotherUser() {
+		ImageRepository imageRepository = mock(ImageRepository.class);
+		UserRepository userRepository = mock(UserRepository.class);
+		GroupRepository groupRepository = mock(GroupRepository.class);
+		GroupMemberRepository groupMemberRepository = mock(GroupMemberRepository.class);
+		ItemService service = service(mock(ItemRepository.class), groupRepository,
+				groupMemberRepository, imageRepository, userRepository);
+		User owner = user(7L);
+		User requester = user(42L);
+		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(requester));
+		when(groupRepository.findAllByIdInAndDeletedAtIsNull(List.of(101L)))
+				.thenReturn(List.of(group("그룹")));
+		when(groupMemberRepository.countByGroup_IdInAndUser_IdAndStatus(any(), eq(42L), any()))
+				.thenReturn(1L);
+		when(imageRepository.findAllForUpdateByIdIn(List.of(1001L)))
+				.thenReturn(List.of(new Image(owner, "https://example.com/image.jpg")));
+
+		ApiException exception = assertThrows(ApiException.class,
+				() -> service.create(42L, request(List.of(101L), List.of(1001L))));
+
+		assertThat(exception.status()).isEqualTo(HttpStatus.FORBIDDEN);
+	}
+
+	@Test
+	void rejectsLeftMemberFromGroupItemList() {
+		GroupRepository groupRepository = mock(GroupRepository.class);
+		GroupMemberRepository groupMemberRepository = mock(GroupMemberRepository.class);
+		ItemService service = service(mock(ItemRepository.class), groupRepository,
+				groupMemberRepository, mock(ImageRepository.class));
+		Group group = group("그룹");
+		GroupMember member = new GroupMember(group, mock(User.class));
+		member.leave(LocalDateTime.now());
+		when(groupRepository.findByIdAndDeletedAtIsNull(101L)).thenReturn(Optional.of(group));
+		when(groupMemberRepository.findByGroup_IdAndUser_Id(101L, 42L)).thenReturn(Optional.of(member));
+
+		ApiException exception = assertThrows(ApiException.class,
+				() -> service.findByGroup(42L, 101L, null));
+
+		assertThat(exception.status()).isEqualTo(HttpStatus.FORBIDDEN);
+	}
+
+	@Test
+	void returnsCursorPageAndNullCursorOnLastPage() {
+		GroupRepository groupRepository = mock(GroupRepository.class);
+		GroupMemberRepository groupMemberRepository = mock(GroupMemberRepository.class);
+		GroupItemRepository groupItemRepository = mock(GroupItemRepository.class);
+		ItemStatsRepository itemStatsRepository = mock(ItemStatsRepository.class);
+		ItemLikeRepository itemLikeRepository = mock(ItemLikeRepository.class);
+		ImageRepository imageRepository = mock(ImageRepository.class);
+		User owner = user(10L);
+		User memberUser = user(42L);
+		ItemService service = new ItemService(
+				mock(ItemRepository.class), itemStatsRepository, itemLikeRepository, groupRepository,
+				groupMemberRepository, groupItemRepository, imageRepository, mock(UserRepository.class));
+		Group group = group("그룹");
+		when(groupRepository.findByIdAndDeletedAtIsNull(101L)).thenReturn(Optional.of(group));
+		when(groupMemberRepository.findByGroup_IdAndUser_Id(101L, 42L))
+				.thenReturn(Optional.of(new GroupMember(group, memberUser)));
+		List<Item> firstItems = new ArrayList<>();
+		for (long id = 21; id >= 1; id--) {
+			firstItems.add(item(id, owner));
+		}
+		Item lastItem = item(1L, owner);
+		when(groupItemRepository.findActiveItemsByGroupId(eq(101L), any(Pageable.class)))
+				.thenReturn(firstItems);
+		when(groupItemRepository.findActiveItemsByGroupIdAfter(eq(101L), eq(2L), any(Pageable.class)))
+				.thenReturn(List.of(lastItem));
+		when(itemStatsRepository.findAllById(any())).thenReturn(List.of());
+		when(itemLikeRepository.findAllByItemIdsAndUserId(any(), eq(42L))).thenReturn(List.of());
+		when(imageRepository.findAllByItemIdsOrderByItemIdAndId(any())).thenReturn(List.of());
+
+		var firstResponse = service.findByGroup(42L, 101L, null);
+		var lastResponse = service.findByGroup(42L, 101L, "Mg");
+
+		assertThat(firstResponse.items()).hasSize(20);
+		assertThat(firstResponse.items().get(0).itemId()).isEqualTo(21L);
+		assertThat(firstResponse.nextCursor()).isEqualTo("Mg");
+		assertThat(firstResponse.hasNext()).isTrue();
+		assertThat(lastResponse.items()).hasSize(1);
+		assertThat(lastResponse.nextCursor()).isNull();
+		assertThat(lastResponse.hasNext()).isFalse();
+	}
+
+	private static CreateItemRequest request(List<Long> groupIds, List<Long> imageIds) {
+		return new CreateItemRequest(
+				"제목",
+				"내용",
+				1,
+				ItemState.AVAILABLE,
+				new BigDecimal("0.50"),
+				new BigDecimal("0.30"),
+				groupIds,
+				imageIds
+		);
+	}
+
+	private static User user(long id) {
+		User user = mock(User.class);
+		lenient().when(user.getId()).thenReturn(id);
+		return user;
+	}
+
+	private static Group group(String name) {
+		return Group.create(name, "주소", BigDecimal.ZERO, BigDecimal.ZERO, "");
+	}
+
+	private static Item item(long id, User owner) {
+		Item item = mock(Item.class);
+		lenient().when(item.getId()).thenReturn(id);
+		lenient().when(item.getUser()).thenReturn(owner);
+		lenient().when(item.getTitle()).thenReturn("물품 " + id);
+		lenient().when(item.getContent()).thenReturn("내용");
+		lenient().when(item.getQuantity()).thenReturn(1);
+		lenient().when(item.getItemState()).thenReturn(ItemState.AVAILABLE);
+		return item;
+	}
+
+	private static ItemService service(
+			ItemRepository itemRepository,
+			GroupRepository groupRepository,
+			GroupMemberRepository groupMemberRepository,
+			ImageRepository imageRepository
+	) {
+		return service(itemRepository, groupRepository, groupMemberRepository, imageRepository,
+				mock(UserRepository.class));
+	}
+
+	private static ItemService service(
+			ItemRepository itemRepository,
+			GroupRepository groupRepository,
+			GroupMemberRepository groupMemberRepository,
+			ImageRepository imageRepository,
+			UserRepository userRepository
+	) {
+		return new ItemService(
+				itemRepository,
+				mock(ItemStatsRepository.class),
+				mock(ItemLikeRepository.class),
+				groupRepository,
+				groupMemberRepository,
+				mock(GroupItemRepository.class),
+				imageRepository,
+				userRepository
+		);
+	}
+
+}
