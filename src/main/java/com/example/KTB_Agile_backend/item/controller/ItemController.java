@@ -3,6 +3,7 @@ package com.example.KTB_Agile_backend.item.controller;
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
 import com.example.KTB_Agile_backend.item.dto.request.CreateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.response.ItemCreateResponse;
+import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
 import com.example.KTB_Agile_backend.item.service.ItemService;
 import jakarta.validation.Valid;
@@ -32,6 +33,16 @@ public class ItemController {
 	) {
 		ItemCreateResponse response = itemService.create(Long.valueOf(authentication.getName()), request);
 		return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponse<>(response, null));
+	}
+
+	@GetMapping("/items/{itemId}")
+	public ResponseEntity<ApiResponse<ItemDetailResponse>> findDetail(
+			Authentication authentication,
+			@PathVariable Long itemId
+	) {
+		ItemDetailResponse response = itemService.findDetail(
+				Long.valueOf(authentication.getName()), itemId);
+		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 
 	@GetMapping("/groups/{groupId}/items")

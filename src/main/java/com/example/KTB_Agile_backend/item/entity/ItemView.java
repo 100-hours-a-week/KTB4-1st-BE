@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,7 +21,13 @@ import java.time.LocalDateTime;
 import static java.util.Objects.requireNonNull;
 
 @Entity
-@Table(name = "item_views")
+@Table(
+		name = "item_views",
+		uniqueConstraints = @UniqueConstraint(
+				name = "uk_item_view_item_user",
+				columnNames = {"item_id", "user_id"}
+		)
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ItemView extends UpdatableEntity {
@@ -45,5 +52,9 @@ public class ItemView extends UpdatableEntity {
 		this.item = requireNonNull(item, "item must not be null");
 		this.user = requireNonNull(user, "user must not be null");
 		this.lastCountedAt = requireNonNull(lastCountedAt, "lastCountedAt must not be null");
+	}
+
+	public void countAt(LocalDateTime countedAt) {
+		this.lastCountedAt = requireNonNull(countedAt, "countedAt must not be null");
 	}
 }

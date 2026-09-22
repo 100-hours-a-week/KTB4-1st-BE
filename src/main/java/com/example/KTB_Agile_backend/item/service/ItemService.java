@@ -13,14 +13,17 @@ import com.example.KTB_Agile_backend.image.entity.Image;
 import com.example.KTB_Agile_backend.image.repository.ImageRepository;
 import com.example.KTB_Agile_backend.item.dto.request.CreateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.response.ItemCreateResponse;
+import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemSummary;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemLike;
 import com.example.KTB_Agile_backend.item.entity.ItemStats;
+import com.example.KTB_Agile_backend.item.entity.ItemView;
 import com.example.KTB_Agile_backend.item.repository.ItemLikeRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemStatsRepository;
+import com.example.KTB_Agile_backend.item.repository.ItemViewRepository;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -30,8 +33,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.HashMap;
@@ -47,10 +53,12 @@ public class ItemService {
 	private static final int PAGE_SIZE = 20;
 	private static final int FETCH_SIZE = PAGE_SIZE + 1;
 	private static final int CONTENT_PREVIEW_LENGTH = 70;
+	private static final Duration VIEW_COUNT_COOLDOWN = Duration.ofHours(24);
 	private static final ZoneOffset API_OFFSET = ZoneOffset.ofHours(9);
 
 	private final ItemRepository itemRepository;
 	private final ItemStatsRepository itemStatsRepository;
+	private final ItemViewRepository itemViewRepository;
 	private final ItemLikeRepository itemLikeRepository;
 	private final GroupRepository groupRepository;
 	private final GroupMemberRepository groupMemberRepository;
@@ -82,6 +90,62 @@ public class ItemService {
 		imageRepository.saveAll(images);
 
 		return new ItemCreateResponse(item.getId());
+	}
+
+	@Transactional
+	public ItemDetailResponse findDetail(Long userId, Long itemId) {
+		Item item = itemRepository.findByIdAndDeletedAtIsNull(itemId)
+				.orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "물품을 찾을 수 없습니다."));
+		ItemStats stats = itemStatsRepository.findByIdForUpdate(itemId).orElse(null);
+		if (stats != null) {
+			User viewer = userRepository.findActiveById(userId)
+					.orElseThrow(() -> new ApiException(ErrorCode.AUTHENTICATION_REQUIRED));
+			countViewIfNeeded(item, viewer, stats);
+		}
+
+		return new ItemDetailResponse(
+				item.getId(),
+				groupItemRepository.findActiveGroupItemsByItemId(itemId).stream()
+						.map(groupItem -> new ItemDetailResponse.GroupInfo(
+								groupItem.getGroup().getId(),
+								groupItem.getGroup().getGroupName()
+						))
+						.toList(),
+				item.getTitle(),
+				item.getContent(),
+				item.getQuantity(),
+				item.getItemState(),
+				new ItemDetailResponse.Owner(
+						item.getUser().getId(),
+						item.getUser().getNickname(),
+						item.getUser().getProfileImageUrl()
+				),
+				toImageInfos(imageRepository.findAllByItem_IdOrderByIdAsc(itemId)),
+				stats == null ? 0L : stats.getLikeCount(),
+				stats == null ? 0L : stats.getViewCount(),
+				// ponytail: exchange request domain is not implemented yet; replace with its aggregate count later.
+				0L,
+				itemLikeRepository.existsByItem_IdAndUser_Id(itemId, userId),
+				toOffsetDateTime(item.getCreatedAt()),
+				toOffsetDateTime(item.getUpdatedAt())
+		);
+	}
+
+	private void countViewIfNeeded(Item item, User viewer, ItemStats stats) {
+		LocalDateTime now = LocalDateTime.now();
+		ItemView itemView = itemViewRepository.findByItem_IdAndUser_Id(item.getId(), viewer.getId())
+				.orElse(null);
+		if (itemView == null) {
+			itemViewRepository.save(new ItemView(item, viewer, now));
+			stats.increaseViewCount();
+			return;
+		}
+
+		LocalDateTime nextCountableAt = itemView.getLastCountedAt().plus(VIEW_COUNT_COOLDOWN);
+		if (!nextCountableAt.isAfter(now)) {
+			itemView.countAt(now);
+			stats.increaseViewCount();
+		}
 	}
 
 	@Transactional(readOnly = true)
@@ -185,6 +249,20 @@ public class ItemService {
 		return items.stream().map(Item::getId).toList();
 	}
 
+	private static List<ItemDetailResponse.ImageInfo> toImageInfos(List<Image> images) {
+		List<ItemDetailResponse.ImageInfo> imageInfos = new ArrayList<>(images.size());
+		for (int index = 0; index < images.size(); index++) {
+			Image image = images.get(index);
+			// ponytail: displayOrder is derived from image ID order; persist it when user-defined ordering is required.
+			imageInfos.add(new ItemDetailResponse.ImageInfo(
+					image.getId(),
+					image.getImageUrl(),
+					index + 1
+			));
+		}
+		return imageInfos;
+	}
+
 	private static ItemSummary toSummary(
 			Item item,
 			Map<Long, Long> likeCounts,
@@ -203,7 +281,7 @@ public class ItemService {
 				// ponytail: exchange request domain is not implemented yet; replace with its aggregate count later.
 				0L,
 				likedItemIds.contains(item.getId()),
-				toOffsetDateTime(item)
+				toOffsetDateTime(item.getCreatedAt())
 		);
 	}
 
@@ -213,8 +291,8 @@ public class ItemService {
 				: content.substring(0, CONTENT_PREVIEW_LENGTH - 3) + "...";
 	}
 
-	private static OffsetDateTime toOffsetDateTime(Item item) {
-		return item.getCreatedAt() == null ? null : item.getCreatedAt().atOffset(API_OFFSET);
+	private static OffsetDateTime toOffsetDateTime(LocalDateTime timestamp) {
+		return timestamp == null ? null : timestamp.atOffset(API_OFFSET);
 	}
 
 	private static Long decodeCursor(String cursor) {

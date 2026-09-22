@@ -27,4 +27,6 @@ public interface ImageRepository extends JpaRepository<Image, Long> {
 			order by image.item.id asc, image.id asc
 			""")
 	List<Image> findAllByItemIdsOrderByItemIdAndId(@Param("itemIds") Collection<Long> itemIds);
+
+	List<Image> findAllByItem_IdOrderByIdAsc(Long itemId);
 }

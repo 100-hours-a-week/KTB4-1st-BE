@@ -32,4 +32,8 @@ public class ItemStats extends BaseEntity {
 	public ItemStats(Item item) {
 		this.item = requireNonNull(item, "item must not be null");
 	}
+
+	public void increaseViewCount() {
+		this.viewCount++;
+	}
 }

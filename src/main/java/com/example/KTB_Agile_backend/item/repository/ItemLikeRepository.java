@@ -20,4 +20,6 @@ public interface ItemLikeRepository extends JpaRepository<ItemLike, Long> {
 			@Param("itemIds") Collection<Long> itemIds,
 			@Param("userId") Long userId
 	);
+
+	boolean existsByItem_IdAndUser_Id(Long itemId, Long userId);
 }
