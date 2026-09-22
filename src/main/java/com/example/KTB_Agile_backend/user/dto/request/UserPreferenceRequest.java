@@ -12,12 +12,12 @@ public record UserPreferenceRequest(
 		@NotNull(message = "질문 3개를 모두 입력해야 합니다.")
 		@Size(min = 3, max = 3, message = "질문 3개를 모두 입력해야 합니다.")
 		@Valid
-		List<@NotNull(message = "answer 항목은 필수 입력값입니다.") Answer> answers
-) {
+		List<@NotNull(message = "answer 항목은 필수 입력값입니다.") Answer> answers) {
 
 	public record Answer(
 			@NotNull(message = "question은 필수 입력값입니다.")
 			UserPreferenceQuestion question,
+
 			@NotNull(message = "answer는 필수 입력값입니다.")
 			UserPreferenceAnswerOption answer
 	) {

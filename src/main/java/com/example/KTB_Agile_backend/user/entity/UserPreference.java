@@ -44,6 +44,7 @@ public class UserPreference extends UpdatableEntity {
 				name = "user_preference_answers",
 				joinColumns = @JoinColumn(name = "user_preference_id")
 	)
+
 	@OrderColumn(name = "answer_order")
 	@Getter(AccessLevel.NONE)
 	private List<UserPreferenceAnswer> answers = new ArrayList<>();
