@@ -60,6 +60,10 @@ public class GroupItem extends SoftDeletableEntity {
 		}
 	}
 
+	public void restore() {
+		clearDeletedAt();
+	}
+
 	public boolean isActive() {
 		return !isDeleted();
 	}

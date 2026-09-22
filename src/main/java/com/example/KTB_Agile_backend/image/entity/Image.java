@@ -57,4 +57,9 @@ public class Image extends BaseEntity {
 		}
 		this.item = requireNonNull(item, "item must not be null");
 	}
+
+	@SuppressWarnings("PMD.NullAssignment")
+	public void detach() {
+		this.item = null;
+	}
 }

@@ -49,4 +49,13 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 			order by group.id asc
 			""")
 	List<GroupItem> findActiveGroupItemsByItemId(@Param("itemId") Long itemId);
+
+	@Query("""
+			select groupItem
+			from GroupItem groupItem
+			join fetch groupItem.group group
+			where groupItem.item.id = :itemId
+			order by group.id asc
+			""")
+	List<GroupItem> findAllByItemId(@Param("itemId") Long itemId);
 }

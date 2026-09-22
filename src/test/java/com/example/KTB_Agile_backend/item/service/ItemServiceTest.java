@@ -10,6 +10,7 @@ import com.example.KTB_Agile_backend.group.repository.GroupRepository;
 import com.example.KTB_Agile_backend.image.entity.Image;
 import com.example.KTB_Agile_backend.image.repository.ImageRepository;
 import com.example.KTB_Agile_backend.item.dto.request.CreateItemRequest;
+import com.example.KTB_Agile_backend.item.dto.request.UpdateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
@@ -42,6 +43,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -93,6 +96,64 @@ class ItemServiceTest {
 				ArgumentCaptor.forClass(Iterable.class);
 		verify(groupItemRepository).saveAll(groupItemsCaptor.capture());
 		assertThat(((Iterable<?>) groupItemsCaptor.getValue())).hasSize(2);
+		verify(imageRepository).saveAll(List.of(image));
+	}
+
+	@Test
+	void updatesOwnedItemAndReplacesValues() {
+		ItemRepository itemRepository = mock(ItemRepository.class);
+		GroupRepository groupRepository = mock(GroupRepository.class);
+		GroupMemberRepository groupMemberRepository = mock(GroupMemberRepository.class);
+		GroupItemRepository groupItemRepository = mock(GroupItemRepository.class);
+		ImageRepository imageRepository = mock(ImageRepository.class);
+		UserRepository userRepository = mock(UserRepository.class);
+		ItemService service = new ItemService(
+				itemRepository,
+				mock(ItemStatsRepository.class),
+				mock(ItemViewRepository.class),
+				mock(ItemLikeRepository.class),
+				groupRepository,
+				groupMemberRepository,
+				groupItemRepository,
+				imageRepository,
+				userRepository
+		);
+		User owner = user(42L);
+		Item item = spy(new Item(owner, "기존 제목", "기존 내용"));
+		doReturn(123L).when(item).getId();
+		Group group = mock(Group.class);
+		when(group.getId()).thenReturn(101L);
+		Image image = new Image(owner, "https://example.com/image.jpg");
+		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(owner));
+		when(itemRepository.findByIdAndDeletedAtIsNull(123L)).thenReturn(Optional.of(item));
+		when(groupRepository.findAllByIdInAndDeletedAtIsNull(List.of(101L)))
+				.thenReturn(List.of(group));
+		when(groupMemberRepository.countByGroup_IdInAndUser_IdAndStatus(
+				eq(List.of(101L)), eq(42L), any()))
+				.thenReturn(1L);
+		when(imageRepository.findAllForUpdateByIdIn(List.of(1001L))).thenReturn(List.of(image));
+		when(groupItemRepository.findAllByItemId(123L)).thenReturn(List.of());
+		when(imageRepository.findAllByItem_IdOrderByIdAsc(123L)).thenReturn(List.of());
+
+		service.update(42L, 123L, new UpdateItemRequest(
+				"새 제목",
+				"새 내용",
+				2,
+				ItemState.COMPLETED,
+				new BigDecimal("0.70"),
+				new BigDecimal("0.80"),
+				List.of(101L),
+				List.of(1001L)
+		));
+
+		assertThat(List.of(
+				item.getTitle(),
+				item.getContent(),
+				item.getQuantity(),
+				item.getItemState(),
+				image.getItem()
+		)).containsExactly("새 제목", "새 내용", 2, ItemState.COMPLETED, item);
+		verify(groupItemRepository).saveAll(any());
 		verify(imageRepository).saveAll(List.of(image));
 	}
 

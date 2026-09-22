@@ -92,4 +92,29 @@ public class Item extends SoftDeletableEntity {
 		);
 	}
 
+	public void update(
+			String title,
+			String content,
+			Integer quantity,
+			ItemState itemState,
+			BigDecimal exchangeUrgencyScore,
+			BigDecimal valueGapToleranceScore
+	) {
+		if (quantity == null || quantity < 1) {
+			throw new IllegalArgumentException("quantity must be positive");
+		}
+		this.title = requireNonNull(title, "title must not be null");
+		this.content = requireNonNull(content, "content must not be null");
+		this.quantity = quantity;
+		this.itemState = requireNonNull(itemState, "itemState must not be null");
+		this.exchangeUrgencyScore = requireNonNull(
+				exchangeUrgencyScore,
+				"exchangeUrgencyScore must not be null"
+		);
+		this.valueGapToleranceScore = requireNonNull(
+				valueGapToleranceScore,
+				"valueGapToleranceScore must not be null"
+		);
+	}
+
 }

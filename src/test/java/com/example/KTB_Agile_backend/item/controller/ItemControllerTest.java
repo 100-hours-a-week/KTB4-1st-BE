@@ -1,6 +1,7 @@
 package com.example.KTB_Agile_backend.item.controller;
 
 import com.example.KTB_Agile_backend.common.exception.GlobalExceptionHandler;
+import com.example.KTB_Agile_backend.item.dto.request.UpdateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.response.ItemCreateResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
@@ -23,6 +24,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -52,6 +54,17 @@ class ItemControllerTest {
 				.andExpect(jsonPath("$.data.itemId").value(123));
 
 		verify(itemService).create(eq(42L), any());
+	}
+
+	@Test
+	void updatesItemWithNoContent() throws Exception {
+		mockMvc.perform(put("/items/123")
+					.principal(new UsernamePasswordAuthenticationToken("42", null))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(payload()))
+				.andExpect(status().isNoContent());
+
+		verify(itemService).update(eq(42L), eq(123L), any(UpdateItemRequest.class));
 	}
 
 	@Test
