@@ -2,6 +2,7 @@ package com.example.KTB_Agile_backend.group.service;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
+import com.example.KTB_Agile_backend.common.pagination.CursorCodec;
 import com.example.KTB_Agile_backend.group.dto.response.GroupPageResponse;
 import com.example.KTB_Agile_backend.group.dto.response.GroupSummary;
 import com.example.KTB_Agile_backend.group.entity.GroupMemberStatus;
@@ -30,7 +31,7 @@ public class GroupQueryService {
 
 	@Transactional(readOnly = true)
 	public GroupPageResponse search(Long userId, String keyword, String cursor) {
-		Long cursorId = decodeCursor(cursor);
+		Long cursorId = CursorCodec.decodeId(cursor);
 		int size = cursorId == null ? INITIAL_PAGE_SIZE : CURSOR_PAGE_SIZE;
 		String normalizedKeyword = keyword == null ? "" : keyword.strip();
 		Pageable pageable = PageRequest.of(0, size + 1, Sort.by(Sort.Direction.DESC, "id"));
@@ -45,7 +46,7 @@ public class GroupQueryService {
 				? groups.subList(0, size)
 				: groups;
 		String nextCursor = hasNext
-				? encodeCursor(pageGroups.get(pageGroups.size() - 1).groupId())
+				? CursorCodec.encodeId(pageGroups.get(pageGroups.size() - 1).groupId())
 				: null;
 
 		return new GroupPageResponse(
@@ -78,33 +79,6 @@ public class GroupQueryService {
 				: null;
 
 		return new GroupPageResponse(pageGroups, nextCursor, hasNext);
-	}
-
-	private static Long decodeCursor(String cursor) {
-		if (cursor == null || cursor.isBlank()) {
-			return null;
-		}
-
-		try {
-			long id = Long.parseLong(new String(
-					Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8));
-			if (id <= 0) {
-				throw new IllegalArgumentException();
-			}
-			return id;
-		} catch (IllegalArgumentException exception) {
-			throw new ApiException(
-					ErrorCode.BAD_REQUEST,
-					"cursor가 올바르지 않습니다.",
-					List.of(),
-					exception
-			);
-		}
-	}
-
-	private static String encodeCursor(Long groupId) {
-		return Base64.getUrlEncoder().withoutPadding().encodeToString(
-				String.valueOf(groupId).getBytes(StandardCharsets.UTF_8));
 	}
 
 	private static RecommendationCursor decodeRecommendationCursor(String cursor) {

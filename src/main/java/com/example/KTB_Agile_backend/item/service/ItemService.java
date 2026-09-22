@@ -2,6 +2,7 @@ package com.example.KTB_Agile_backend.item.service;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
+import com.example.KTB_Agile_backend.common.pagination.CursorCodec;
 import com.example.KTB_Agile_backend.group.entity.Group;
 import com.example.KTB_Agile_backend.group.entity.GroupItem;
 import com.example.KTB_Agile_backend.group.entity.GroupMember;
@@ -32,13 +33,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -158,7 +157,7 @@ public class ItemService {
 			throw new ApiException(ErrorCode.FORBIDDEN, "그룹 멤버만 물품을 조회할 수 있습니다.");
 		}
 
-		Long cursorId = decodeCursor(cursor);
+		Long cursorId = CursorCodec.decodeId(cursor);
 		Pageable pageable = PageRequest.of(0, FETCH_SIZE);
 		List<Item> items = cursorId == null
 				? groupItemRepository.findActiveItemsByGroupId(groupId, pageable)
@@ -169,7 +168,7 @@ public class ItemService {
 		Set<Long> likedItemIds = findLikedItemIds(userId, pageItems);
 		Map<Long, String> thumbnails = findThumbnails(pageItems);
 		String nextCursor = hasNext
-				? encodeCursor(pageItems.get(pageItems.size() - 1).getId())
+				? CursorCodec.encodeId(pageItems.get(pageItems.size() - 1).getId())
 				: null;
 
 		return new ItemPageResponse(
@@ -295,24 +294,4 @@ public class ItemService {
 		return timestamp == null ? null : timestamp.atOffset(API_OFFSET);
 	}
 
-	private static Long decodeCursor(String cursor) {
-		if (cursor == null || cursor.isBlank()) {
-			return null;
-		}
-		try {
-			long id = Long.parseLong(new String(
-					Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8));
-			if (id <= 0) {
-				throw new IllegalArgumentException();
-			}
-			return id;
-		} catch (IllegalArgumentException exception) {
-			throw new ApiException(ErrorCode.BAD_REQUEST, "cursor가 올바르지 않습니다.", List.of(), exception);
-		}
-	}
-
-	private static String encodeCursor(Long itemId) {
-		return Base64.getUrlEncoder().withoutPadding().encodeToString(
-				String.valueOf(itemId).getBytes(StandardCharsets.UTF_8));
-	}
 }
