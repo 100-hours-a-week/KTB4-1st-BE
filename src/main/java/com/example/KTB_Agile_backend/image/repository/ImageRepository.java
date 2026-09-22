@@ -17,6 +17,7 @@ public interface ImageRepository extends JpaRepository<Image, Long> {
 			select image
 			from Image image
 			where image.id in :imageIds
+			order by image.id asc
 			""")
 	List<Image> findAllForUpdateByIdIn(@Param("imageIds") Collection<Long> imageIds);
 
