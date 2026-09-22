@@ -1,6 +1,8 @@
-package com.example.KTB_Agile_backend.item.entity;
+package com.example.KTB_Agile_backend.image.entity;
 
 import com.example.KTB_Agile_backend.common.entity.BaseEntity;
+import com.example.KTB_Agile_backend.item.entity.Item;
+import com.example.KTB_Agile_backend.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -27,6 +29,10 @@ public class Image extends BaseEntity {
 	@Column(name = "image_id", nullable = false)
 	private Long id;
 
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "owner_id", nullable = false)
+	private User owner;
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "item_id")
 	private Item item;
@@ -40,8 +46,15 @@ public class Image extends BaseEntity {
 	@Column(name = "image_url", nullable = false, columnDefinition = "TEXT")
 	private String imageUrl;
 
-	public Image(Item item, String imageUrl) {
-		this.item = item;
+	public Image(User owner, String imageUrl) {
+		this.owner = requireNonNull(owner, "owner must not be null");
 		this.imageUrl = requireNonNull(imageUrl, "imageUrl must not be null");
+	}
+
+	public void attachTo(Item item) {
+		if (this.item != null) {
+			throw new IllegalStateException("image is already attached to an item");
+		}
+		this.item = requireNonNull(item, "item must not be null");
 	}
 }

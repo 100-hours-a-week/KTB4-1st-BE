@@ -1,6 +1,6 @@
 package com.example.KTB_Agile_backend.item.entity;
 
-import com.example.KTB_Agile_backend.common.entity.UpdatableEntity;
+import com.example.KTB_Agile_backend.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -12,7 +12,7 @@ import static java.util.Objects.requireNonNull;
 @Table(name = "item_stats")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ItemStats extends UpdatableEntity {
+public class ItemStats extends BaseEntity {
 
 	@Id
 	@Column(name = "item_id", nullable = false)

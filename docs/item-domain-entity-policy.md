@@ -13,10 +13,10 @@
 2. 물리 테이블명은 소문자를 사용한다. 물품 통계·조회 테이블은 `item_stats`, `item_views`다.
 3. 일반 FK는 단방향 `LAZY @ManyToOne`으로 매핑한다. 양방향 관계와 cascade는 추가하지 않는다.
 4. `item_stats.item_id`는 PK이면서 FK이고 아이템당 통계 한 행이므로 `@OneToOne` 공유 PK로 매핑한다.
-5. `images.item_id`만 `Item`과 연관관계로 둔다. `report_id`, `inquiry_id`는 현재 물품 범위 밖이므로 nullable ID로 보존하고 관계는 보류한다.
+5. `Image`는 추후 물품·신고·문의에서 공통으로 사용할 수 있도록 `image` 패키지에서 관리한다. 이미지에는 소유자와 nullable `item_id`를 두고, 하나의 이미지는 하나의 `Item`에만 연결한다. `report_id`, `inquiry_id`는 nullable ID로 보존한다.
 6. `items_cash`는 이번 단계에서 구현하지 않는다. 추후 테이블명은 `items_cash`로 통일한다.
-7. `item_state`의 허용 상태와 전이 규칙은 아직 확정하지 않는다. 현재는 SQL 기본값 `AVAILABLE`만 매핑한다.
-8. `BaseEntity`는 `created_at`만 제공하고, `updated_at`은 필요한 Entity만 `UpdatableEntity`를 통해 선택적으로 제공한다. 물품 범위에서는 `items`, `group_items`가 `SoftDeletableEntity`, `item_views`, `item_stats`가 `UpdatableEntity`, `item_likes`, `images`가 `BaseEntity`를 상속한다.
+7. `item_state`는 `ItemState` enum으로 관리하고 `EnumType.STRING`으로 저장한다. 허용 상태는 `AVAILABLE`(거래가능)과 `COMPLETED`(거래완료)다.
+8. `BaseEntity`는 `created_at`만 제공하고, `updated_at`은 필요한 Entity만 `UpdatableEntity`를 통해 선택적으로 제공한다. 물품 범위에서는 `items`, `group_items`가 `SoftDeletableEntity`, `item_views`가 `UpdatableEntity`, `item_stats`, `item_likes`, `images`가 `BaseEntity`를 상속한다.
 
 현재 `SoftDeletableEntity`는 `UpdatableEntity`를 함께 상속하므로 `items`, `group_items`에는 `updated_at`이 매핑된다. 첨부 DDL에서 일부 테이블에 `updated_at`이 빠져 있으므로, 실제 schema/migration 작성 시 Entity 매핑과 일치하는지 확인한다.
 

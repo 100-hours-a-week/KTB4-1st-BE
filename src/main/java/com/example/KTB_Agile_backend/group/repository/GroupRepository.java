@@ -12,12 +12,15 @@ import org.springframework.data.jpa.repository.Lock;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Collection;
 
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
 public interface GroupRepository extends JpaRepository<Group, Long> {
 
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	Optional<Group> findByIdAndDeletedAtIsNull(Long groupId);
+
+	List<Group> findAllByIdInAndDeletedAtIsNull(Collection<Long> groupIds);
 
 	@Query("""
 			select new com.example.KTB_Agile_backend.group.dto.response.GroupSummary(
