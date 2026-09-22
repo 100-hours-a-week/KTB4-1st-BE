@@ -33,7 +33,7 @@ API 시트의 `item_101` 같은 문자열 ID와 vision confidence·가격 추정
 - DDL의 `Items_cash.Field`는 의미가 불명확하므로 매핑하지 않는다.
 - DDL에 반복된 `users` PK 선언은 물품 도메인 범위가 아니므로 수정하지 않는다.
 - `images`의 report/inquiry 관계와 다형성 FK 무결성 보장 방식은 해당 도메인 구현 시 결정한다.
-- 가격 변경, 상태 전이, 조회수·좋아요 증감 규칙은 service/use case 구현 전에 별도로 결정한다.
+- 가격 변경과 상태 전이 규칙은 service/use case 구현 전에 별도로 결정한다. 조회수는 같은 사용자·물품 조합에서 `item_views.last_counted_at` 기준 24시간이 지나야 1회 증가하며, 좋아요는 `item_likes` 행의 생성·삭제로 상태를 관리한다.
 
 ## 완료 기준
 

@@ -38,4 +38,15 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 			@Param("cursorId") Long cursorId,
 			Pageable pageable
 	);
+
+	@Query("""
+			select groupItem
+			from GroupItem groupItem
+			join fetch groupItem.group group
+			where groupItem.item.id = :itemId
+				and groupItem.deletedAt is null
+				and group.deletedAt is null
+			order by group.id asc
+			""")
+	List<GroupItem> findActiveGroupItemsByItemId(@Param("itemId") Long itemId);
 }

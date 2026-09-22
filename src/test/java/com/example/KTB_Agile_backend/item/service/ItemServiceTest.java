@@ -2,6 +2,7 @@ package com.example.KTB_Agile_backend.item.service;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.group.entity.Group;
+import com.example.KTB_Agile_backend.group.entity.GroupItem;
 import com.example.KTB_Agile_backend.group.entity.GroupMember;
 import com.example.KTB_Agile_backend.group.repository.GroupItemRepository;
 import com.example.KTB_Agile_backend.group.repository.GroupMemberRepository;
@@ -9,11 +10,15 @@ import com.example.KTB_Agile_backend.group.repository.GroupRepository;
 import com.example.KTB_Agile_backend.image.entity.Image;
 import com.example.KTB_Agile_backend.image.repository.ImageRepository;
 import com.example.KTB_Agile_backend.item.dto.request.CreateItemRequest;
+import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
+import com.example.KTB_Agile_backend.item.entity.ItemStats;
+import com.example.KTB_Agile_backend.item.entity.ItemView;
 import com.example.KTB_Agile_backend.item.repository.ItemLikeRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemStatsRepository;
+import com.example.KTB_Agile_backend.item.repository.ItemViewRepository;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -25,6 +30,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -46,6 +52,7 @@ class ItemServiceTest {
 	void createsItemWithAllGroupsAndImagesInOneTransaction() {
 		ItemRepository itemRepository = mock(ItemRepository.class);
 		ItemStatsRepository itemStatsRepository = mock(ItemStatsRepository.class);
+		ItemViewRepository itemViewRepository = mock(ItemViewRepository.class);
 		ItemLikeRepository itemLikeRepository = mock(ItemLikeRepository.class);
 		GroupRepository groupRepository = mock(GroupRepository.class);
 		GroupMemberRepository groupMemberRepository = mock(GroupMemberRepository.class);
@@ -55,6 +62,7 @@ class ItemServiceTest {
 		ItemService service = new ItemService(
 				itemRepository,
 				itemStatsRepository,
+				itemViewRepository,
 				itemLikeRepository,
 				groupRepository,
 				groupMemberRepository,
@@ -157,12 +165,13 @@ class ItemServiceTest {
 		GroupMemberRepository groupMemberRepository = mock(GroupMemberRepository.class);
 		GroupItemRepository groupItemRepository = mock(GroupItemRepository.class);
 		ItemStatsRepository itemStatsRepository = mock(ItemStatsRepository.class);
+		ItemViewRepository itemViewRepository = mock(ItemViewRepository.class);
 		ItemLikeRepository itemLikeRepository = mock(ItemLikeRepository.class);
 		ImageRepository imageRepository = mock(ImageRepository.class);
 		User owner = user(10L);
 		User memberUser = user(42L);
 		ItemService service = new ItemService(
-				mock(ItemRepository.class), itemStatsRepository, itemLikeRepository, groupRepository,
+				mock(ItemRepository.class), itemStatsRepository, itemViewRepository, itemLikeRepository, groupRepository,
 				groupMemberRepository, groupItemRepository, imageRepository, mock(UserRepository.class));
 		Group group = group("그룹");
 		when(groupRepository.findByIdAndDeletedAtIsNull(101L)).thenReturn(Optional.of(group));
@@ -191,6 +200,134 @@ class ItemServiceTest {
 		assertThat(lastResponse.items()).hasSize(1);
 		assertThat(lastResponse.nextCursor()).isNull();
 		assertThat(lastResponse.hasNext()).isFalse();
+	}
+
+	@Test
+	void returnsItemDetailWithRelatedDataAndCurrentUserLikeStatus() {
+		ItemRepository itemRepository = mock(ItemRepository.class);
+		ItemStatsRepository itemStatsRepository = mock(ItemStatsRepository.class);
+		ItemViewRepository itemViewRepository = mock(ItemViewRepository.class);
+		ItemLikeRepository itemLikeRepository = mock(ItemLikeRepository.class);
+		GroupItemRepository groupItemRepository = mock(GroupItemRepository.class);
+		ImageRepository imageRepository = mock(ImageRepository.class);
+		UserRepository userRepository = mock(UserRepository.class);
+		ItemService service = new ItemService(
+				itemRepository,
+				itemStatsRepository,
+				itemViewRepository,
+				itemLikeRepository,
+				mock(GroupRepository.class),
+				mock(GroupMemberRepository.class),
+				groupItemRepository,
+				imageRepository,
+				userRepository
+		);
+
+		User owner = mock(User.class);
+		when(owner.getId()).thenReturn(10L);
+		when(owner.getNickname()).thenReturn("사용자1");
+		when(owner.getProfileImageUrl()).thenReturn("https://example.com/profile.jpg");
+		User viewer = mock(User.class);
+		when(viewer.getId()).thenReturn(42L);
+		Item item = mock(Item.class);
+		when(item.getId()).thenReturn(123L);
+		when(item.getUser()).thenReturn(owner);
+		when(item.getTitle()).thenReturn("게시글 제목1");
+		when(item.getContent()).thenReturn("게시글 내용입니다.");
+		when(item.getQuantity()).thenReturn(1);
+		when(item.getItemState()).thenReturn(ItemState.AVAILABLE);
+		when(item.getCreatedAt()).thenReturn(LocalDateTime.of(2026, 9, 4, 13, 30));
+		when(item.getUpdatedAt()).thenReturn(LocalDateTime.of(2026, 9, 4, 13, 30));
+
+		Group group = mock(Group.class);
+		when(group.getId()).thenReturn(101L);
+		when(group.getGroupName()).thenReturn("카테뷰");
+		GroupItem groupItem = mock(GroupItem.class);
+		when(groupItem.getGroup()).thenReturn(group);
+
+		Image firstImage = mock(Image.class);
+		when(firstImage.getId()).thenReturn(501L);
+		when(firstImage.getImageUrl()).thenReturn("https://example.com/item1.jpg");
+		Image secondImage = mock(Image.class);
+		when(secondImage.getId()).thenReturn(502L);
+		when(secondImage.getImageUrl()).thenReturn("https://example.com/item2.jpg");
+
+		ItemStats stats = mock(ItemStats.class);
+		when(stats.getLikeCount()).thenReturn(33L);
+		when(stats.getViewCount()).thenReturn(128L);
+		when(itemRepository.findByIdAndDeletedAtIsNull(123L)).thenReturn(Optional.of(item));
+		when(itemStatsRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(stats));
+		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(viewer));
+		when(itemViewRepository.findByItem_IdAndUser_Id(123L, 42L)).thenReturn(Optional.empty());
+		when(groupItemRepository.findActiveGroupItemsByItemId(123L)).thenReturn(List.of(groupItem));
+		when(imageRepository.findAllByItem_IdOrderByIdAsc(123L))
+				.thenReturn(List.of(firstImage, secondImage));
+		when(itemLikeRepository.existsByItem_IdAndUser_Id(123L, 42L)).thenReturn(false);
+
+		ItemDetailResponse response = service.findDetail(42L, 123L);
+
+		assertThat(response).usingRecursiveComparison().isEqualTo(new ItemDetailResponse(
+				123L,
+				List.of(new ItemDetailResponse.GroupInfo(101L, "카테뷰")),
+				"게시글 제목1",
+				"게시글 내용입니다.",
+				1,
+				ItemState.AVAILABLE,
+				new ItemDetailResponse.Owner(10L, "사용자1", "https://example.com/profile.jpg"),
+				List.of(
+						new ItemDetailResponse.ImageInfo(501L, "https://example.com/item1.jpg", 1),
+						new ItemDetailResponse.ImageInfo(502L, "https://example.com/item2.jpg", 2)
+				),
+				33L,
+				128L,
+				0L,
+				false,
+				OffsetDateTime.parse("2026-09-04T13:30:00+09:00"),
+				OffsetDateTime.parse("2026-09-04T13:30:00+09:00")
+		));
+		verify(itemViewRepository).save(any());
+		verify(stats).increaseViewCount();
+	}
+
+	@Test
+	void countsViewOnlyAfterTwentyFourHours() {
+		ItemRepository itemRepository = mock(ItemRepository.class);
+		ItemStatsRepository itemStatsRepository = mock(ItemStatsRepository.class);
+		ItemViewRepository itemViewRepository = mock(ItemViewRepository.class);
+		ItemLikeRepository itemLikeRepository = mock(ItemLikeRepository.class);
+		GroupItemRepository groupItemRepository = mock(GroupItemRepository.class);
+		ImageRepository imageRepository = mock(ImageRepository.class);
+		UserRepository userRepository = mock(UserRepository.class);
+		ItemService service = new ItemService(
+				itemRepository,
+				itemStatsRepository,
+				itemViewRepository,
+				itemLikeRepository,
+				mock(GroupRepository.class),
+				mock(GroupMemberRepository.class),
+				groupItemRepository,
+				imageRepository,
+				userRepository
+		);
+
+		User viewer = user(42L);
+		Item item = item(123L, viewer);
+		ItemStats stats = mock(ItemStats.class);
+		ItemView recentView = new ItemView(item, viewer, LocalDateTime.now().minusHours(23));
+		ItemView expiredView = new ItemView(item, viewer, LocalDateTime.now().minusHours(25));
+		when(itemRepository.findByIdAndDeletedAtIsNull(123L)).thenReturn(Optional.of(item));
+		when(itemStatsRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(stats));
+		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(viewer));
+		when(itemViewRepository.findByItem_IdAndUser_Id(123L, 42L))
+				.thenReturn(Optional.of(recentView), Optional.of(expiredView));
+		when(groupItemRepository.findActiveGroupItemsByItemId(123L)).thenReturn(List.of());
+		when(imageRepository.findAllByItem_IdOrderByIdAsc(123L)).thenReturn(List.of());
+		when(itemLikeRepository.existsByItem_IdAndUser_Id(123L, 42L)).thenReturn(false);
+
+		service.findDetail(42L, 123L);
+		service.findDetail(42L, 123L);
+
+		verify(stats).increaseViewCount();
 	}
 
 	private static CreateItemRequest request(List<Long> groupIds, List<Long> imageIds) {
@@ -247,6 +384,7 @@ class ItemServiceTest {
 		return new ItemService(
 				itemRepository,
 				mock(ItemStatsRepository.class),
+				mock(ItemViewRepository.class),
 				mock(ItemLikeRepository.class),
 				groupRepository,
 				groupMemberRepository,
