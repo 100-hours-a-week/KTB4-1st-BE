@@ -33,6 +33,35 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 				max(item.createdAt),
 				case when count(distinct joinedMember.id) > 0 then true else false end
 			)
+			from GroupMember joinedMember
+			join joinedMember.group g
+			left join GroupMember member on member.group = g
+				and member.status = :activeStatus
+			left join GroupItem item on item.group = g
+				and item.deletedAt is null
+			where joinedMember.user.id = :userId
+				and joinedMember.status = :activeStatus
+				and g.deletedAt is null
+			group by g.id, g.groupName, g.roadAddress, g.groupContent
+			order by g.id desc
+			""")
+	List<GroupSummary> findMyGroupSummaries(
+			@Param("userId") Long userId,
+			@Param("activeStatus") GroupMemberStatus activeStatus,
+			Pageable pageable
+	);
+
+	@Query("""
+			select new com.example.KTB_Agile_backend.group.dto.response.GroupSummary(
+				g.id,
+				g.groupName,
+				g.roadAddress,
+				g.groupContent,
+				count(distinct member.id),
+				count(distinct item.id),
+				max(item.createdAt),
+				case when count(distinct joinedMember.id) > 0 then true else false end
+			)
 			from Group g
 			left join GroupMember member on member.group = g
 				and member.status = :activeStatus
