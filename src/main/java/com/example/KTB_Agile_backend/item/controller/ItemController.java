@@ -2,6 +2,7 @@ package com.example.KTB_Agile_backend.item.controller;
 
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
 import com.example.KTB_Agile_backend.item.dto.request.CreateItemRequest;
+import com.example.KTB_Agile_backend.item.dto.request.UpdateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.response.ItemCreateResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
@@ -14,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -33,6 +35,16 @@ public class ItemController {
 	) {
 		ItemCreateResponse response = itemService.create(Long.valueOf(authentication.getName()), request);
 		return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponse<>(response, null));
+	}
+
+	@PutMapping("/items/{itemId}")
+	public ResponseEntity<Void> update(
+			Authentication authentication,
+			@PathVariable Long itemId,
+			@Valid @RequestBody UpdateItemRequest request
+	) {
+		itemService.update(Long.valueOf(authentication.getName()), itemId, request);
+		return ResponseEntity.noContent().build();
 	}
 
 	@GetMapping("/items/{itemId}")

@@ -20,6 +20,11 @@ public abstract class SoftDeletableEntity extends UpdatableEntity {
 		this.deletedAt = deletedAt;
 	}
 
+	@SuppressWarnings("PMD.NullAssignment")
+	protected void clearDeletedAt() {
+		this.deletedAt = null;
+	}
+
 	public boolean isDeleted() {
 		return deletedAt != null;
 	}

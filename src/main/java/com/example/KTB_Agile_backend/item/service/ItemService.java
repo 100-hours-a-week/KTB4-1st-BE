@@ -13,6 +13,7 @@ import com.example.KTB_Agile_backend.group.repository.GroupRepository;
 import com.example.KTB_Agile_backend.image.entity.Image;
 import com.example.KTB_Agile_backend.image.repository.ImageRepository;
 import com.example.KTB_Agile_backend.item.dto.request.CreateItemRequest;
+import com.example.KTB_Agile_backend.item.dto.request.UpdateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.response.ItemCreateResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
@@ -89,6 +90,30 @@ public class ItemService {
 		imageRepository.saveAll(images);
 
 		return new ItemCreateResponse(item.getId());
+	}
+
+	@Transactional
+	public void update(Long userId, Long itemId, UpdateItemRequest request) {
+		userRepository.findActiveById(userId)
+				.orElseThrow(() -> new ApiException(ErrorCode.AUTHENTICATION_REQUIRED));
+		Item item = itemRepository.findByIdAndDeletedAtIsNull(itemId)
+				.orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "물품을 찾을 수 없습니다."));
+		if (!item.getUser().getId().equals(userId)) {
+			throw new ApiException(ErrorCode.FORBIDDEN, "물품을 수정할 권한이 없습니다.");
+		}
+
+		List<Group> groups = findRegistrableGroups(userId, request.groupIds());
+		List<Image> images = findUpdatableImages(userId, itemId, request.imageIds());
+		item.update(
+				request.title(),
+				request.content(),
+				request.quantity(),
+				request.itemState(),
+				request.exchangeUrgencyScore(),
+				request.valueGapToleranceScore()
+		);
+		replaceGroups(item, groups);
+		replaceImages(item, images);
 	}
 
 	@Transactional
@@ -210,6 +235,59 @@ public class ItemService {
 			}
 		}
 		return images;
+	}
+
+	private List<Image> findUpdatableImages(Long userId, Long itemId, Collection<Long> imageIds) {
+		List<Image> images = imageRepository.findAllForUpdateByIdIn(imageIds);
+		if (images.size() != imageIds.size()) {
+			throw new ApiException(ErrorCode.NOT_FOUND, "수정할 이미지를 찾을 수 없습니다.");
+		}
+		for (Image image : images) {
+			if (!image.getOwner().getId().equals(userId)) {
+				throw new ApiException(ErrorCode.FORBIDDEN, "소유하지 않은 이미지는 수정할 수 없습니다.");
+			}
+			if (image.getItem() != null && !image.getItem().getId().equals(itemId)) {
+				throw new ApiException(ErrorCode.CONFLICT, "이미 다른 물품에 연결된 이미지입니다.");
+			}
+		}
+		return images;
+	}
+
+	private void replaceGroups(Item item, List<Group> groups) {
+		List<GroupItem> currentGroupItems = groupItemRepository.findAllByItemId(item.getId());
+		Map<Long, GroupItem> currentByGroupId = new HashMap<>();
+		for (GroupItem groupItem : currentGroupItems) {
+			currentByGroupId.put(groupItem.getGroup().getId(), groupItem);
+		}
+
+		Set<Long> requestedGroupIds = groups.stream().map(Group::getId).collect(java.util.stream.Collectors.toSet());
+		currentGroupItems.stream()
+				.filter(groupItem -> !requestedGroupIds.contains(groupItem.getGroup().getId()))
+				.forEach(GroupItem::delete);
+
+		List<GroupItem> groupItemsToSave = new ArrayList<>(currentGroupItems);
+		for (Group group : groups) {
+			GroupItem groupItem = currentByGroupId.get(group.getId());
+			if (groupItem == null) {
+				groupItemsToSave.add(new GroupItem(group, item));
+			} else {
+				groupItem.restore();
+			}
+		}
+		groupItemRepository.saveAll(groupItemsToSave);
+	}
+
+	private void replaceImages(Item item, List<Image> images) {
+		List<Image> currentImages = imageRepository.findAllByItem_IdOrderByIdAsc(item.getId());
+		Set<Long> requestedImageIds = images.stream().map(Image::getId)
+				.collect(java.util.stream.Collectors.toSet());
+		currentImages.stream()
+				.filter(image -> !requestedImageIds.contains(image.getId()))
+				.forEach(Image::detach);
+		images.stream()
+				.filter(image -> image.getItem() == null)
+				.forEach(image -> image.attachTo(item));
+		imageRepository.saveAll(images);
 	}
 
 	private Map<Long, Long> findLikeCounts(List<Item> items) {
