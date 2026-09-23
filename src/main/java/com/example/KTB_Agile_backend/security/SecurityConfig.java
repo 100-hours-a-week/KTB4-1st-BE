@@ -77,7 +77,14 @@ public class SecurityConfig {
 				.httpBasic(AbstractHttpConfigurer::disable)
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/auth/oauth/**", "/auth/kakao/callback", "/auth/refresh", "/error").permitAll()
+						.requestMatchers(
+								"/actuator/health/liveness",
+								"/actuator/health/readiness",
+								"/auth/oauth/**",
+								"/auth/kakao/callback",
+								"/auth/refresh",
+								"/error"
+						).permitAll()
 						.anyRequest().authenticated()
 				)
 				.exceptionHandling(exception -> exception

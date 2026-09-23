@@ -1,6 +1,17 @@
 spring:
   application:
     name: KTB-Agile-backend
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
 cloud:
   aws:
     s3:
