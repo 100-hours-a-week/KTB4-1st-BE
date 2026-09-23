@@ -24,10 +24,21 @@ public class GroupQueryService {
 
 	private static final int INITIAL_PAGE_SIZE = 20;
 	private static final int CURSOR_PAGE_SIZE = 10;
+	private static final int MY_GROUP_PAGE_SIZE = 5;
 	private static final int RECOMMENDATION_PAGE_SIZE = 10;
 	private static final int RECOMMENDATION_CURSOR_PARTS = 2;
 
 	private final GroupRepository groupRepository;
+
+	@Transactional(readOnly = true)
+	public GroupPageResponse myGroups(Long userId) {
+		List<GroupSummary> groups = groupRepository.findMyGroupSummaries(
+				userId,
+				GroupMemberStatus.ACTIVE,
+				PageRequest.of(0, MY_GROUP_PAGE_SIZE)
+		);
+		return new GroupPageResponse(groups, null, false);
+	}
 
 	@Transactional(readOnly = true)
 	public GroupPageResponse search(Long userId, String keyword, String cursor) {

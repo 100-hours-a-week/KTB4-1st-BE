@@ -24,6 +24,21 @@ import static org.mockito.Mockito.when;
 class GroupQueryServiceTest {
 
 	@Test
+	void loadsAtMostFiveMyGroupsWithoutCursor() {
+		GroupRepository groupRepository = mock(GroupRepository.class);
+		GroupQueryService service = new GroupQueryService(groupRepository);
+		when(groupRepository.findMyGroupSummaries(eq(42L), eq(GroupMemberStatus.ACTIVE), any()))
+				.thenReturn(List.of(summary(5), summary(4)));
+
+		service.myGroups(42L);
+
+		ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+		verify(groupRepository).findMyGroupSummaries(
+				eq(42L), eq(GroupMemberStatus.ACTIVE), pageableCaptor.capture());
+		assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(5);
+	}
+
+	@Test
 	void searchesFirstCursorPageAndReturnsNextCursor() {
 		GroupRepository groupRepository = mock(GroupRepository.class);
 		GroupQueryService service = new GroupQueryService(groupRepository);

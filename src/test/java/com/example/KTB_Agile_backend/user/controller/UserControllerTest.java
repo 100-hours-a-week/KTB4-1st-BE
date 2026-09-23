@@ -1,6 +1,8 @@
 package com.example.KTB_Agile_backend.user.controller;
 
 import com.example.KTB_Agile_backend.common.exception.GlobalExceptionHandler;
+import com.example.KTB_Agile_backend.group.dto.response.GroupPageResponse;
+import com.example.KTB_Agile_backend.group.service.GroupQueryService;
 import com.example.KTB_Agile_backend.user.dto.UserPreferenceAnswerOption;
 import com.example.KTB_Agile_backend.user.dto.UserPreferenceQuestion;
 import com.example.KTB_Agile_backend.user.dto.response.UserPreferenceResponse;
@@ -32,14 +34,20 @@ class UserControllerTest {
 
 	private AccountWithdrawalService accountWithdrawalService;
 	private UserPreferenceService userPreferenceService;
+	private GroupQueryService groupQueryService;
 	private MockMvc mockMvc;
 
 	@BeforeEach
 	void setUp() {
 		accountWithdrawalService = mock(AccountWithdrawalService.class);
 		userPreferenceService = mock(UserPreferenceService.class);
+		groupQueryService = mock(GroupQueryService.class);
 		mockMvc = MockMvcBuilders
-				.standaloneSetup(new UserController(accountWithdrawalService, userPreferenceService))
+				.standaloneSetup(new UserController(
+						accountWithdrawalService,
+						userPreferenceService,
+						groupQueryService
+				))
 				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
 	}
@@ -51,6 +59,19 @@ class UserControllerTest {
 				.andExpect(status().isNoContent());
 
 		verify(accountWithdrawalService).withdraw(42L);
+	}
+
+	@Test
+	void getsMyGroupsForAuthenticatedUser() throws Exception {
+		when(groupQueryService.myGroups(42L)).thenReturn(new GroupPageResponse(List.of(), null, false));
+
+		mockMvc.perform(get("/users/me/groups")
+					.principal(new UsernamePasswordAuthenticationToken("42", null)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.groups").isArray())
+				.andExpect(jsonPath("$.data.hasNext").value(false));
+
+		verify(groupQueryService).myGroups(42L);
 	}
 
 	@Test

@@ -14,7 +14,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -29,6 +31,42 @@ class GroupRepositoryTest {
 
 	@Autowired
 	private EntityManager entityManager;
+
+	@Test
+	void findsOnlyActiveMyGroupsAndLimitsResultsToFive() {
+		User viewer = new User("viewer");
+		User anotherUser = new User("another");
+		entityManager.persist(viewer);
+		entityManager.persist(anotherUser);
+
+		List<Group> activeGroups = IntStream.rangeClosed(1, 6)
+				.mapToObj(index -> createGroup("활성 그룹 " + index))
+				.toList();
+		groupRepository.saveAllAndFlush(activeGroups);
+		groupMemberRepository.saveAllAndFlush(activeGroups.stream()
+				.map(group -> new GroupMember(group, viewer))
+				.toList());
+
+		Group deletedGroup = groupRepository.saveAndFlush(createGroup("삭제 그룹"));
+		deletedGroup.delete();
+		groupRepository.flush();
+
+		Group leftGroup = groupRepository.saveAndFlush(createGroup("탈퇴 그룹"));
+		GroupMember leftMember = groupMemberRepository.saveAndFlush(new GroupMember(leftGroup, viewer));
+		leftMember.leave(LocalDateTime.now());
+		groupMemberRepository.flush();
+
+		Group anotherGroup = groupRepository.saveAndFlush(createGroup("다른 사용자 그룹"));
+		groupMemberRepository.saveAndFlush(new GroupMember(anotherGroup, anotherUser));
+
+		var results = groupRepository.findMyGroupSummaries(
+				viewer.getId(), GroupMemberStatus.ACTIVE, PageRequest.of(0, 5));
+
+		assertThat(results)
+				.hasSize(5)
+				.allMatch(result -> result.isJoined())
+				.allMatch(result -> result.groupName().startsWith("활성 그룹"));
+	}
 
 	@Test
 	void findsRecommendationsWithCountsAndJoinStatus() {

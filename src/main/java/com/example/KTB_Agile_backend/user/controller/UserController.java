@@ -1,6 +1,8 @@
 package com.example.KTB_Agile_backend.user.controller;
 
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
+import com.example.KTB_Agile_backend.group.dto.response.GroupPageResponse;
+import com.example.KTB_Agile_backend.group.service.GroupQueryService;
 import com.example.KTB_Agile_backend.user.dto.request.UserPreferenceRequest;
 import com.example.KTB_Agile_backend.user.dto.response.UserPreferenceResponse;
 import com.example.KTB_Agile_backend.user.service.AccountWithdrawalService;
@@ -19,11 +21,20 @@ public class UserController {
 
 	private final AccountWithdrawalService accountWithdrawalService;
 	private final UserPreferenceService userPreferenceService;
+	private final GroupQueryService groupQueryService;
 
 	@DeleteMapping
 	public ResponseEntity<Void> withdraw(Authentication authentication) {
 		accountWithdrawalService.withdraw(Long.valueOf(authentication.getName()));
 		return ResponseEntity.noContent().build();
+	}
+
+	@GetMapping("/me/groups")
+	public ResponseEntity<ApiResponse<GroupPageResponse>> getMyGroups(
+			Authentication authentication
+	) {
+		GroupPageResponse response = groupQueryService.myGroups(Long.valueOf(authentication.getName()));
+		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 
 	@PostMapping("/preferences")
