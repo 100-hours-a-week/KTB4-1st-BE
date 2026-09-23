@@ -5,7 +5,6 @@ import com.example.KTB_Agile_backend.image.service.ImageAiAnalysisService;
 import com.example.KTB_Agile_backend.image.service.S3ImageObjectService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -28,8 +27,7 @@ public class ImageWorkflowController {
 			Authentication authentication,
 			@Valid @RequestBody ImageAnalysisRequest request
 	) {
-		String result = imageAiAnalysisService.analyze(Long.valueOf(authentication.getName()), request.objectKey());
-		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(result);
+		return imageAiAnalysisService.analyze(Long.valueOf(authentication.getName()), request.objectKeys());
 	}
 
 	@DeleteMapping

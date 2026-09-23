@@ -11,6 +11,7 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -72,5 +73,9 @@ public class ImageUploadService {
 						"x-amz-tagging", "pending=true"
 				)
 		);
+	}
+
+	public List<PresignedUploadResponse> issue(Long userId, List<PresignedUploadRequest> requests) {
+		return requests.stream().map(request -> issue(userId, request)).toList();
 	}
 }
