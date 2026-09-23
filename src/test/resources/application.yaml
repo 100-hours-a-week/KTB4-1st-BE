@@ -1,3 +1,10 @@
+cloud:
+  aws:
+    s3:
+      bucket: test-bucket
+      region: ap-northeast-2
+      presigned-url-duration-seconds: 600
+
 cors:
   allowed-origins: http://127.0.0.1:3000
 
