@@ -57,6 +57,7 @@ public class ImageUploadService {
 				.bucket(bucket)
 				.key(objectKey)
 				.contentType(request.contentType())
+				.tagging("pending=true")
 				.build();
 		PresignedPutObjectRequest presignedRequest = s3Presigner.presignPutObject(builder -> builder
 				.signatureDuration(presignedUrlDuration)
@@ -65,7 +66,11 @@ public class ImageUploadService {
 		return new PresignedUploadResponse(
 				presignedRequest.url().toString(),
 				objectKey,
-				presignedUrlDuration.toSeconds()
+				presignedUrlDuration.toSeconds(),
+				Map.of(
+						"Content-Type", request.contentType(),
+						"x-amz-tagging", "pending=true"
+				)
 		);
 	}
 }

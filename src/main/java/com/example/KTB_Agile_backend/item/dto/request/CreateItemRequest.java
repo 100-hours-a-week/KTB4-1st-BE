@@ -50,8 +50,8 @@ public record CreateItemRequest(
 
 		@NotNull(message = "이미지는 필수 입력값입니다.")
 		@Size(min = 1, message = "이미지를 하나 이상 등록해야 합니다.")
-		@UniqueElements(message = "이미지 ID는 중복될 수 없습니다.")
-		List<@NotNull(message = "이미지 ID는 필수 입력값입니다.") @Positive(message = "이미지 ID는 양수여야 합니다.") Long> imageIds
+		@UniqueElements(message = "이미지 objectKey는 중복될 수 없습니다.")
+		List<@NotBlank(message = "이미지 objectKey는 필수 입력값입니다.") String> objectKeys
 ) {
 
 	public CreateItemRequest {

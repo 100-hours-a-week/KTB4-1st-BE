@@ -12,6 +12,7 @@ import com.example.KTB_Agile_backend.group.repository.GroupMemberRepository;
 import com.example.KTB_Agile_backend.group.repository.GroupRepository;
 import com.example.KTB_Agile_backend.image.entity.Image;
 import com.example.KTB_Agile_backend.image.repository.ImageRepository;
+import com.example.KTB_Agile_backend.image.service.S3ImageObjectService;
 import com.example.KTB_Agile_backend.item.dto.request.CreateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.request.UpdateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.response.ItemCreateResponse;
@@ -64,6 +65,7 @@ public class ItemService {
 	private final GroupMemberRepository groupMemberRepository;
 	private final GroupItemRepository groupItemRepository;
 	private final ImageRepository imageRepository;
+	private final S3ImageObjectService s3ImageObjectService;
 	private final UserRepository userRepository;
 
 	@Transactional
@@ -71,7 +73,13 @@ public class ItemService {
 		User user = userRepository.findActiveById(userId)
 				.orElseThrow(() -> new ApiException(ErrorCode.AUTHENTICATION_REQUIRED));
 		List<Group> groups = findRegistrableGroups(userId, request.groupIds());
-		List<Image> images = findAttachableImages(userId, request.imageIds());
+		s3ImageObjectService.validatePendingObjects(userId, request.objectKeys());
+		if (imageRepository.existsByObjectKeyIn(request.objectKeys())) {
+			throw new ApiException(ErrorCode.CONFLICT, "이미 등록된 이미지입니다.");
+		}
+		List<Image> images = request.objectKeys().stream()
+				.map(objectKey -> Image.fromS3Object(user, objectKey))
+				.toList();
 
 		Item item = itemRepository.saveAndFlush(new Item(
 				user,
@@ -87,7 +95,9 @@ public class ItemService {
 				.map(group -> new GroupItem(group, item))
 				.toList());
 		images.forEach(image -> image.attachTo(item));
-		imageRepository.saveAll(images);
+		imageRepository.saveAllAndFlush(images);
+		// ponytail: update tags before DB commit to avoid deleting committed images; add an outbox if orphan repair must be guaranteed.
+		s3ImageObjectService.markRegistered(request.objectKeys());
 
 		return new ItemCreateResponse(item.getId());
 	}
@@ -221,22 +231,6 @@ public class ItemService {
 		return groups;
 	}
 
-	private List<Image> findAttachableImages(Long userId, Collection<Long> imageIds) {
-		List<Image> images = imageRepository.findAllForUpdateByIdIn(imageIds);
-		if (images.size() != imageIds.size()) {
-			throw new ApiException(ErrorCode.NOT_FOUND, "등록할 이미지를 찾을 수 없습니다.");
-		}
-		for (Image image : images) {
-			if (!image.getOwner().getId().equals(userId)) {
-				throw new ApiException(ErrorCode.FORBIDDEN, "소유하지 않은 이미지는 등록할 수 없습니다.");
-			}
-			if (image.getItem() != null) {
-				throw new ApiException(ErrorCode.CONFLICT, "이미 다른 물품에 연결된 이미지입니다.");
-			}
-		}
-		return images;
-	}
-
 	private List<Image> findUpdatableImages(Long userId, Long itemId, Collection<Long> imageIds) {
 		List<Image> images = imageRepository.findAllForUpdateByIdIn(imageIds);
 		if (images.size() != imageIds.size()) {
@@ -317,7 +311,7 @@ public class ItemService {
 		}
 		Map<Long, String> thumbnails = new LinkedHashMap<>();
 		imageRepository.findAllByItemIdsOrderByItemIdAndId(itemIds(items)).forEach(image ->
-				thumbnails.putIfAbsent(image.getItem().getId(), image.getImageUrl())
+				thumbnails.putIfAbsent(image.getItem().getId(), imageUrl(image))
 		);
 		return thumbnails;
 	}
@@ -326,18 +320,24 @@ public class ItemService {
 		return items.stream().map(Item::getId).toList();
 	}
 
-	private static List<ItemDetailResponse.ImageInfo> toImageInfos(List<Image> images) {
+	private List<ItemDetailResponse.ImageInfo> toImageInfos(List<Image> images) {
 		List<ItemDetailResponse.ImageInfo> imageInfos = new ArrayList<>(images.size());
 		for (int index = 0; index < images.size(); index++) {
 			Image image = images.get(index);
 			// ponytail: displayOrder is derived from image ID order; persist it when user-defined ordering is required.
 			imageInfos.add(new ItemDetailResponse.ImageInfo(
 					image.getId(),
-					image.getImageUrl(),
+					imageUrl(image),
 					index + 1
 			));
 		}
 		return imageInfos;
+	}
+
+	private String imageUrl(Image image) {
+		return image.getObjectKey() == null
+				? image.getImageUrl()
+				: s3ImageObjectService.presignedReadUrl(image.getObjectKey());
 	}
 
 	private static ItemSummary toSummary(

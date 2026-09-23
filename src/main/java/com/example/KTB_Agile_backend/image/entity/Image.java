@@ -43,12 +43,22 @@ public class Image extends BaseEntity {
 	@Column(name = "inquiry_id")
 	private Long inquiryId;
 
-	@Column(name = "image_url", nullable = false, columnDefinition = "TEXT")
+	@Column(name = "object_key", length = 512, unique = true)
+	private String objectKey;
+
+	@Column(name = "image_url", columnDefinition = "TEXT")
 	private String imageUrl;
 
 	public Image(User owner, String imageUrl) {
 		this.owner = requireNonNull(owner, "owner must not be null");
 		this.imageUrl = requireNonNull(imageUrl, "imageUrl must not be null");
+	}
+
+	public static Image fromS3Object(User owner, String objectKey) {
+		Image image = new Image();
+		image.owner = requireNonNull(owner, "owner must not be null");
+		image.objectKey = requireNonNull(objectKey, "objectKey must not be null");
+		return image;
 	}
 
 	public void attachTo(Item item) {
