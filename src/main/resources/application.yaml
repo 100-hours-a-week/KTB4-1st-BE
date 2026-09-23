@@ -1,6 +1,14 @@
 spring:
   application:
     name: KTB-Agile-backend
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
 
 management:
   endpoints:
@@ -11,15 +19,6 @@ management:
     health:
       probes:
         enabled: true
-
-jpa:
-  open-in-view: false
-  hibernate:
-    ddl-auto: create
-  properties:
-    hibernate:
-      show_sql: true
-      format_sql: true
 
 cloud:
   aws:
