@@ -324,7 +324,6 @@ public class ItemService {
 		List<ItemDetailResponse.ImageInfo> imageInfos = new ArrayList<>(images.size());
 		for (int index = 0; index < images.size(); index++) {
 			Image image = images.get(index);
-			// ponytail: displayOrder is derived from image ID order; persist it when user-defined ordering is required.
 			imageInfos.add(new ItemDetailResponse.ImageInfo(
 					image.getId(),
 					imageUrl(image),
