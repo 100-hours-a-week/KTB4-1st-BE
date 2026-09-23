@@ -1,6 +1,7 @@
 package com.example.KTB_Agile_backend.image.controller;
 
 import com.example.KTB_Agile_backend.common.exception.GlobalExceptionHandler;
+import com.example.KTB_Agile_backend.image.dto.request.PresignedUploadRequest;
 import com.example.KTB_Agile_backend.image.dto.response.PresignedUploadResponse;
 import com.example.KTB_Agile_backend.image.service.ImageUploadService;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,6 +11,9 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -34,7 +38,7 @@ class ImageControllerTest {
 
 	@Test
 	void issuesPresignedUrlForAuthenticatedUser() throws Exception {
-		when(imageUploadService.issue(eq(42L), any()))
+		when(imageUploadService.issue(eq(42L), any(PresignedUploadRequest.class)))
 				.thenReturn(new PresignedUploadResponse(
 						"https://s3.example/upload",
 						"images/42/object.jpg",
@@ -52,6 +56,26 @@ class ImageControllerTest {
 				.andExpect(jsonPath("$.data.objectKey").value("images/42/object.jpg"))
 				.andExpect(jsonPath("$.data.expiresInSeconds").value(600));
 
-		verify(imageUploadService).issue(eq(42L), any());
+		verify(imageUploadService).issue(eq(42L), any(PresignedUploadRequest.class));
+	}
+
+	@Test
+	void issuesPresignedUrlsForSelectedImages() throws Exception {
+		when(imageUploadService.issue(eq(42L), anyList())).thenReturn(List.of(
+				new PresignedUploadResponse("https://s3.example/first", "images/42/first.jpg", 600),
+				new PresignedUploadResponse("https://s3.example/second", "images/42/second.jpg", 600)
+		));
+
+		mockMvc.perform(post("/images/presigned-urls")
+					.principal(new UsernamePasswordAuthenticationToken("42", null))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"images":[{"contentType":"image/jpeg"},{"contentType":"image/png"}]}
+							"""))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.length()").value(2))
+				.andExpect(jsonPath("$.data[1].objectKey").value("images/42/second.jpg"));
+
+		verify(imageUploadService).issue(eq(42L), anyList());
 	}
 }

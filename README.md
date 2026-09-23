@@ -27,11 +27,11 @@ JPA_DDL_AUTO=update \
 
 ## S3 image flow
 
-Set `AWS_S3_BUCKET`, `AWS_REGION`, and `AI_IMAGE_ANALYSIS_URL`. The AI endpoint receives `POST {"imageUrl":"<presigned GET URL>"}`. Connection and response timeouts can be set with `AI_CONNECT_TIMEOUT_SECONDS` and `AI_READ_TIMEOUT_SECONDS`. The bucket should remain private; item responses use 1-hour presigned image URLs by default (`AWS_S3_READ_URL_DURATION_SECONDS`), while AI receives a 10-minute URL.
+Set `AWS_S3_BUCKET`, `AWS_REGION`, and `AI_IMAGE_ANALYSIS_URL`. The AI endpoint receives `POST {"imageUrls":["<url-1>","<url-2>"]}` for 1–3 images. Its JSON response and HTTP status are forwarded to the frontend, including analysis errors. Connection and response timeouts can be set with `AI_CONNECT_TIMEOUT_SECONDS` and `AI_READ_TIMEOUT_SECONDS`. The bucket should remain private; item responses use 1-hour presigned image URLs by default (`AWS_S3_READ_URL_DURATION_SECONDS`), while AI receives a 10-minute URL.
 
-After upload, call `POST /images/ai-analysis` with `{"objectKey":"..."}`. For an abandoned upload, call `DELETE /images?objectKey=...`. New `POST /items` requests send `objectKeys`; `PUT /items/{itemId}` continues to use `imageIds`.
+When the user starts analysis, request 1–3 upload URLs with `POST /images/presigned-urls` and `{"images":[{"contentType":"image/jpeg"},{"contentType":"image/png"}]}`. Upload each image to S3 using its `uploadUrl` and `requiredHeaders`, then call `POST /images/ai-analysis` with `{"objectKeys":["<object-key-1>","<object-key-2>"]}`. For an abandoned upload, call `DELETE /images?objectKey=...`. New `POST /items` requests send `objectKeys`; `PUT /items/{itemId}` continues to use `imageIds`.
 
-The client must send the `requiredHeaders` returned by `POST /images/presigned-url` with its S3 PUT. Configure bucket CORS to allow the frontend origin and the `PUT` method with the `Content-Type` and `x-amz-tagging` headers.
+The client must send the `requiredHeaders` returned by `POST /images/presigned-url` or `/images/presigned-urls` with its S3 PUT. Configure bucket CORS to allow the frontend origin and the `PUT` method with the `Content-Type` and `x-amz-tagging` headers.
 
 Configure an S3 Lifecycle rule on the bucket with the tag filter `pending=true` and expiration after 1 day. This repository has no bucket IaC, so apply a rule like this to the S3 bucket separately:
 

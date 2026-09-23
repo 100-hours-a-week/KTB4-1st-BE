@@ -4,12 +4,14 @@ import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -33,22 +35,25 @@ public class ImageAiAnalysisService {
 		this.restClient = RestClient.builder().requestFactory(requestFactory).build();
 	}
 
-	public String analyze(Long userId, String objectKey) {
-		s3ImageObjectService.validatePendingObject(userId, objectKey);
+	public ResponseEntity<String> analyze(Long userId, List<String> objectKeys) {
+		s3ImageObjectService.validatePendingObjects(userId, objectKeys);
 		if (aiEndpoint.isBlank()) {
 			throw new ApiException(ErrorCode.AI_ANALYSIS_FAILED, "AI 분석 서버 주소가 설정되지 않았습니다.");
 		}
-		String imageUrl = s3ImageObjectService.presignedAnalysisUrl(objectKey);
+		List<String> imageUrls = objectKeys.stream()
+				.map(s3ImageObjectService::presignedAnalysisUrl)
+				.toList();
 		try {
 			return restClient.post()
 					.uri(aiEndpoint)
 					.contentType(MediaType.APPLICATION_JSON)
-					.body(Map.of("imageUrl", imageUrl))
-					.retrieve()
-					.body(String.class);
+					.body(Map.of("imageUrls", imageUrls))
+					.exchange((request, response) -> ResponseEntity.status(response.getStatusCode())
+							.contentType(MediaType.APPLICATION_JSON)
+							.body(response.bodyTo(String.class)));
 		} catch (RestClientException exception) {
 			throw new ApiException(ErrorCode.AI_ANALYSIS_FAILED, ErrorCode.AI_ANALYSIS_FAILED.message(),
-					java.util.List.of(), exception);
+					List.of(), exception);
 		}
 	}
 }
