@@ -37,9 +37,13 @@ public class Image extends BaseEntity {
 	@JoinColumn(name = "item_id")
 	private Item item;
 
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "report_id")
 	@Column(name = "report_id")
 	private Long reportId;
 
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "inquiry_id")
 	@Column(name = "inquiry_id")
 	private Long inquiryId;
 
