@@ -24,14 +24,14 @@ class CreateItemRequestTest {
 				new BigDecimal("0.50"),
 				new BigDecimal("0.30"),
 				List.of(101L, 205L),
-				List.of(1001L, 1002L)
+				List.of("images/42/1001.jpg", "images/42/1002.jpg")
 		);
 
 		assertThat(request.itemState()).isEqualTo(ItemState.AVAILABLE);
 		assertThat(request.quantity()).isEqualTo(3);
 		assertThat(request.exchangeUrgencyScore()).isEqualByComparingTo("0.50");
 		assertThat(request.groupIds()).containsExactly(101L, 205L);
-		assertThat(request.imageIds()).containsExactly(1001L, 1002L);
+		assertThat(request.objectKeys()).containsExactly("images/42/1001.jpg", "images/42/1002.jpg");
 		assertThat(validator.validate(request)).isEmpty();
 	}
 
@@ -45,14 +45,14 @@ class CreateItemRequestTest {
 				new BigDecimal("1.001"),
 				new BigDecimal("0.30"),
 				List.of(),
-				List.of(0L)
+				List.of(" ")
 		);
 
 		assertThat(validator.validate(request)).isNotEmpty();
 	}
 
 	@Test
-	void rejectsDuplicateGroupAndImageIds() {
+	void rejectsDuplicateGroupAndImageKeys() {
 		CreateItemRequest request = new CreateItemRequest(
 				"제목",
 				"내용",
@@ -61,11 +61,11 @@ class CreateItemRequestTest {
 				new BigDecimal("0.50"),
 				new BigDecimal("0.30"),
 				List.of(101L, 101L),
-				List.of(1001L, 1001L)
+				List.of("images/42/1001.jpg", "images/42/1001.jpg")
 		);
 
 		assertThat(validator.validate(request))
 				.extracting(violation -> violation.getMessage())
-				.contains("그룹 ID는 중복될 수 없습니다.", "이미지 ID는 중복될 수 없습니다.");
+				.contains("그룹 ID는 중복될 수 없습니다.", "이미지 objectKey는 중복될 수 없습니다.");
 	}
 }

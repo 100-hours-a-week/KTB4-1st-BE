@@ -30,4 +30,6 @@ public interface ImageRepository extends JpaRepository<Image, Long> {
 	List<Image> findAllByItemIdsOrderByItemIdAndId(@Param("itemIds") Collection<Long> itemIds);
 
 	List<Image> findAllByItem_IdOrderByIdAsc(Long itemId);
+
+	boolean existsByObjectKeyIn(Collection<String> objectKeys);
 }

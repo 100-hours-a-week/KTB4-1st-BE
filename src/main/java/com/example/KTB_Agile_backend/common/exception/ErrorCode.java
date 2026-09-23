@@ -19,6 +19,7 @@ public enum ErrorCode {
 	NOT_FOUND("NOT_FOUND", HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다."),
 	FORBIDDEN("FORBIDDEN", HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
 	INTERNAL_SERVER_ERROR("INTERNAL_SERVER_ERROR", HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다."),
+	AI_ANALYSIS_FAILED("AI_ANALYSIS_FAILED", HttpStatus.BAD_GATEWAY, "AI 이미지 분석 서버 호출에 실패했습니다."),
 	SOCIAL_ACCOUNT_CONFLICT("SOCIAL_ACCOUNT_CONFLICT", HttpStatus.CONFLICT, "계정 연결 정보가 충돌했습니다."),
 	USER_PREFERENCE_INVALID("USER_PREFERENCE_INVALID", HttpStatus.BAD_REQUEST, "질문 3개를 모두 입력해야 합니다."),
 	USER_PREFERENCE_ALREADY_EXISTS("USER_PREFERENCE_ALREADY_EXISTS", HttpStatus.CONFLICT, "사용자 설명은 회원가입 시 한 번만 설정할 수 있습니다."),

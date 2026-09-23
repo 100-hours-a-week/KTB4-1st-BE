@@ -9,6 +9,7 @@ import com.example.KTB_Agile_backend.group.repository.GroupMemberRepository;
 import com.example.KTB_Agile_backend.group.repository.GroupRepository;
 import com.example.KTB_Agile_backend.image.entity.Image;
 import com.example.KTB_Agile_backend.image.repository.ImageRepository;
+import com.example.KTB_Agile_backend.image.service.S3ImageObjectService;
 import com.example.KTB_Agile_backend.item.dto.request.CreateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.request.UpdateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
@@ -61,6 +62,7 @@ class ItemServiceTest {
 		GroupMemberRepository groupMemberRepository = mock(GroupMemberRepository.class);
 		GroupItemRepository groupItemRepository = mock(GroupItemRepository.class);
 		ImageRepository imageRepository = mock(ImageRepository.class);
+		S3ImageObjectService s3ImageObjectService = mock(S3ImageObjectService.class);
 		UserRepository userRepository = mock(UserRepository.class);
 		ItemService service = new ItemService(
 				itemRepository,
@@ -71,32 +73,34 @@ class ItemServiceTest {
 				groupMemberRepository,
 				groupItemRepository,
 				imageRepository,
+				s3ImageObjectService,
 				userRepository
 		);
 		User user = mock(User.class);
 		when(user.getId()).thenReturn(42L);
 		Group firstGroup = group("첫 그룹");
 		Group secondGroup = group("두 번째 그룹");
-		Image image = new Image(user, "https://example.com/image.jpg");
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(user));
 		when(groupRepository.findAllByIdInAndDeletedAtIsNull(List.of(101L, 205L)))
 				.thenReturn(List.of(firstGroup, secondGroup));
 		when(groupMemberRepository.countByGroup_IdInAndUser_IdAndStatus(
 				eq(List.of(101L, 205L)), eq(42L), any()))
 				.thenReturn(2L);
-		when(imageRepository.findAllForUpdateByIdIn(List.of(1001L))).thenReturn(List.of(image));
+		when(imageRepository.existsByObjectKeyIn(List.of("images/42/1001.jpg"))).thenReturn(false);
 		when(itemRepository.saveAndFlush(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-		var response = service.create(42L, request(List.of(101L, 205L), List.of(1001L)));
+		var response = service.create(42L, request(List.of(101L, 205L), List.of("images/42/1001.jpg")));
 
 		assertThat(response.itemId()).isNull();
-		assertThat(image.getItem()).isNotNull();
 		verify(itemStatsRepository).save(any());
 		ArgumentCaptor<Iterable<com.example.KTB_Agile_backend.group.entity.GroupItem>> groupItemsCaptor =
 				ArgumentCaptor.forClass(Iterable.class);
 		verify(groupItemRepository).saveAll(groupItemsCaptor.capture());
 		assertThat(((Iterable<?>) groupItemsCaptor.getValue())).hasSize(2);
-		verify(imageRepository).saveAll(List.of(image));
+		ArgumentCaptor<Iterable<Image>> imagesCaptor = ArgumentCaptor.forClass(Iterable.class);
+		verify(imageRepository).saveAllAndFlush(imagesCaptor.capture());
+		assertThat(imagesCaptor.getValue()).hasSize(1);
+		verify(s3ImageObjectService).markRegistered(List.of("images/42/1001.jpg"));
 	}
 
 	@Test
@@ -116,6 +120,7 @@ class ItemServiceTest {
 				groupMemberRepository,
 				groupItemRepository,
 				imageRepository,
+				mock(S3ImageObjectService.class),
 				userRepository
 		);
 		User owner = user(42L);
@@ -171,7 +176,7 @@ class ItemServiceTest {
 				.thenReturn(List.of(group("첫 그룹")));
 
 		ApiException exception = assertThrows(ApiException.class,
-				() -> service.create(42L, request(List.of(101L, 205L), List.of(1001L))));
+				() -> service.create(42L, request(List.of(101L, 205L), List.of("images/42/1001.jpg"))));
 
 		assertThat(exception.status()).isEqualTo(HttpStatus.NOT_FOUND);
 		verify(itemRepository, never()).saveAndFlush(any());
@@ -179,25 +184,35 @@ class ItemServiceTest {
 	}
 
 	@Test
-	void rejectsImageOwnedByAnotherUser() {
-		ImageRepository imageRepository = mock(ImageRepository.class);
+	void rejectsImageKeyOwnedByAnotherUser() {
 		UserRepository userRepository = mock(UserRepository.class);
 		GroupRepository groupRepository = mock(GroupRepository.class);
 		GroupMemberRepository groupMemberRepository = mock(GroupMemberRepository.class);
-		ItemService service = service(mock(ItemRepository.class), groupRepository,
-				groupMemberRepository, imageRepository, userRepository);
-		User owner = user(7L);
+		S3ImageObjectService s3ImageObjectService = mock(S3ImageObjectService.class);
+		ItemService service = new ItemService(
+				mock(ItemRepository.class),
+				mock(ItemStatsRepository.class),
+				mock(ItemViewRepository.class),
+				mock(ItemLikeRepository.class),
+				groupRepository,
+				groupMemberRepository,
+				mock(GroupItemRepository.class),
+				mock(ImageRepository.class),
+				s3ImageObjectService,
+				userRepository
+		);
 		User requester = user(42L);
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(requester));
 		when(groupRepository.findAllByIdInAndDeletedAtIsNull(List.of(101L)))
 				.thenReturn(List.of(group("그룹")));
 		when(groupMemberRepository.countByGroup_IdInAndUser_IdAndStatus(any(), eq(42L), any()))
 				.thenReturn(1L);
-		when(imageRepository.findAllForUpdateByIdIn(List.of(1001L)))
-				.thenReturn(List.of(new Image(owner, "https://example.com/image.jpg")));
+		org.mockito.Mockito.doThrow(new ApiException(
+				com.example.KTB_Agile_backend.common.exception.ErrorCode.FORBIDDEN))
+				.when(s3ImageObjectService).validatePendingObjects(42L, List.of("images/7/1001.jpg"));
 
 		ApiException exception = assertThrows(ApiException.class,
-				() -> service.create(42L, request(List.of(101L), List.of(1001L))));
+				() -> service.create(42L, request(List.of(101L), List.of("images/7/1001.jpg"))));
 
 		assertThat(exception.status()).isEqualTo(HttpStatus.FORBIDDEN);
 	}
@@ -233,7 +248,8 @@ class ItemServiceTest {
 		User memberUser = user(42L);
 		ItemService service = new ItemService(
 				mock(ItemRepository.class), itemStatsRepository, itemViewRepository, itemLikeRepository, groupRepository,
-				groupMemberRepository, groupItemRepository, imageRepository, mock(UserRepository.class));
+				groupMemberRepository, groupItemRepository, imageRepository, mock(S3ImageObjectService.class),
+				mock(UserRepository.class));
 		Group group = group("그룹");
 		when(groupRepository.findByIdAndDeletedAtIsNull(101L)).thenReturn(Optional.of(group));
 		when(groupMemberRepository.findByGroup_IdAndUser_Id(101L, 42L))
@@ -281,6 +297,7 @@ class ItemServiceTest {
 				mock(GroupMemberRepository.class),
 				groupItemRepository,
 				imageRepository,
+				mock(S3ImageObjectService.class),
 				userRepository
 		);
 
@@ -368,6 +385,7 @@ class ItemServiceTest {
 				mock(GroupMemberRepository.class),
 				groupItemRepository,
 				imageRepository,
+				mock(S3ImageObjectService.class),
 				userRepository
 		);
 
@@ -391,7 +409,7 @@ class ItemServiceTest {
 		verify(stats).increaseViewCount();
 	}
 
-	private static CreateItemRequest request(List<Long> groupIds, List<Long> imageIds) {
+	private static CreateItemRequest request(List<Long> groupIds, List<String> objectKeys) {
 		return new CreateItemRequest(
 				"제목",
 				"내용",
@@ -400,7 +418,7 @@ class ItemServiceTest {
 				new BigDecimal("0.50"),
 				new BigDecimal("0.30"),
 				groupIds,
-				imageIds
+				objectKeys
 		);
 	}
 
@@ -451,6 +469,7 @@ class ItemServiceTest {
 				groupMemberRepository,
 				mock(GroupItemRepository.class),
 				imageRepository,
+				mock(S3ImageObjectService.class),
 				userRepository
 		);
 	}
