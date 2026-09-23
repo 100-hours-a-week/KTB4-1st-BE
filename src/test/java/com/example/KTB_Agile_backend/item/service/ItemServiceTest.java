@@ -77,7 +77,6 @@ class ItemServiceTest {
 				userRepository
 		);
 		User user = mock(User.class);
-		when(user.getId()).thenReturn(42L);
 		Group firstGroup = group("첫 그룹");
 		Group secondGroup = group("두 번째 그룹");
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(user));

@@ -49,7 +49,7 @@ class ItemControllerTest {
 		mockMvc.perform(post("/items")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
 					.contentType(MediaType.APPLICATION_JSON)
-					.content(payload()))
+					.content(createPayload()))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.data.itemId").value(123));
 
@@ -61,7 +61,7 @@ class ItemControllerTest {
 		mockMvc.perform(put("/items/123")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
 					.contentType(MediaType.APPLICATION_JSON)
-					.content(payload()))
+					.content(updatePayload()))
 				.andExpect(status().isNoContent());
 
 		verify(itemService).update(eq(42L), eq(123L), any(UpdateItemRequest.class));
@@ -117,7 +117,22 @@ class ItemControllerTest {
 		verify(itemService).findDetail(42L, 123L);
 	}
 
-	private static String payload() {
+	private static String createPayload() {
+		return """
+				{
+				  "title": "임시 제목입니다.",
+				  "content": "임시 내용입니다.",
+				  "quantity": 3,
+				  "itemState": "AVAILABLE",
+				  "exchangeUrgencyScore": 0.50,
+				  "valueGapToleranceScore": 0.30,
+				  "groupIds": [101, 205],
+				  "objectKeys": ["images/42/1001.jpg", "images/42/1002.jpg"]
+				}
+				""";
+	}
+
+	private static String updatePayload() {
 		return """
 				{
 				  "title": "임시 제목입니다.",

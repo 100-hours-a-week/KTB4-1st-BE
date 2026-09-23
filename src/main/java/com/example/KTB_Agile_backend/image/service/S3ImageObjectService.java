@@ -3,6 +3,7 @@ package com.example.KTB_Agile_backend.image.service;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
@@ -64,7 +65,7 @@ public class S3ImageObjectService {
 					.build())
 					.tagSet()
 					.stream()
-					.anyMatch(tag -> tag.key().equals(PENDING_TAG_KEY) && tag.value().equals(PENDING_TAG_VALUE));
+					.anyMatch(tag -> PENDING_TAG_KEY.equals(tag.key()) && PENDING_TAG_VALUE.equals(tag.value()));
 			if (!pending) {
 				throw new ApiException(ErrorCode.CONFLICT, "미등록 상태의 이미지가 아닙니다.");
 			}
@@ -121,13 +122,13 @@ public class S3ImageObjectService {
 					.build())
 				.tagSet()
 				.stream()
-				.anyMatch(tag -> tag.key().equals(PENDING_TAG_KEY) && tag.value().equals(PENDING_TAG_VALUE));
+				.anyMatch(tag -> PENDING_TAG_KEY.equals(tag.key()) && PENDING_TAG_VALUE.equals(tag.value()));
 			if (!pending) {
 				throw new ApiException(ErrorCode.CONFLICT, "미등록 상태의 이미지가 아닙니다.");
 			}
 			s3Client.deleteObject(builder -> builder.bucket(bucket).key(objectKey));
 		} catch (S3Exception exception) {
-			if (exception.statusCode() == 404) {
+			if (HttpStatus.NOT_FOUND.value() == exception.statusCode()) {
 				return;
 			}
 			throw s3Failure(exception);
@@ -147,7 +148,7 @@ public class S3ImageObjectService {
 	}
 
 	private static ApiException s3Failure(S3Exception exception) {
-		if (exception.statusCode() == 404) {
+		if (HttpStatus.NOT_FOUND.value() == exception.statusCode()) {
 			return new ApiException(ErrorCode.NOT_FOUND, "S3에서 이미지를 찾을 수 없습니다.", exception);
 		}
 		return new ApiException(ErrorCode.INTERNAL_SERVER_ERROR, "S3 이미지 처리에 실패했습니다.", exception);
