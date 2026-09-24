@@ -21,6 +21,7 @@ import com.example.KTB_Agile_backend.item.repository.ItemLikeRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemStatsRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemViewRepository;
+import com.example.KTB_Agile_backend.item.moderation.service.ModerationCheckService;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -74,7 +75,8 @@ class ItemServiceTest {
 				groupItemRepository,
 				imageRepository,
 				s3ImageObjectService,
-				userRepository
+				userRepository,
+				mock(ModerationCheckService.class)
 		);
 		User user = mock(User.class);
 		Group firstGroup = group("첫 그룹");
@@ -120,7 +122,8 @@ class ItemServiceTest {
 				groupItemRepository,
 				imageRepository,
 				mock(S3ImageObjectService.class),
-				userRepository
+				userRepository,
+				mock(ModerationCheckService.class)
 		);
 		User owner = user(42L);
 		Item item = spy(new Item(owner, "기존 제목", "기존 내용"));
@@ -198,7 +201,8 @@ class ItemServiceTest {
 				mock(GroupItemRepository.class),
 				mock(ImageRepository.class),
 				s3ImageObjectService,
-				userRepository
+				userRepository,
+				mock(ModerationCheckService.class)
 		);
 		User requester = user(42L);
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(requester));
@@ -248,7 +252,7 @@ class ItemServiceTest {
 		ItemService service = new ItemService(
 				mock(ItemRepository.class), itemStatsRepository, itemViewRepository, itemLikeRepository, groupRepository,
 				groupMemberRepository, groupItemRepository, imageRepository, mock(S3ImageObjectService.class),
-				mock(UserRepository.class));
+				mock(UserRepository.class), mock(ModerationCheckService.class));
 		Group group = group("그룹");
 		when(groupRepository.findByIdAndDeletedAtIsNull(101L)).thenReturn(Optional.of(group));
 		when(groupMemberRepository.findByGroup_IdAndUser_Id(101L, 42L))
@@ -297,7 +301,8 @@ class ItemServiceTest {
 				groupItemRepository,
 				imageRepository,
 				mock(S3ImageObjectService.class),
-				userRepository
+				userRepository,
+				mock(ModerationCheckService.class)
 		);
 
 		User owner = mock(User.class);
@@ -385,7 +390,8 @@ class ItemServiceTest {
 				groupItemRepository,
 				imageRepository,
 				mock(S3ImageObjectService.class),
-				userRepository
+				userRepository,
+				mock(ModerationCheckService.class)
 		);
 
 		User viewer = user(42L);
@@ -412,6 +418,7 @@ class ItemServiceTest {
 		return new CreateItemRequest(
 				"제목",
 				"내용",
+				"test-check-id",
 				1,
 				ItemState.AVAILABLE,
 				new BigDecimal("0.50"),
@@ -469,7 +476,8 @@ class ItemServiceTest {
 				mock(GroupItemRepository.class),
 				imageRepository,
 				mock(S3ImageObjectService.class),
-				userRepository
+				userRepository,
+				mock(ModerationCheckService.class)
 		);
 	}
 

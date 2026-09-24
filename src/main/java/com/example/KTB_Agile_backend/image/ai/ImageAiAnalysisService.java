@@ -1,7 +1,8 @@
-package com.example.KTB_Agile_backend.image.service;
+package com.example.KTB_Agile_backend.image.ai;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
+import com.example.KTB_Agile_backend.image.service.S3ImageObjectService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;

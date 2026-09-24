@@ -29,6 +29,7 @@ cloud:
 
 ai:
   image-analysis-url: ${AI_IMAGE_ANALYSIS_URL:}
+  text-moderation-url: ${AI_TEXT_MODERATION_URL:}
   connect-timeout-seconds: ${AI_CONNECT_TIMEOUT_SECONDS:5}
   read-timeout-seconds: ${AI_READ_TIMEOUT_SECONDS:90}
 
