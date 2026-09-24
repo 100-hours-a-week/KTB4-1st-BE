@@ -22,6 +22,10 @@ public record CreateItemRequest(
 		@Size(max = 2000, message = "내용은 2000자 이내여야 합니다.")
 		String content,
 
+		@NotBlank(message = "검수 ID는 필수 입력값입니다.")
+		@Size(max = 128, message = "검수 ID가 올바르지 않습니다.")
+		String moderationCheckId,
+
 		@NotNull(message = "수량은 필수 입력값입니다.")
 		@Positive(message = "수량은 1 이상이어야 합니다.")
 		Integer quantity,

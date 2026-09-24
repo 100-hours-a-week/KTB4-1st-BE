@@ -27,6 +27,7 @@ import com.example.KTB_Agile_backend.item.repository.ItemLikeRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemStatsRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemViewRepository;
+import com.example.KTB_Agile_backend.item.moderation.service.ModerationCheckService;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -67,6 +68,7 @@ public class ItemService {
 	private final ImageRepository imageRepository;
 	private final S3ImageObjectService s3ImageObjectService;
 	private final UserRepository userRepository;
+	private final ModerationCheckService moderationCheckService;
 
 	@Transactional
 	public ItemCreateResponse create(Long userId, CreateItemRequest request) {
@@ -81,6 +83,12 @@ public class ItemService {
 				.map(objectKey -> Image.fromS3Object(user, objectKey))
 				.toList();
 
+		moderationCheckService.consumeForItem(
+				userId,
+				request.moderationCheckId(),
+				request.title(),
+				request.content()
+		);
 		Item item = itemRepository.saveAndFlush(new Item(
 				user,
 				request.title(),

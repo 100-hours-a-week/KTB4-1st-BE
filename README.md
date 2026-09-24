@@ -38,6 +38,10 @@ When the user starts analysis, request 1–3 upload URLs with `POST /images/pres
 
 The client must send the `requiredHeaders` returned by `POST /images/presigned-urls` with its S3 PUT, including when uploading one image. Configure bucket CORS to allow the frontend origin and the `PUT` method with the `Content-Type` and `x-amz-tagging` headers.
 
+## Item text moderation
+
+Set `AI_TEXT_MODERATION_URL` to the AI server's `POST /api/moderation/check-text` URL (the same AI server used by `AI_IMAGE_ANALYSIS_URL`). Before creating an item, call `POST /moderation-checks` with `title` and `content`. The response includes `isAppropriate`, `rejectionReason`, and a five-minute `checkId` when approved. Send that `moderationCheckId` with the item payload to `POST /items`; it is bound to the authenticated user and checked title/content, and can be used once. Inappropriate content returns the AI rejection reason and no `checkId`.
+
 Configure an S3 Lifecycle rule on the bucket with the tag filter `pending=true` and expiration after 1 day. This repository has no bucket IaC, so apply a rule like this to the S3 bucket separately:
 
 ```json

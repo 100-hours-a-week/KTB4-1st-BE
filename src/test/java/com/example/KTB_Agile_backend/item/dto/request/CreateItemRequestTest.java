@@ -19,6 +19,7 @@ class CreateItemRequestTest {
 		CreateItemRequest request = new CreateItemRequest(
 				"임시 제목입니다.",
 				"임시 내용입니다.",
+				"test-check-id",
 				3,
 				ItemState.AVAILABLE,
 				new BigDecimal("0.50"),
@@ -40,6 +41,7 @@ class CreateItemRequestTest {
 		CreateItemRequest request = new CreateItemRequest(
 				" ",
 				"내용",
+				"test-check-id",
 				0,
 				ItemState.AVAILABLE,
 				new BigDecimal("1.001"),
@@ -56,6 +58,7 @@ class CreateItemRequestTest {
 		CreateItemRequest request = new CreateItemRequest(
 				"제목",
 				"내용",
+				"test-check-id",
 				1,
 				ItemState.AVAILABLE,
 				new BigDecimal("0.50"),
