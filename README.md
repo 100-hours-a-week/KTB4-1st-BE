@@ -8,16 +8,21 @@ Spring Boot backend project built with Java 25 and Gradle.
 ./gradlew bootRun
 ```
 
-The default local database is an in-memory H2 database. Configure another database with:
+Local execution uses the `dev` profile by default and an in-memory H2 database.
+To select the production profile, set `SPRING_PROFILES_ACTIVE=prod`.
+
+Configure another local database with Spring Boot's datasource environment variables:
 
 ```bash
-DB_URL=jdbc:mysql://localhost:3306/ktb \
-DB_USERNAME=ktb \
-DB_PASSWORD=change-me \
-DB_DRIVER=com.mysql.cj.jdbc.Driver \
+SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/ktb \
+SPRING_DATASOURCE_USERNAME=ktb \
+SPRING_DATASOURCE_PASSWORD=change-me \
+SPRING_DATASOURCE_DRIVER_CLASS_NAME=com.mysql.cj.jdbc.Driver \
 JPA_DDL_AUTO=update \
 ./gradlew bootRun
 ```
+
+The `prod` profile requires `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `AWS_S3_BUCKET`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS`, `FRONTEND_REDIRECT_URI`, `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, and `KAKAO_REDIRECT_URI`. Its schema mode defaults to `validate`.
 
 ## Test
 
