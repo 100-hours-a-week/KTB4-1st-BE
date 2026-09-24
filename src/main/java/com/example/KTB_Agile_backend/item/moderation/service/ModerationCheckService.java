@@ -25,6 +25,7 @@ import java.util.Map;
 public class ModerationCheckService {
 
 	private static final Duration CHECK_TTL = Duration.ofMinutes(5);
+	private static final int EXPECTED_CONSUMED_ROWS = 1;
 
 	private final ModerationCheckRepository moderationCheckRepository;
 	private final RestClient restClient;
@@ -89,7 +90,7 @@ public class ModerationCheckService {
 		LocalDateTime now = LocalDateTime.now();
 		int consumed = moderationCheckRepository.consumeIfValid(
 				Hashing.sha256(checkId), userId, contentHash(title, content), now);
-		if (consumed != 1) {
+		if (consumed != EXPECTED_CONSUMED_ROWS) {
 			throw new ApiException(ErrorCode.CONFLICT, "검수 ID가 유효하지 않거나 만료되었습니다.");
 		}
 	}
