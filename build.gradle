@@ -2,6 +2,33 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '4.1.1'
 	id 'io.spring.dependency-management' version '1.1.7'
+	id 'com.github.spotbugs' version '6.5.11'
+	id 'pmd'
+}
+
+spotbugs {
+	effort = 'max'
+	reportLevel = 'high'
+}
+
+tasks.withType(com.github.spotbugs.snom.SpotBugsTask) {
+	reports {
+		// 원하는 리포트 형식 활성화 (HTML 또는 XML)
+		html.required = false
+		xml.required = false
+	}
+}
+
+pmd {
+	toolVersion = '7.16.0'
+	ignoreFailures = false
+	consoleOutput = true
+
+	rulesMinimumPriority = 5
+	ruleSets = [
+			'category/java/errorprone.xml',
+			'category/java/bestpractices.xml'
+	]
 }
 
 group = 'com.example'
@@ -9,7 +36,7 @@ version = '0.0.1-SNAPSHOT'
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(26)
+		languageVersion = JavaLanguageVersion.of(25)
 	}
 }
 
@@ -18,8 +45,12 @@ repositories {
 }
 
 dependencies {
+	implementation platform('software.amazon.awssdk:bom:2.54.17')
+	implementation 'software.amazon.awssdk:s3'
 	implementation 'org.springframework.boot:spring-boot-h2console'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.security:spring-security-oauth2-jose'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
