@@ -1,7 +1,6 @@
 package com.example.KTB_Agile_backend.image.controller;
 
 import com.example.KTB_Agile_backend.common.exception.GlobalExceptionHandler;
-import com.example.KTB_Agile_backend.image.dto.request.PresignedUploadRequest;
 import com.example.KTB_Agile_backend.image.dto.response.PresignedUploadResponse;
 import com.example.KTB_Agile_backend.image.service.ImageUploadService;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,7 +13,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -37,26 +35,24 @@ class ImageControllerTest {
 	}
 
 	@Test
-	void issuesPresignedUrlForAuthenticatedUser() throws Exception {
-		when(imageUploadService.issue(eq(42L), any(PresignedUploadRequest.class)))
-				.thenReturn(new PresignedUploadResponse(
-						"https://s3.example/upload",
-						"images/42/object.jpg",
-						600
-				));
+	void issuesOnePresignedUrlForSingleSelectedImage() throws Exception {
+		when(imageUploadService.issue(eq(42L), anyList())).thenReturn(List.of(
+				new PresignedUploadResponse("https://s3.example/upload", "images/42/object.jpg", 600)
+		));
 
-		mockMvc.perform(post("/images/presigned-url")
+		mockMvc.perform(post("/images/presigned-urls")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
 					.contentType(MediaType.APPLICATION_JSON)
 					.content("""
-							{"contentType":"image/jpeg"}
+							{"images":[{"contentType":"image/jpeg"}]}
 							"""))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.data.uploadUrl").value("https://s3.example/upload"))
-				.andExpect(jsonPath("$.data.objectKey").value("images/42/object.jpg"))
-				.andExpect(jsonPath("$.data.expiresInSeconds").value(600));
+				.andExpect(jsonPath("$.data.length()").value(1))
+				.andExpect(jsonPath("$.data[0].uploadUrl").value("https://s3.example/upload"))
+				.andExpect(jsonPath("$.data[0].objectKey").value("images/42/object.jpg"))
+				.andExpect(jsonPath("$.data[0].expiresInSeconds").value(600));
 
-		verify(imageUploadService).issue(eq(42L), any(PresignedUploadRequest.class));
+		verify(imageUploadService).issue(eq(42L), anyList());
 	}
 
 	@Test
