@@ -83,10 +83,10 @@ public class ExchangeRequestController {
 	private static ExchangeRequestStatus parseStatus(JsonNode body) {
 		JsonNode status = body != null && body.isObject() ? body.get("status") : null;
 		if (status != null && status.isString()) {
-			if ("COMPLETED".equals(status.stringValue())) {
+			if (ExchangeRequestStatus.COMPLETED.name().equals(status.stringValue())) {
 				return ExchangeRequestStatus.COMPLETED;
 			}
-			if ("REJECTED".equals(status.stringValue())) {
+			if (ExchangeRequestStatus.REJECTED.name().equals(status.stringValue())) {
 				return ExchangeRequestStatus.REJECTED;
 			}
 		}

@@ -26,6 +26,7 @@ import static java.util.Objects.requireNonNull;
 @Table(name = "items")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Item extends SoftDeletableEntity {
+	private static final int MINIMUM_EXCHANGE_QUANTITY = 1;
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -118,7 +119,7 @@ public class Item extends SoftDeletableEntity {
 	}
 
 	public void deductForCompletedExchange(int quantity) {
-		if (quantity < 1) {
+		if (quantity < MINIMUM_EXCHANGE_QUANTITY) {
 			throw new IllegalArgumentException("quantity must be positive");
 		}
 		this.quantity = Math.max(0, this.quantity - quantity);
