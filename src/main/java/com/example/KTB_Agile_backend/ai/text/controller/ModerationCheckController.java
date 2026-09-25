@@ -1,9 +1,9 @@
-package com.example.KTB_Agile_backend.item.moderation.controller;
+package com.example.KTB_Agile_backend.ai.text.controller;
 
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
-import com.example.KTB_Agile_backend.item.moderation.dto.request.ModerationCheckRequest;
-import com.example.KTB_Agile_backend.item.moderation.dto.response.ModerationCheckResponse;
-import com.example.KTB_Agile_backend.item.moderation.service.ModerationCheckService;
+import com.example.KTB_Agile_backend.ai.text.dto.request.ModerationCheckRequest;
+import com.example.KTB_Agile_backend.ai.text.dto.response.ModerationCheckResponse;
+import com.example.KTB_Agile_backend.ai.text.service.ModerationCheckService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

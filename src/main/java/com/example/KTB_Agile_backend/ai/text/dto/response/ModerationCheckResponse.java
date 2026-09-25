@@ -1,4 +1,4 @@
-package com.example.KTB_Agile_backend.item.moderation.dto.response;
+package com.example.KTB_Agile_backend.ai.text.dto.response;
 
 public record ModerationCheckResponse(
 		boolean isAppropriate,

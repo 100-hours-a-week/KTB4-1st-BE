@@ -1,6 +1,6 @@
-package com.example.KTB_Agile_backend.image.service;
+package com.example.KTB_Agile_backend.ai.image;
 
-import com.example.KTB_Agile_backend.image.ai.ImageAiAnalysisService;
+import com.example.KTB_Agile_backend.image.service.S3ImageObjectService;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;

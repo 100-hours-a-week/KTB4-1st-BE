@@ -1,4 +1,4 @@
-package com.example.KTB_Agile_backend.item.moderation.dto.request;
+package com.example.KTB_Agile_backend.ai.text.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
