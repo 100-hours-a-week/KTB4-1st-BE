@@ -117,4 +117,14 @@ public class Item extends SoftDeletableEntity {
 		);
 	}
 
+	public void deductForCompletedExchange(int quantity) {
+		if (quantity < 1) {
+			throw new IllegalArgumentException("quantity must be positive");
+		}
+		this.quantity = Math.max(0, this.quantity - quantity);
+		if (this.quantity == 0) {
+			this.itemState = ItemState.UNAVAILABLE;
+		}
+	}
+
 }

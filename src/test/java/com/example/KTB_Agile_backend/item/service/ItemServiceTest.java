@@ -146,7 +146,7 @@ class ItemServiceTest {
 				"새 제목",
 				"새 내용",
 				2,
-				ItemState.COMPLETED,
+				ItemState.UNAVAILABLE,
 				new BigDecimal("0.70"),
 				new BigDecimal("0.80"),
 				List.of(101L),
@@ -159,7 +159,7 @@ class ItemServiceTest {
 				item.getQuantity(),
 				item.getItemState(),
 				image.getItem()
-		)).containsExactly("새 제목", "새 내용", 2, ItemState.COMPLETED, item);
+		)).containsExactly("새 제목", "새 내용", 2, ItemState.UNAVAILABLE, item);
 		verify(groupItemRepository).saveAll(any());
 		verify(imageRepository).saveAll(List.of(image));
 	}
