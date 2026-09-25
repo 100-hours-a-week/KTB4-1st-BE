@@ -1,12 +1,12 @@
-package com.example.KTB_Agile_backend.item.moderation.service;
+package com.example.KTB_Agile_backend.ai.text.service;
 
 import com.example.KTB_Agile_backend.auth.service.Hashing;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
-import com.example.KTB_Agile_backend.item.entity.ModerationCheck;
-import com.example.KTB_Agile_backend.item.moderation.dto.request.ModerationCheckRequest;
-import com.example.KTB_Agile_backend.item.moderation.dto.response.ModerationCheckResponse;
-import com.example.KTB_Agile_backend.item.repository.ModerationCheckRepository;
+import com.example.KTB_Agile_backend.ai.text.dto.request.ModerationCheckRequest;
+import com.example.KTB_Agile_backend.ai.text.dto.response.ModerationCheckResponse;
+import com.example.KTB_Agile_backend.ai.text.entity.ModerationCheck;
+import com.example.KTB_Agile_backend.ai.text.repository.ModerationCheckRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;

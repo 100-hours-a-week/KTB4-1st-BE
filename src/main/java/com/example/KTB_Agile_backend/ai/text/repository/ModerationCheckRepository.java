@@ -1,6 +1,6 @@
-package com.example.KTB_Agile_backend.item.repository;
+package com.example.KTB_Agile_backend.ai.text.repository;
 
-import com.example.KTB_Agile_backend.item.entity.ModerationCheck;
+import com.example.KTB_Agile_backend.ai.text.entity.ModerationCheck;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

@@ -1,4 +1,4 @@
-package com.example.KTB_Agile_backend.image.ai;
+package com.example.KTB_Agile_backend.ai.image;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;

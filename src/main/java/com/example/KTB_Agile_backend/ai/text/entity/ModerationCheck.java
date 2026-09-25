@@ -1,4 +1,4 @@
-package com.example.KTB_Agile_backend.item.entity;
+package com.example.KTB_Agile_backend.ai.text.entity;
 
 import com.example.KTB_Agile_backend.common.entity.UpdatableEntity;
 import jakarta.persistence.Column;
