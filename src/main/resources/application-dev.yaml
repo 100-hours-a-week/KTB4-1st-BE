@@ -15,6 +15,6 @@ auth:
   cookie:
     secure: ${COOKIE_SECURE:false}
   oauth:
-    frontend-redirect-uri: ${FRONTEND_REDIRECT_URI:http://127.0.0.1:3000}
+    frontend-redirect-uri: ${FRONTEND_REDIRECT_URI:http://127.0.0.1:3000/auth/callback}
     kakao:
       redirect-uri: ${KAKAO_REDIRECT_URI:http://127.0.0.1:8080/auth/kakao/callback}
