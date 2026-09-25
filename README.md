@@ -75,3 +75,35 @@ CREATE UNIQUE INDEX uk_images_object_key ON images (object_key);
 ```
 
 Existing URL-backed image rows continue to work; newly uploaded images store their S3 key and receive fresh read URLs from item APIs.
+
+For the exchange request API, create the following tables in an existing MySQL database before deploying with the `prod` profile (`ddl-auto: validate`):
+
+```sql
+CREATE TABLE exchange_requests (
+    exchange_request_id BIGINT NOT NULL AUTO_INCREMENT,
+    requester_id BIGINT NOT NULL,
+    item_id BIGINT NOT NULL,
+    requested_quantity INT NOT NULL,
+    requested_status VARCHAR(20) NOT NULL,
+    chat_room_id BIGINT NULL,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NOT NULL,
+    PRIMARY KEY (exchange_request_id),
+    KEY ix_exchange_request_requester_item_status (requester_id, item_id, requested_status),
+    CONSTRAINT fk_exchange_request_requester FOREIGN KEY (requester_id) REFERENCES users (user_id),
+    CONSTRAINT fk_exchange_request_item FOREIGN KEY (item_id) REFERENCES items (item_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE exchange_request_offered_items (
+    exchange_request_offered_item_id BIGINT NOT NULL AUTO_INCREMENT,
+    exchange_request_id BIGINT NOT NULL,
+    item_id BIGINT NOT NULL,
+    quantity INT NOT NULL,
+    PRIMARY KEY (exchange_request_offered_item_id),
+    UNIQUE KEY uk_exchange_offered_request_item (exchange_request_id, item_id),
+    KEY ix_exchange_offered_item (item_id),
+    CONSTRAINT fk_exchange_offered_request FOREIGN KEY (exchange_request_id)
+        REFERENCES exchange_requests (exchange_request_id),
+    CONSTRAINT fk_exchange_offered_item FOREIGN KEY (item_id) REFERENCES items (item_id)
+) ENGINE=InnoDB;
+```

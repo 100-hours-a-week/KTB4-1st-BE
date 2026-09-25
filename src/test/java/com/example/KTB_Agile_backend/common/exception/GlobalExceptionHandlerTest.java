@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class GlobalExceptionHandlerTest {
 
 	@Test
-	void returnsTheSameUnexpectedErrorForEveryUri() {
+	void keepsCommonUnexpectedErrorsAndUsesExchangeContractForExchangeRequests() {
 		GlobalExceptionHandler handler = new GlobalExceptionHandler();
 
 		ResponseEntity<ApiResponse<Void>> authResponse = handler.handleUnexpectedException(
@@ -22,11 +22,16 @@ class GlobalExceptionHandlerTest {
 				new RuntimeException("database failure"),
 				request("/groups")
 		);
+		ResponseEntity<ApiResponse<Void>> exchangeResponse = handler.handleUnexpectedException(
+				new RuntimeException("database failure"),
+				request("/api/items/123/exchange-requests")
+		);
 
 		assertEquals(authResponse.getStatusCode(), groupResponse.getStatusCode());
 		assertEquals(authResponse.getBody(), groupResponse.getBody());
 		assertEquals("INTERNAL_SERVER_ERROR", authResponse.getBody().error().code());
 		assertEquals("서버 오류가 발생했습니다.", authResponse.getBody().error().message());
+		assertEquals("교환 요청 처리 중 서버 오류가 발생했습니다.", exchangeResponse.getBody().error().message());
 	}
 
 	private static HttpServletRequest request(String uri) {
