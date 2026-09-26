@@ -165,6 +165,9 @@ public class ExchangeRequestService {
 		}
 
 		exchangeRequest.changeStatus(status);
+		if (status == ExchangeRequestStatus.REJECTED || status == ExchangeRequestStatus.CANCELED) {
+			chatRoomRepository.findByExchangeRequest_Id(exchangeRequestId).ifPresent(ChatRoom::close);
+		}
 		exchangeRequestRepository.saveAndFlush(exchangeRequest);
 		return new ExchangeRequestStatusResponse(
 				exchangeRequest.getId(), exchangeRequest.getItem().getId(), status,

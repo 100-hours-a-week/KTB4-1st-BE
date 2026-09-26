@@ -53,6 +53,10 @@ public class ChatRoom extends BaseEntity {
 		this.lastMessageAt = Objects.requireNonNull(lastMessageAt, "lastMessageAt must not be null");
 	}
 
+	public void close() {
+		this.chatRoomStatus = ChatRoomStatus.CLOSED;
+	}
+
 	public boolean isDeleted() {
 		return deletedAt != null;
 	}
