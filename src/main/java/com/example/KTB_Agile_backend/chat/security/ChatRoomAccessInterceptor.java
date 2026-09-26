@@ -54,7 +54,7 @@ public class ChatRoomAccessInterceptor implements ChannelInterceptor {
 				throw new AccessDeniedException("채팅방 멤버만 구독할 수 있습니다.");
 			}
 		} catch (NumberFormatException exception) {
-			throw new AccessDeniedException("채팅방 주소가 올바르지 않습니다.");
+			throw new AccessDeniedException("채팅방 주소가 올바르지 않습니다.", exception);
 		}
 	}
 }
