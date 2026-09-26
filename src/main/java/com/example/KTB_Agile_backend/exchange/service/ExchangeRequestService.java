@@ -137,12 +137,11 @@ public class ExchangeRequestService {
 			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_STATUS_CONFLICT);
 		}
 
-		Map<Long, Item> items = Map.of();
 		if (status == ExchangeRequestStatus.COMPLETED) {
 			List<Long> itemIds = new ArrayList<>();
 			itemIds.add(exchangeRequest.getItem().getId());
 			exchangeRequest.getOfferedItems().forEach(offered -> itemIds.add(offered.getItem().getId()));
-			items = lockItems(itemIds);
+			Map<Long, Item> items = lockItems(itemIds);
 			if (items.size() != itemIds.size()) {
 				throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_STATUS_NOT_FOUND);
 			}

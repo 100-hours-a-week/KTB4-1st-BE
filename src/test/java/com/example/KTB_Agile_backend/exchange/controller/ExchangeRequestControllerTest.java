@@ -138,6 +138,7 @@ class ExchangeRequestControllerTest {
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.error.code").value("EXCHANGE_REQUEST_STATUS_INVALID"))
 				.andExpect(jsonPath("$.error.details[0].field").value("status"))
-				.andExpect(jsonPath("$.error.details[0].reason").value("COMPLETED 또는 REJECTED만 입력해 주세요."));
+				.andExpect(jsonPath("$.error.details[0].reason")
+						.value("COMPLETED, REJECTED 또는 CANCELED만 입력해 주세요."));
 	}
 }
