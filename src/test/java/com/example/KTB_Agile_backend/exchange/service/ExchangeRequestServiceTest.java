@@ -113,6 +113,36 @@ class ExchangeRequestServiceTest {
 	}
 
 	@Test
+	void requesterCanEditAndCancelPendingRequest() {
+		User owner = persist(new User("owner"));
+		User requester = persist(new User("requester"));
+		Item target = persist(item(owner, 5, ItemState.AVAILABLE));
+		Item originalOffer = persist(item(requester, 2, ItemState.AVAILABLE));
+		Item replacementOffer = persist(item(requester, 4, ItemState.AVAILABLE));
+		var pending = service.create(requester.getId(), target.getId(), request(1, originalOffer, 1));
+
+		service.update(pending.exchangeRequestId(), requester.getId(), request(2, replacementOffer, 3));
+		entityManager.clear();
+		ExchangeRequest updated = exchangeRequestRepository.findById(pending.exchangeRequestId()).orElseThrow();
+		assertThat(updated.getRequestedQuantity()).isEqualTo(2);
+		assertThat(updated.getOfferedItems()).extracting("item.id").containsExactly(replacementOffer.getId());
+		assertThat(updated.getOfferedItems()).extracting("quantity").containsExactly(3);
+
+		assertThatThrownBy(() -> service.updateStatus(
+				pending.exchangeRequestId(), owner.getId(), ExchangeRequestStatus.CANCELED))
+				.isInstanceOf(ApiException.class)
+				.satisfies(exception -> assertThat(((ApiException) exception).code().value())
+						.isEqualTo("EXCHANGE_REQUEST_STATUS_FORBIDDEN"));
+		var canceled = service.updateStatus(
+				pending.exchangeRequestId(), requester.getId(), ExchangeRequestStatus.CANCELED);
+
+		assertThat(canceled.status()).isEqualTo(ExchangeRequestStatus.CANCELED);
+		entityManager.clear();
+		assertThat(exchangeRequestRepository.findById(pending.exchangeRequestId()).orElseThrow().getRequestedStatus())
+				.isEqualTo(ExchangeRequestStatus.CANCELED);
+	}
+
+	@Test
 	void validatesOwnersAvailabilityQuantitiesAndDuplicatePendingRequests() {
 		User owner = persist(new User("owner"));
 		User requester = persist(new User("requester"));
