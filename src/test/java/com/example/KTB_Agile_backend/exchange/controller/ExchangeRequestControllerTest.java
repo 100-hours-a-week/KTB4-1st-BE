@@ -46,14 +46,14 @@ class ExchangeRequestControllerTest {
 				301L, 123L, 1, List.of(new ExchangeRequestCreatedResponse.OfferedItemResponse(213L, 2)),
 				ExchangeRequestStatus.PENDING, null, OffsetDateTime.parse("2026-09-05T11:00:00+09:00")));
 
-		mockMvc.perform(post("/api/items/123/exchange-requests")
+		mockMvc.perform(post("/items/123/exchange-requests")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
 					.contentType(MediaType.APPLICATION_JSON)
 					.content("""
 							{"requestedQuantity":1,"offeredItems":[{"itemId":213,"quantity":2}]}
 							"""))
 				.andExpect(status().isCreated())
-				.andExpect(header().string("Location", "/api/exchange-requests/301"))
+				.andExpect(header().string("Location", "/exchange-requests/301"))
 				.andExpect(jsonPath("$.data.exchangeRequestId").value(301))
 				.andExpect(jsonPath("$.data.requestedStatus").value("PENDING"))
 				.andExpect(jsonPath("$.data.offeredItems[0].quantity").value(2))
@@ -64,7 +64,7 @@ class ExchangeRequestControllerTest {
 
 	@Test
 	void rejectsInvalidNumericInputAsBadRequest() throws Exception {
-		mockMvc.perform(post("/api/items/123/exchange-requests")
+		mockMvc.perform(post("/items/123/exchange-requests")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
 					.contentType(MediaType.APPLICATION_JSON)
 					.content("""
@@ -79,7 +79,7 @@ class ExchangeRequestControllerTest {
 	@Test
 	void rejectsStringAndOutOfRangeQuantities() throws Exception {
 		for (String quantity : List.of("\"1\"", "2147483648")) {
-			mockMvc.perform(post("/api/items/123/exchange-requests")
+			mockMvc.perform(post("/items/123/exchange-requests")
 						.principal(new UsernamePasswordAuthenticationToken("42", null))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"requestedQuantity\":" + quantity
@@ -91,7 +91,7 @@ class ExchangeRequestControllerTest {
 
 	@Test
 	void rejectsMissingRequiredFields() throws Exception {
-		mockMvc.perform(post("/api/items/123/exchange-requests")
+		mockMvc.perform(post("/items/123/exchange-requests")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
 					.contentType(MediaType.APPLICATION_JSON)
 					.content("{\"requestedQuantity\":1}"))
@@ -106,7 +106,7 @@ class ExchangeRequestControllerTest {
 				new ExchangeRequestStatusResponse(301L, 123L, ExchangeRequestStatus.COMPLETED,
 						OffsetDateTime.parse("2026-09-05T16:00:00+09:00")));
 
-		mockMvc.perform(patch("/api/exchange-requests/301/status")
+		mockMvc.perform(patch("/exchange-requests/301/status")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
 					.contentType(MediaType.APPLICATION_JSON)
 					.content("{\"status\":\"COMPLETED\"}"))
@@ -119,7 +119,7 @@ class ExchangeRequestControllerTest {
 
 	@Test
 	void rejectsPendingStatusAsInvalidPatchValue() throws Exception {
-		mockMvc.perform(patch("/api/exchange-requests/301/status")
+		mockMvc.perform(patch("/exchange-requests/301/status")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
 					.contentType(MediaType.APPLICATION_JSON)
 					.content("{\"status\":\"PENDING\"}"))

@@ -24,7 +24,7 @@ class GlobalExceptionHandlerTest {
 		);
 		ResponseEntity<ApiResponse<Void>> exchangeResponse = handler.handleUnexpectedException(
 				new RuntimeException("database failure"),
-				request("/api/items/123/exchange-requests")
+				request("/items/123/exchange-requests")
 		);
 
 		assertEquals(authResponse.getStatusCode(), groupResponse.getStatusCode());
