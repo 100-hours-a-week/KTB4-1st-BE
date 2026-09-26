@@ -41,10 +41,10 @@ class ExchangeRequestControllerTest {
 	}
 
 	@Test
-	void createsRequestAndReturnsLocationAndNullChatRoom() throws Exception {
+	void createsRequestAndReturnsChatRoomId() throws Exception {
 		when(service.create(eq(42L), eq(123L), any())).thenReturn(new ExchangeRequestCreatedResponse(
 				301L, 123L, 1, List.of(new ExchangeRequestCreatedResponse.OfferedItemResponse(213L, 2)),
-				ExchangeRequestStatus.PENDING, null, OffsetDateTime.parse("2026-09-05T11:00:00+09:00")));
+				ExchangeRequestStatus.PENDING, 401L, OffsetDateTime.parse("2026-09-05T11:00:00+09:00")));
 
 		mockMvc.perform(post("/items/123/exchange-requests")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
@@ -57,7 +57,7 @@ class ExchangeRequestControllerTest {
 				.andExpect(jsonPath("$.data.exchangeRequestId").value(301))
 				.andExpect(jsonPath("$.data.requestedStatus").value("PENDING"))
 				.andExpect(jsonPath("$.data.offeredItems[0].quantity").value(2))
-				.andExpect(jsonPath("$.data.chatRoomId").value(org.hamcrest.Matchers.nullValue()));
+				.andExpect(jsonPath("$.data.chatRoomId").value(401));
 
 		verify(service).create(eq(42L), eq(123L), any());
 	}

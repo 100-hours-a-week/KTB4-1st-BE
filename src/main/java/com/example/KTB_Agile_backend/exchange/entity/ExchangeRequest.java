@@ -49,9 +49,6 @@ public class ExchangeRequest extends UpdatableEntity {
 	@Column(name = "requested_status", nullable = false, length = 20)
 	private ExchangeRequestStatus requestedStatus = ExchangeRequestStatus.PENDING;
 
-	@Column(name = "chat_room_id")
-	private Long chatRoomId;
-
 	@OneToMany(mappedBy = "exchangeRequest", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<OfferedItem> offeredItems = new ArrayList<>();
 

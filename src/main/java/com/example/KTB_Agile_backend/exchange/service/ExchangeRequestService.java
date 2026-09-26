@@ -1,5 +1,10 @@
 package com.example.KTB_Agile_backend.exchange.service;
 
+import com.example.KTB_Agile_backend.chat.entity.ChatMember;
+import com.example.KTB_Agile_backend.chat.entity.ChatMemberRole;
+import com.example.KTB_Agile_backend.chat.entity.ChatRoom;
+import com.example.KTB_Agile_backend.chat.repository.ChatMemberRepository;
+import com.example.KTB_Agile_backend.chat.repository.ChatRoomRepository;
 import com.example.KTB_Agile_backend.common.exception.ApiErrorCode;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
@@ -38,6 +43,8 @@ public class ExchangeRequestService {
 	private static final ZoneOffset API_OFFSET = ZoneOffset.ofHours(9);
 
 	private final ExchangeRequestRepository exchangeRequestRepository;
+	private final ChatMemberRepository chatMemberRepository;
+	private final ChatRoomRepository chatRoomRepository;
 	private final ItemRepository itemRepository;
 	private final UserRepository userRepository;
 
@@ -75,12 +82,17 @@ public class ExchangeRequestService {
 			exchangeRequest.addOfferedItem(items.get(offeredRequest.itemId()), offeredRequest.quantity());
 		}
 		exchangeRequestRepository.saveAndFlush(exchangeRequest);
+		ChatRoom chatRoom = chatRoomRepository.saveAndFlush(new ChatRoom(exchangeRequest));
+		chatMemberRepository.saveAll(List.of(
+				new ChatMember(chatRoom, requester, ChatMemberRole.REQUESTER),
+				new ChatMember(chatRoom, requestedItem.getUser(), ChatMemberRole.OWNER)
+		));
 
 		return new ExchangeRequestCreatedResponse(
 				exchangeRequest.getId(), itemId, request.requestedQuantity(),
 				request.offeredItems().stream()
 						.map(item -> new OfferedItemResponse(item.itemId(), item.quantity())).toList(),
-				exchangeRequest.getRequestedStatus(), null, toOffsetDateTime(exchangeRequest.getCreatedAt())
+				exchangeRequest.getRequestedStatus(), chatRoom.getId(), toOffsetDateTime(exchangeRequest.getCreatedAt())
 		);
 	}
 
