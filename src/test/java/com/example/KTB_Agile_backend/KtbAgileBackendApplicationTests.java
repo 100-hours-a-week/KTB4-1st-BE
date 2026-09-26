@@ -63,13 +63,13 @@ class KtbAgileBackendApplicationTests {
 	}
 
 	@Test
-	void returnsExchangeApiUnauthorizedContractWithoutAccessToken() throws Exception {
+	void returnsStandardUnauthorizedResponseForExchangeRequestWithoutAccessToken() throws Exception {
 		mockMvc.perform(post("/api/items/123/exchange-requests"))
 				.andExpect(status().isUnauthorized())
 				.andExpect(jsonPath("$.data").value(nullValue()))
-				.andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"))
+				.andExpect(jsonPath("$.error.code").value("AUTHENTICATION_REQUIRED"))
 				.andExpect(jsonPath("$.error.message")
-						.value("로그인이 필요하거나 Access Token이 만료되었거나 유효하지 않습니다."))
+						.value("로그인이 필요합니다."))
 				.andExpect(jsonPath("$.error.details").isEmpty());
 	}
 

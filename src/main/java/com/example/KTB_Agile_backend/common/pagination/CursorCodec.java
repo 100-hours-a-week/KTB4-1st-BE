@@ -25,7 +25,7 @@ public final class CursorCodec {
 			}
 			return id;
 		} catch (IllegalArgumentException exception) {
-			throw new ApiException(ErrorCode.BAD_REQUEST, "cursor가 올바르지 않습니다.", List.of(), exception);
+			throw new ApiException(ErrorCode.INVALID_CURSOR, List.of(), exception);
 		}
 	}
 

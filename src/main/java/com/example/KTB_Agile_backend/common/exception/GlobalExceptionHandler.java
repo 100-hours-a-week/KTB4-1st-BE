@@ -2,7 +2,6 @@ package com.example.KTB_Agile_backend.common.exception;
 
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
 import com.example.KTB_Agile_backend.common.response.ErrorResponse;
-import com.example.KTB_Agile_backend.exchange.api.ExchangeRequestMessages;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,13 +33,7 @@ public class GlobalExceptionHandler {
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
-	public ResponseEntity<ApiResponse<Void>> handleValidation(
-			MethodArgumentNotValidException exception,
-			HttpServletRequest request
-	) {
-		if (ExchangeRequestMessages.isExchangePath(request.getRequestURI())) {
-			return exchangeBadRequest(request.getRequestURI());
-		}
+	public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException exception) {
 		List<ErrorResponse.Field> details = exception.getBindingResult().getFieldErrors().stream()
 				.map(error -> new ErrorResponse.Field(
 						error.getField(),
@@ -56,19 +49,13 @@ public class GlobalExceptionHandler {
 	}
 
 	@ExceptionHandler(HttpMessageNotReadableException.class)
-	public ResponseEntity<ApiResponse<Void>> handleUnreadableMessage(HttpServletRequest request) {
-		if (ExchangeRequestMessages.isExchangePath(request.getRequestURI())) {
-			return exchangeBadRequest(request.getRequestURI());
-		}
+	public ResponseEntity<ApiResponse<Void>> handleUnreadableMessage() {
 		return response(ErrorCode.REQUEST_BODY_INVALID.status(),
 				new ErrorResponse(ErrorCode.REQUEST_BODY_INVALID.value(), ErrorCode.REQUEST_BODY_INVALID.message(), List.of()));
 	}
 
 	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
-	public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(HttpServletRequest request) {
-		if (ExchangeRequestMessages.isExchangePath(request.getRequestURI())) {
-			return exchangeBadRequest(request.getRequestURI());
-		}
+	public ResponseEntity<ApiResponse<Void>> handleTypeMismatch() {
 		return response(ErrorCode.BAD_REQUEST.status(),
 				new ErrorResponse(ErrorCode.BAD_REQUEST.value(), ErrorCode.BAD_REQUEST.message(), List.of()));
 	}
@@ -80,11 +67,6 @@ public class GlobalExceptionHandler {
 	) {
 		if (log.isErrorEnabled()) {
 			log.error("Unhandled API exception: {} {}", request.getMethod(), request.getRequestURI(), exception);
-		}
-		if (ExchangeRequestMessages.isExchangePath(request.getRequestURI())) {
-			String message = ExchangeRequestMessages.internalErrorMessage(request.getRequestURI());
-			return response(ErrorCode.INTERNAL_SERVER_ERROR.status(), new ErrorResponse(
-					ErrorCode.INTERNAL_SERVER_ERROR.value(), message, List.of()));
 		}
 		return response(ErrorCode.INTERNAL_SERVER_ERROR.status(),
 				new ErrorResponse(
@@ -100,12 +82,4 @@ public class GlobalExceptionHandler {
 	) {
 		return ResponseEntity.status(status).body(new ApiResponse<>(null, error));
 	}
-
-	private static ResponseEntity<ApiResponse<Void>> exchangeBadRequest(String path) {
-		List<ErrorResponse.Field> details = ExchangeRequestMessages.isCreatePath(path) ? List.of() : List.of(
-				new ErrorResponse.Field("status", ExchangeRequestMessages.INVALID_STATUS_REASON));
-		return response(ErrorCode.BAD_REQUEST.status(), new ErrorResponse(
-				ErrorCode.BAD_REQUEST.value(), ExchangeRequestMessages.badRequestMessage(path), details));
-	}
-
 }

@@ -1,7 +1,7 @@
 package com.example.KTB_Agile_backend.ai.image;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
-import com.example.KTB_Agile_backend.common.exception.ErrorCode;
+import com.example.KTB_Agile_backend.ai.exception.AiErrorCode;
 import com.example.KTB_Agile_backend.image.service.S3ImageObjectService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -39,7 +39,7 @@ public class ImageAiAnalysisService {
 	public ResponseEntity<String> analyze(Long userId, List<String> objectKeys) {
 		s3ImageObjectService.validatePendingObjects(userId, objectKeys);
 		if (aiEndpoint.isBlank()) {
-			throw new ApiException(ErrorCode.AI_ANALYSIS_FAILED, "AI 분석 서버 주소가 설정되지 않았습니다.");
+			throw new ApiException(AiErrorCode.AI_ANALYSIS_ENDPOINT_NOT_CONFIGURED);
 		}
 		List<String> imageUrls = objectKeys.stream()
 				.map(s3ImageObjectService::presignedAnalysisUrl)
@@ -53,8 +53,7 @@ public class ImageAiAnalysisService {
 							.contentType(MediaType.APPLICATION_JSON)
 							.body(response.bodyTo(String.class)));
 		} catch (RestClientException exception) {
-			throw new ApiException(ErrorCode.AI_ANALYSIS_FAILED, ErrorCode.AI_ANALYSIS_FAILED.message(),
-					List.of(), exception);
+			throw new ApiException(AiErrorCode.AI_ANALYSIS_FAILED, List.of(), exception);
 		}
 	}
 }

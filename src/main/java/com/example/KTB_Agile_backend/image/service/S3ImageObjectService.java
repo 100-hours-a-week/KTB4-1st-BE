@@ -1,7 +1,7 @@
 package com.example.KTB_Agile_backend.image.service;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
-import com.example.KTB_Agile_backend.common.exception.ErrorCode;
+import com.example.KTB_Agile_backend.image.exception.ImageErrorCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -67,7 +67,7 @@ public class S3ImageObjectService {
 					.stream()
 					.anyMatch(tag -> PENDING_TAG_KEY.equals(tag.key()) && PENDING_TAG_VALUE.equals(tag.value()));
 			if (!pending) {
-				throw new ApiException(ErrorCode.CONFLICT, "미등록 상태의 이미지가 아닙니다.");
+				throw new ApiException(ImageErrorCode.IMAGE_NOT_PENDING);
 			}
 		} catch (S3Exception exception) {
 			throw s3Failure(exception);
@@ -124,7 +124,7 @@ public class S3ImageObjectService {
 				.stream()
 				.anyMatch(tag -> PENDING_TAG_KEY.equals(tag.key()) && PENDING_TAG_VALUE.equals(tag.value()));
 			if (!pending) {
-				throw new ApiException(ErrorCode.CONFLICT, "미등록 상태의 이미지가 아닙니다.");
+				throw new ApiException(ImageErrorCode.IMAGE_NOT_PENDING);
 			}
 			s3Client.deleteObject(builder -> builder.bucket(bucket).key(objectKey));
 		} catch (S3Exception exception) {
@@ -137,20 +137,20 @@ public class S3ImageObjectService {
 
 	private void requireOwnedKey(Long userId, String objectKey) {
 		if (objectKey == null || !objectKey.startsWith(OBJECT_KEY_PREFIX + userId + "/")) {
-			throw new ApiException(ErrorCode.FORBIDDEN, "소유하지 않은 이미지입니다.");
+			throw new ApiException(ImageErrorCode.IMAGE_NOT_OWNED);
 		}
 	}
 
 	private void requireBucket() {
 		if (bucket.isBlank()) {
-			throw new ApiException(ErrorCode.INTERNAL_SERVER_ERROR, "S3 버킷이 설정되지 않았습니다.");
+			throw new ApiException(ImageErrorCode.S3_BUCKET_NOT_CONFIGURED);
 		}
 	}
 
 	private static ApiException s3Failure(S3Exception exception) {
 		if (HttpStatus.NOT_FOUND.value() == exception.statusCode()) {
-			return new ApiException(ErrorCode.NOT_FOUND, "S3에서 이미지를 찾을 수 없습니다.", exception);
+			return new ApiException(ImageErrorCode.S3_IMAGE_NOT_FOUND, List.of(), exception);
 		}
-		return new ApiException(ErrorCode.INTERNAL_SERVER_ERROR, "S3 이미지 처리에 실패했습니다.", exception);
+		return new ApiException(ImageErrorCode.S3_IMAGE_PROCESSING_FAILED, List.of(), exception);
 	}
 }
