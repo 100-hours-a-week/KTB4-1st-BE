@@ -18,6 +18,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Entity
 @Table(name = "chat_rooms")
@@ -46,5 +47,13 @@ public class ChatRoom extends BaseEntity {
 
 	public ChatRoom(ExchangeRequest exchangeRequest) {
 		this.exchangeRequest = exchangeRequest;
+	}
+
+	public void updateLastMessageAt(LocalDateTime lastMessageAt) {
+		this.lastMessageAt = Objects.requireNonNull(lastMessageAt, "lastMessageAt must not be null");
+	}
+
+	public boolean isDeleted() {
+		return deletedAt != null;
 	}
 }

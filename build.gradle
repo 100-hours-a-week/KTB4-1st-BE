@@ -14,7 +14,7 @@ spotbugs {
 tasks.withType(com.github.spotbugs.snom.SpotBugsTask) {
 	reports {
 		// 원하는 리포트 형식 활성화 (HTML 또는 XML)
-		html.required = false
+		html.required = true
 		xml.required = false
 	}
 }
@@ -54,6 +54,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'com.h2database:h2'
 	runtimeOnly 'com.mysql:mysql-connector-j'

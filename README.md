@@ -130,4 +130,21 @@ CREATE TABLE chat_members (
     CONSTRAINT fk_chat_member_room FOREIGN KEY (chat_room_id) REFERENCES chat_rooms (chat_room_id),
     CONSTRAINT fk_chat_member_user FOREIGN KEY (user_id) REFERENCES users (user_id)
 ) ENGINE=InnoDB;
+
+CREATE TABLE chat_messages (
+    message_id BIGINT NOT NULL AUTO_INCREMENT,
+    chat_room_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    message_type VARCHAR(20) NOT NULL DEFAULT 'TEXT',
+    PRIMARY KEY (message_id),
+    KEY ix_chat_message_room_created (chat_room_id, created_at),
+    CONSTRAINT fk_chat_message_room FOREIGN KEY (chat_room_id) REFERENCES chat_rooms (chat_room_id),
+    CONSTRAINT fk_chat_message_user FOREIGN KEY (user_id) REFERENCES users (user_id)
+) ENGINE=InnoDB;
 ```
+
+## WebSocket chat messages
+
+Connect to `/ws` with STOMP `CONNECT` header `Authorization: Bearer <jwt>`. Subscribe to `/topic/chat/rooms/{chatRoomId}` and send `{"content":"안녕하세요"}` to `/app/chat/rooms/{chatRoomId}/messages`. The server persists the message before broadcasting it to room subscribers.

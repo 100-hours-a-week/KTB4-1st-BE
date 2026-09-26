@@ -83,6 +83,8 @@ public class SecurityConfig {
 								"/auth/oauth/**",
 								"/auth/kakao/callback",
 								"/auth/refresh",
+								"/ws",
+								"/ws/**",
 								"/error"
 						).permitAll()
 						.anyRequest().authenticated()
