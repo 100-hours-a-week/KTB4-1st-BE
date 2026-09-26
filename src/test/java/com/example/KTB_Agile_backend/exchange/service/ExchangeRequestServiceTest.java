@@ -57,8 +57,8 @@ class ExchangeRequestServiceTest {
 		assertThat(response.exchangeRequestId()).isNotNull();
 		assertThat(response.requestedStatus()).isEqualTo(ExchangeRequestStatus.PENDING);
 		assertThat(response.chatRoomId()).isNotNull();
-		assertThat(chatRoomRepository.count()).isEqualTo(1);
-		assertThat(chatMemberRepository.count()).isEqualTo(2);
+		assertThat(chatRoomRepository.countByExchangeRequest_Id(response.exchangeRequestId())).isEqualTo(1);
+		assertThat(chatMemberRepository.countByChatRoom_Id(response.chatRoomId())).isEqualTo(2);
 		assertThat(response.offeredItems()).extracting("quantity").containsExactly(3);
 		assertThat(response.createdAt()).isNotNull();
 		assertThat(itemRepository.findByIdAndDeletedAtIsNull(target.getId()).orElseThrow().getQuantity()).isEqualTo(3);
