@@ -12,28 +12,28 @@ public enum ImageErrorCode implements ApiErrorCode {
 			"S3 이미지 처리에 실패했습니다."),
 	UNSUPPORTED_IMAGE_TYPE("UNSUPPORTED_IMAGE_TYPE", HttpStatus.BAD_REQUEST, "지원하지 않는 이미지 형식입니다.");
 
-	private final String value;
-	private final HttpStatus status;
-	private final String message;
+	private final String codeValue;
+	private final HttpStatus httpStatus;
+	private final String errorMessage;
 
 	ImageErrorCode(String value, HttpStatus status, String message) {
-		this.value = value;
-		this.status = status;
-		this.message = message;
+		this.codeValue = value;
+		this.httpStatus = status;
+		this.errorMessage = message;
 	}
 
 	@Override
 	public String value() {
-		return value;
+		return codeValue;
 	}
 
 	@Override
 	public HttpStatus status() {
-		return status;
+		return httpStatus;
 	}
 
 	@Override
 	public String message() {
-		return message;
+		return errorMessage;
 	}
 }

@@ -12,28 +12,28 @@ public enum GroupErrorCode implements ApiErrorCode {
 	GROUP_ALREADY_LEFT("GROUP_ALREADY_LEFT", HttpStatus.CONFLICT, "이미 탈퇴한 그룹입니다."),
 	GROUP_MEMBERSHIP_REQUIRED("GROUP_MEMBERSHIP_REQUIRED", HttpStatus.FORBIDDEN, "그룹 멤버만 물품을 조회할 수 있습니다.");
 
-	private final String value;
-	private final HttpStatus status;
-	private final String message;
+	private final String codeValue;
+	private final HttpStatus httpStatus;
+	private final String errorMessage;
 
 	GroupErrorCode(String value, HttpStatus status, String message) {
-		this.value = value;
-		this.status = status;
-		this.message = message;
+		this.codeValue = value;
+		this.httpStatus = status;
+		this.errorMessage = message;
 	}
 
 	@Override
 	public String value() {
-		return value;
+		return codeValue;
 	}
 
 	@Override
 	public HttpStatus status() {
-		return status;
+		return httpStatus;
 	}
 
 	@Override
 	public String message() {
-		return message;
+		return errorMessage;
 	}
 }

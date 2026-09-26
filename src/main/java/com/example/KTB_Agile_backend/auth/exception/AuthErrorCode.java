@@ -13,28 +13,28 @@ public enum AuthErrorCode implements ApiErrorCode {
 	AUTH_REFRESH_TOKEN_INVALID("AUTH_REFRESH_TOKEN_INVALID", HttpStatus.UNAUTHORIZED,
 			"Refresh Token이 만료되었거나 유효하지 않습니다.");
 
-	private final String value;
-	private final HttpStatus status;
-	private final String message;
+	private final String codeValue;
+	private final HttpStatus httpStatus;
+	private final String errorMessage;
 
 	AuthErrorCode(String value, HttpStatus status, String message) {
-		this.value = value;
-		this.status = status;
-		this.message = message;
+		this.codeValue = value;
+		this.httpStatus = status;
+		this.errorMessage = message;
 	}
 
 	@Override
 	public String value() {
-		return value;
+		return codeValue;
 	}
 
 	@Override
 	public HttpStatus status() {
-		return status;
+		return httpStatus;
 	}
 
 	@Override
 	public String message() {
-		return message;
+		return errorMessage;
 	}
 }

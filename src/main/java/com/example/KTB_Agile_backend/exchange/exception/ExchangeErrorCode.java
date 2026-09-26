@@ -22,28 +22,28 @@ public enum ExchangeErrorCode implements ApiErrorCode {
 	EXCHANGE_REQUEST_STATUS_CONFLICT("EXCHANGE_REQUEST_STATUS_CONFLICT", HttpStatus.CONFLICT,
 			"이미 처리되었거나 현재 상태에서는 변경할 수 없습니다.");
 
-	private final String value;
-	private final HttpStatus status;
-	private final String message;
+	private final String codeValue;
+	private final HttpStatus httpStatus;
+	private final String errorMessage;
 
 	ExchangeErrorCode(String value, HttpStatus status, String message) {
-		this.value = value;
-		this.status = status;
-		this.message = message;
+		this.codeValue = value;
+		this.httpStatus = status;
+		this.errorMessage = message;
 	}
 
 	@Override
 	public String value() {
-		return value;
+		return codeValue;
 	}
 
 	@Override
 	public HttpStatus status() {
-		return status;
+		return httpStatus;
 	}
 
 	@Override
 	public String message() {
-		return message;
+		return errorMessage;
 	}
 }

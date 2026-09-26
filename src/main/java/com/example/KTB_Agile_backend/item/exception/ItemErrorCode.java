@@ -16,28 +16,28 @@ public enum ItemErrorCode implements ApiErrorCode {
 			"소유하지 않은 이미지는 수정할 수 없습니다."),
 	ITEM_UPDATE_IMAGE_CONFLICT("ITEM_UPDATE_IMAGE_CONFLICT", HttpStatus.CONFLICT, "이미 다른 물품에 연결된 이미지입니다.");
 
-	private final String value;
-	private final HttpStatus status;
-	private final String message;
+	private final String codeValue;
+	private final HttpStatus httpStatus;
+	private final String errorMessage;
 
 	ItemErrorCode(String value, HttpStatus status, String message) {
-		this.value = value;
-		this.status = status;
-		this.message = message;
+		this.codeValue = value;
+		this.httpStatus = status;
+		this.errorMessage = message;
 	}
 
 	@Override
 	public String value() {
-		return value;
+		return codeValue;
 	}
 
 	@Override
 	public HttpStatus status() {
-		return status;
+		return httpStatus;
 	}
 
 	@Override
 	public String message() {
-		return message;
+		return errorMessage;
 	}
 }

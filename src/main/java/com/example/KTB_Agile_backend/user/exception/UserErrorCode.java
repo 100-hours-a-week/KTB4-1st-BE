@@ -10,28 +10,28 @@ public enum UserErrorCode implements ApiErrorCode {
 			"사용자 설명은 회원가입 시 한 번만 설정할 수 있습니다."),
 	USER_PREFERENCE_NOT_FOUND("USER_PREFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "사용자 취향이 설정되지 않았습니다.");
 
-	private final String value;
-	private final HttpStatus status;
-	private final String message;
+	private final String codeValue;
+	private final HttpStatus httpStatus;
+	private final String errorMessage;
 
 	UserErrorCode(String value, HttpStatus status, String message) {
-		this.value = value;
-		this.status = status;
-		this.message = message;
+		this.codeValue = value;
+		this.httpStatus = status;
+		this.errorMessage = message;
 	}
 
 	@Override
 	public String value() {
-		return value;
+		return codeValue;
 	}
 
 	@Override
 	public HttpStatus status() {
-		return status;
+		return httpStatus;
 	}
 
 	@Override
 	public String message() {
-		return message;
+		return errorMessage;
 	}
 }

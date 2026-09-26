@@ -11,28 +11,28 @@ public enum AiErrorCode implements ApiErrorCode {
 	AI_TEXT_MODERATION_CHECK_INVALID("AI_TEXT_MODERATION_CHECK_INVALID", HttpStatus.CONFLICT,
 			"검수 ID가 유효하지 않거나 만료되었습니다.");
 
-	private final String value;
-	private final HttpStatus status;
-	private final String message;
+	private final String codeValue;
+	private final HttpStatus httpStatus;
+	private final String errorMessage;
 
 	AiErrorCode(String value, HttpStatus status, String message) {
-		this.value = value;
-		this.status = status;
-		this.message = message;
+		this.codeValue = value;
+		this.httpStatus = status;
+		this.errorMessage = message;
 	}
 
 	@Override
 	public String value() {
-		return value;
+		return codeValue;
 	}
 
 	@Override
 	public HttpStatus status() {
-		return status;
+		return httpStatus;
 	}
 
 	@Override
 	public String message() {
-		return message;
+		return errorMessage;
 	}
 }
