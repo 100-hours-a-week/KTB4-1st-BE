@@ -9,7 +9,7 @@ import com.example.KTB_Agile_backend.auth.dto.response.UserProfile;
 import com.example.KTB_Agile_backend.auth.token.AccessTokenIssuer;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorDetail;
-import com.example.KTB_Agile_backend.common.exception.ErrorCode;
+import com.example.KTB_Agile_backend.auth.exception.AuthErrorCode;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.entity.UserStatus;
 import com.example.KTB_Agile_backend.user.repository.UserPreferenceRepository;
@@ -90,7 +90,7 @@ public class AuthService {
 				.filter(client -> client.provider().equals(provider))
 				.findFirst()
 				.orElseThrow(() -> new ApiException(
-						ErrorCode.AUTH_PROVIDER_UNSUPPORTED,
+						AuthErrorCode.AUTH_PROVIDER_UNSUPPORTED,
 						List.of(new ErrorDetail("provider", "지원하지 않는 OAuth provider입니다."))
 				));
 	}
@@ -115,7 +115,7 @@ public class AuthService {
 	private static String normalizeProvider(String provider) {
 		if (provider == null || provider.isBlank()) {
 			throw new ApiException(
-					ErrorCode.AUTH_PROVIDER_REQUIRED,
+				AuthErrorCode.AUTH_PROVIDER_REQUIRED,
 					List.of(new ErrorDetail("provider", "provider는 필수 입력값입니다."))
 			);
 		}
@@ -123,6 +123,6 @@ public class AuthService {
 	}
 
 	private static ApiException authenticationFailed() {
-		return new ApiException(ErrorCode.AUTHENTICATION_FAILED);
+		return new ApiException(AuthErrorCode.AUTHENTICATION_FAILED);
 	}
 }

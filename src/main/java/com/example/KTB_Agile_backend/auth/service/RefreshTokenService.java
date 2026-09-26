@@ -1,7 +1,7 @@
 package com.example.KTB_Agile_backend.auth.service;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
-import com.example.KTB_Agile_backend.common.exception.ErrorCode;
+import com.example.KTB_Agile_backend.auth.exception.AuthErrorCode;
 import com.example.KTB_Agile_backend.user.entity.RefreshToken;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.repository.RefreshTokenRepository;
@@ -69,6 +69,6 @@ public class RefreshTokenService {
 	}
 
 	private static ApiException invalidRefreshToken() {
-		return new ApiException(ErrorCode.AUTH_REFRESH_TOKEN_INVALID);
+		return new ApiException(AuthErrorCode.AUTH_REFRESH_TOKEN_INVALID);
 	}
 }

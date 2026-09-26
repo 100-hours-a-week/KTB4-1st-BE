@@ -112,8 +112,7 @@ public class GroupQueryService {
 			return new RecommendationCursor(memberCount, groupId);
 		} catch (IllegalArgumentException exception) {
 			throw new ApiException(
-					ErrorCode.BAD_REQUEST,
-					"cursor가 올바르지 않습니다.",
+					ErrorCode.INVALID_CURSOR,
 					List.of(),
 					exception
 			);

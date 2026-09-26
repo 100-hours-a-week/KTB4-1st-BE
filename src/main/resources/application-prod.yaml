@@ -1,0 +1,32 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    properties:
+      hibernate:
+        show_sql: false
+
+cloud:
+  aws:
+    s3:
+      bucket: ${AWS_S3_BUCKET}
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+auth:
+  jwt:
+    secret: ${JWT_SECRET}
+  cookie:
+    secure: true
+  oauth:
+    frontend-redirect-uri: ${FRONTEND_REDIRECT_URI}
+    kakao:
+      client-id: ${KAKAO_CLIENT_ID}
+      client-secret: ${KAKAO_CLIENT_SECRET}
+      redirect-uri: ${KAKAO_REDIRECT_URI}

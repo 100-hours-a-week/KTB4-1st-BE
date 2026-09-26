@@ -8,23 +8,23 @@ public class ApiException extends RuntimeException {
 
 	private static final long serialVersionUID = 1L;
 
-	private final ErrorCode errorCode;
+	private final ApiErrorCode errorCode;
 	private final List<ErrorDetail> errorDetails;
 
-	public ApiException(ErrorCode code) {
+	public ApiException(ApiErrorCode code) {
 		this(code, code.message());
 	}
 
-	public ApiException(ErrorCode code, String message) {
+	public ApiException(ApiErrorCode code, String message) {
 		this(code, message, List.of());
 	}
 
-	public ApiException(ErrorCode code, String message, Throwable cause) {
+	public ApiException(ApiErrorCode code, String message, Throwable cause) {
 		this(code, message, List.of(), cause);
 	}
 
 	public ApiException(
-			ErrorCode code,
+			ApiErrorCode code,
 			String message,
 			List<ErrorDetail> details
 	) {
@@ -32,7 +32,7 @@ public class ApiException extends RuntimeException {
 	}
 
 	public ApiException(
-			ErrorCode code,
+			ApiErrorCode code,
 			String message,
 			List<ErrorDetail> details,
 			Throwable cause
@@ -42,11 +42,11 @@ public class ApiException extends RuntimeException {
 		this.errorDetails = details == null ? List.of() : List.copyOf(details);
 	}
 
-	public ApiException(ErrorCode code, List<ErrorDetail> details) {
+	public ApiException(ApiErrorCode code, List<ErrorDetail> details) {
 		this(code, code.message(), details);
 	}
 
-	public ApiException(ErrorCode code, List<ErrorDetail> details, Throwable cause) {
+	public ApiException(ApiErrorCode code, List<ErrorDetail> details, Throwable cause) {
 		this(code, code.message(), details, cause);
 	}
 
@@ -54,7 +54,7 @@ public class ApiException extends RuntimeException {
 		return errorCode.status();
 	}
 
-	public ErrorCode code() {
+	public ApiErrorCode code() {
 		return errorCode;
 	}
 

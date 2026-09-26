@@ -122,6 +122,7 @@ class ItemControllerTest {
 				{
 				  "title": "임시 제목입니다.",
 				  "content": "임시 내용입니다.",
+				  "moderationCheckId": "test-check-id",
 				  "quantity": 3,
 				  "itemState": "AVAILABLE",
 				  "exchangeUrgencyScore": 0.50,

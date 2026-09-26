@@ -3,7 +3,7 @@ package com.example.KTB_Agile_backend.auth.service;
 import com.example.KTB_Agile_backend.auth.state.OAuthStateStore;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorDetail;
-import com.example.KTB_Agile_backend.common.exception.ErrorCode;
+import com.example.KTB_Agile_backend.auth.exception.AuthErrorCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,7 +74,7 @@ public class OAuthStateService {
 	private static String normalizeProvider(String provider) {
 		if (provider == null || provider.isBlank()) {
 			throw new ApiException(
-					ErrorCode.AUTH_PROVIDER_REQUIRED,
+					AuthErrorCode.AUTH_PROVIDER_REQUIRED,
 					List.of(new ErrorDetail("provider", "provider는 필수 입력값입니다."))
 			);
 		}
@@ -83,7 +83,7 @@ public class OAuthStateService {
 
 	private static ApiException authenticationFailed() {
 		return new ApiException(
-				ErrorCode.AUTH_OAUTH_STATE_INVALID,
+			AuthErrorCode.AUTH_OAUTH_STATE_INVALID,
 				AUTHENTICATION_DETAILS
 		);
 	}

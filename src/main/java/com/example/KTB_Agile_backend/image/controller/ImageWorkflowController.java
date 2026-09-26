@@ -1,7 +1,7 @@
 package com.example.KTB_Agile_backend.image.controller;
 
 import com.example.KTB_Agile_backend.image.dto.request.ImageAnalysisRequest;
-import com.example.KTB_Agile_backend.image.service.ImageAiAnalysisService;
+import com.example.KTB_Agile_backend.ai.image.ImageAiAnalysisService;
 import com.example.KTB_Agile_backend.image.service.S3ImageObjectService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

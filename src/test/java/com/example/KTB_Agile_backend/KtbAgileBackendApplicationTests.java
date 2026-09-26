@@ -62,4 +62,15 @@ class KtbAgileBackendApplicationTests {
 				.andExpect(jsonPath("$.error.details").isEmpty());
 	}
 
+	@Test
+	void returnsStandardUnauthorizedResponseForExchangeRequestWithoutAccessToken() throws Exception {
+		mockMvc.perform(post("/items/123/exchange-requests"))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.data").value(nullValue()))
+				.andExpect(jsonPath("$.error.code").value("AUTHENTICATION_REQUIRED"))
+				.andExpect(jsonPath("$.error.message")
+						.value("로그인이 필요합니다."))
+				.andExpect(jsonPath("$.error.details").isEmpty());
+	}
+
 }
