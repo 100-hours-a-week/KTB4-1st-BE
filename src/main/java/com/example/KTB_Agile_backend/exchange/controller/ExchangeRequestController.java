@@ -30,7 +30,7 @@ public class ExchangeRequestController {
 
 	private final ExchangeRequestService exchangeRequestService;
 
-	@PostMapping("/api/items/{itemId}/exchange-requests")
+	@PostMapping("/items/{itemId}/exchange-requests")
 	public ResponseEntity<ApiResponse<ExchangeRequestCreatedResponse>> create(
 			Authentication authentication,
 			@PathVariable String itemId,
@@ -40,11 +40,11 @@ public class ExchangeRequestController {
 		ExchangeRequestCreateRequest request = parseCreateRequest(body);
 		ExchangeRequestCreatedResponse response = exchangeRequestService.create(
 				Long.valueOf(authentication.getName()), targetItemId, request);
-		return ResponseEntity.created(URI.create("/api/exchange-requests/" + response.exchangeRequestId()))
+		return ResponseEntity.created(URI.create("/exchange-requests/" + response.exchangeRequestId()))
 				.body(new ApiResponse<>(response, null));
 	}
 
-	@PatchMapping("/api/exchange-requests/{exchangeRequestId}/status")
+	@PatchMapping("/exchange-requests/{exchangeRequestId}/status")
 	public ResponseEntity<ApiResponse<ExchangeRequestStatusResponse>> updateStatus(
 			Authentication authentication,
 			@PathVariable String exchangeRequestId,
