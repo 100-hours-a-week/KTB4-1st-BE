@@ -115,6 +115,18 @@ class ExchangeRequestControllerTest {
 				.andExpect(jsonPath("$.data.status").value("COMPLETED"));
 
 		verify(service).updateStatus(301L, 42L, ExchangeRequestStatus.COMPLETED);
+
+		when(service.updateStatus(301L, 42L, ExchangeRequestStatus.CANCELED)).thenReturn(
+				new ExchangeRequestStatusResponse(301L, 123L, ExchangeRequestStatus.CANCELED,
+						OffsetDateTime.parse("2026-09-05T16:00:00+09:00")));
+		mockMvc.perform(patch("/exchange-requests/301/status")
+					.principal(new UsernamePasswordAuthenticationToken("42", null))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"status\":\"CANCELED\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.status").value("CANCELED"));
+
+		verify(service).updateStatus(301L, 42L, ExchangeRequestStatus.CANCELED);
 	}
 
 	@Test

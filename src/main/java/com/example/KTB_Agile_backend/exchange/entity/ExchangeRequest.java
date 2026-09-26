@@ -65,6 +65,14 @@ public class ExchangeRequest extends UpdatableEntity {
 		offeredItems.add(new OfferedItem(this, item, quantity));
 	}
 
+	public void updateRequestedQuantity(Integer requestedQuantity) {
+		this.requestedQuantity = requestedQuantity;
+	}
+
+	public void removeOfferedItem(OfferedItem offeredItem) {
+		offeredItems.remove(offeredItem);
+	}
+
 	public void changeStatus(ExchangeRequestStatus status) {
 		if (status == null || status == ExchangeRequestStatus.PENDING) {
 			throw new IllegalArgumentException("terminal status required");
