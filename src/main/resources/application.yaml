@@ -3,6 +3,8 @@ spring:
     name: KTB-Agile-backend
   profiles:
     default: dev
+  flyway:
+    enabled: false
   jpa:
     open-in-view: false
     properties:
