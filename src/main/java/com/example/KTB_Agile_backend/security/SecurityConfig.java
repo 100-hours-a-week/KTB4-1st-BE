@@ -3,7 +3,6 @@ package com.example.KTB_Agile_backend.security;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
 import com.example.KTB_Agile_backend.common.response.ErrorResponse;
-import com.example.KTB_Agile_backend.exchange.api.ExchangeRequestMessages;
 import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
@@ -92,8 +91,7 @@ public class SecurityConfig {
 						.authenticationEntryPoint((request, response, cause) -> writeError(
 								response,
 								objectMapper,
-								ExchangeRequestMessages.isExchangePath(request.getRequestURI())
-										? ErrorCode.UNAUTHORIZED : ErrorCode.AUTHENTICATION_REQUIRED
+								ErrorCode.AUTHENTICATION_REQUIRED
 						))
 						.accessDeniedHandler((request, response, cause) -> writeError(
 								response,

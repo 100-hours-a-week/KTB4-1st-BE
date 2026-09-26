@@ -3,6 +3,7 @@ package com.example.KTB_Agile_backend.item.service;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.common.pagination.CursorCodec;
+import com.example.KTB_Agile_backend.group.exception.GroupErrorCode;
 import com.example.KTB_Agile_backend.group.entity.Group;
 import com.example.KTB_Agile_backend.group.entity.GroupItem;
 import com.example.KTB_Agile_backend.group.entity.GroupMember;
@@ -23,6 +24,7 @@ import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemLike;
 import com.example.KTB_Agile_backend.item.entity.ItemStats;
 import com.example.KTB_Agile_backend.item.entity.ItemView;
+import com.example.KTB_Agile_backend.item.exception.ItemErrorCode;
 import com.example.KTB_Agile_backend.item.repository.ItemLikeRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemStatsRepository;
@@ -77,7 +79,7 @@ public class ItemService {
 		List<Group> groups = findRegistrableGroups(userId, request.groupIds());
 		s3ImageObjectService.validatePendingObjects(userId, request.objectKeys());
 		if (imageRepository.existsByObjectKeyIn(request.objectKeys())) {
-			throw new ApiException(ErrorCode.CONFLICT, "이미 등록된 이미지입니다.");
+			throw new ApiException(ItemErrorCode.ITEM_IMAGE_ALREADY_REGISTERED);
 		}
 		List<Image> images = request.objectKeys().stream()
 				.map(objectKey -> Image.fromS3Object(user, objectKey))
@@ -115,9 +117,9 @@ public class ItemService {
 		userRepository.findActiveById(userId)
 				.orElseThrow(() -> new ApiException(ErrorCode.AUTHENTICATION_REQUIRED));
 		Item item = itemRepository.findByIdAndDeletedAtIsNull(itemId)
-				.orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "물품을 찾을 수 없습니다."));
+				.orElseThrow(() -> new ApiException(ItemErrorCode.ITEM_NOT_FOUND));
 		if (!item.getUser().getId().equals(userId)) {
-			throw new ApiException(ErrorCode.FORBIDDEN, "물품을 수정할 권한이 없습니다.");
+			throw new ApiException(ItemErrorCode.ITEM_UPDATE_FORBIDDEN);
 		}
 
 		List<Group> groups = findRegistrableGroups(userId, request.groupIds());
@@ -137,7 +139,7 @@ public class ItemService {
 	@Transactional
 	public ItemDetailResponse findDetail(Long userId, Long itemId) {
 		Item item = itemRepository.findByIdAndDeletedAtIsNull(itemId)
-				.orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "물품을 찾을 수 없습니다."));
+				.orElseThrow(() -> new ApiException(ItemErrorCode.ITEM_NOT_FOUND));
 		ItemStats stats = itemStatsRepository.findByIdForUpdate(itemId).orElse(null);
 		if (stats != null) {
 			User viewer = userRepository.findActiveById(userId)
@@ -193,11 +195,11 @@ public class ItemService {
 	@Transactional(readOnly = true)
 	public ItemPageResponse findByGroup(Long userId, Long groupId, String cursor) {
 		groupRepository.findByIdAndDeletedAtIsNull(groupId)
-				.orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "그룹을 찾을 수 없습니다."));
+				.orElseThrow(() -> new ApiException(GroupErrorCode.GROUP_NOT_FOUND));
 		GroupMember member = groupMemberRepository.findByGroup_IdAndUser_Id(groupId, userId)
-				.orElseThrow(() -> new ApiException(ErrorCode.FORBIDDEN, "그룹 멤버만 물품을 조회할 수 있습니다."));
+				.orElseThrow(() -> new ApiException(GroupErrorCode.GROUP_MEMBERSHIP_REQUIRED));
 		if (member.getStatus() != GroupMemberStatus.ACTIVE) {
-			throw new ApiException(ErrorCode.FORBIDDEN, "그룹 멤버만 물품을 조회할 수 있습니다.");
+			throw new ApiException(GroupErrorCode.GROUP_MEMBERSHIP_REQUIRED);
 		}
 
 		Long cursorId = CursorCodec.decodeId(cursor);
@@ -226,7 +228,7 @@ public class ItemService {
 	private List<Group> findRegistrableGroups(Long userId, Collection<Long> groupIds) {
 		List<Group> groups = groupRepository.findAllByIdInAndDeletedAtIsNull(groupIds);
 		if (groups.size() != groupIds.size()) {
-			throw new ApiException(ErrorCode.NOT_FOUND, "등록할 그룹을 찾을 수 없습니다.");
+			throw new ApiException(ItemErrorCode.ITEM_REGISTRATION_GROUP_NOT_FOUND);
 		}
 		long activeMemberships = groupMemberRepository.countByGroup_IdInAndUser_IdAndStatus(
 				groupIds,
@@ -234,7 +236,7 @@ public class ItemService {
 				GroupMemberStatus.ACTIVE
 		);
 		if (activeMemberships != groupIds.size()) {
-			throw new ApiException(ErrorCode.FORBIDDEN, "모든 그룹의 ACTIVE 멤버만 물품을 등록할 수 있습니다.");
+			throw new ApiException(ItemErrorCode.ITEM_REGISTRATION_GROUP_MEMBERSHIP_REQUIRED);
 		}
 		return groups;
 	}
@@ -242,14 +244,14 @@ public class ItemService {
 	private List<Image> findUpdatableImages(Long userId, Long itemId, Collection<Long> imageIds) {
 		List<Image> images = imageRepository.findAllForUpdateByIdIn(imageIds);
 		if (images.size() != imageIds.size()) {
-			throw new ApiException(ErrorCode.NOT_FOUND, "수정할 이미지를 찾을 수 없습니다.");
+			throw new ApiException(ItemErrorCode.ITEM_UPDATE_IMAGE_NOT_FOUND);
 		}
 		for (Image image : images) {
 			if (!image.getOwner().getId().equals(userId)) {
-				throw new ApiException(ErrorCode.FORBIDDEN, "소유하지 않은 이미지는 수정할 수 없습니다.");
+				throw new ApiException(ItemErrorCode.ITEM_UPDATE_IMAGE_NOT_OWNED);
 			}
 			if (image.getItem() != null && !image.getItem().getId().equals(itemId)) {
-				throw new ApiException(ErrorCode.CONFLICT, "이미 다른 물품에 연결된 이미지입니다.");
+				throw new ApiException(ItemErrorCode.ITEM_UPDATE_IMAGE_CONFLICT);
 			}
 		}
 		return images;

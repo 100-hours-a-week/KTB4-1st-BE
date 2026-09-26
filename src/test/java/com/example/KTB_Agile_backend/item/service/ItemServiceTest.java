@@ -211,7 +211,7 @@ class ItemServiceTest {
 		when(groupMemberRepository.countByGroup_IdInAndUser_IdAndStatus(any(), eq(42L), any()))
 				.thenReturn(1L);
 		org.mockito.Mockito.doThrow(new ApiException(
-				com.example.KTB_Agile_backend.common.exception.ErrorCode.FORBIDDEN))
+				com.example.KTB_Agile_backend.image.exception.ImageErrorCode.IMAGE_NOT_OWNED))
 				.when(s3ImageObjectService).validatePendingObjects(42L, List.of("images/7/1001.jpg"));
 
 		ApiException exception = assertThrows(ApiException.class,

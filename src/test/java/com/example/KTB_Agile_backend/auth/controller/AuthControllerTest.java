@@ -6,7 +6,7 @@ import com.example.KTB_Agile_backend.auth.dto.response.UserProfile;
 import com.example.KTB_Agile_backend.auth.service.AuthService;
 import com.example.KTB_Agile_backend.auth.service.AuthTokenResult;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
-import com.example.KTB_Agile_backend.common.exception.ErrorCode;
+import com.example.KTB_Agile_backend.auth.exception.AuthErrorCode;
 import com.example.KTB_Agile_backend.common.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -158,7 +158,7 @@ class AuthControllerTest {
 	void returnsStandardUnauthorizedForInvalidRefreshToken() throws Exception {
 		when(authService.reissueToken("invalid-token"))
 				.thenThrow(new ApiException(
-						ErrorCode.AUTH_REFRESH_TOKEN_INVALID
+						AuthErrorCode.AUTH_REFRESH_TOKEN_INVALID
 				));
 
 		mockMvc.perform(post("/auth/refresh")

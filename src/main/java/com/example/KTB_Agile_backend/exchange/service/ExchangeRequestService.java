@@ -2,11 +2,11 @@ package com.example.KTB_Agile_backend.exchange.service;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
-import com.example.KTB_Agile_backend.exchange.api.ExchangeRequestCreatedResponse;
-import com.example.KTB_Agile_backend.exchange.api.ExchangeRequestCreatedResponse.OfferedItemResponse;
-import com.example.KTB_Agile_backend.exchange.api.ExchangeRequestCreateRequest;
-import com.example.KTB_Agile_backend.exchange.api.ExchangeRequestMessages;
-import com.example.KTB_Agile_backend.exchange.api.ExchangeRequestStatusResponse;
+import com.example.KTB_Agile_backend.exchange.exception.ExchangeErrorCode;
+import com.example.KTB_Agile_backend.exchange.dto.request.ExchangeRequestCreateRequest;
+import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestCreatedResponse;
+import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestCreatedResponse.OfferedItemResponse;
+import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestStatusResponse;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequest;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
 import com.example.KTB_Agile_backend.exchange.entity.OfferedItem;
@@ -48,22 +48,22 @@ public class ExchangeRequestService {
 	) {
 		validate(request, itemId);
 		User requester = userRepository.findActiveById(requesterId)
-				.orElseThrow(() -> new ApiException(ErrorCode.UNAUTHORIZED));
+				.orElseThrow(() -> new ApiException(ErrorCode.AUTHENTICATION_REQUIRED));
 
 		List<Long> itemIds = new ArrayList<>();
 		itemIds.add(itemId);
 		request.offeredItems().forEach(offered -> itemIds.add(offered.itemId()));
 		Map<Long, Item> items = lockItems(itemIds);
 		if (items.size() != itemIds.size() || items.values().stream().anyMatch(Item::isDeleted)) {
-			throw new ApiException(ErrorCode.NOT_FOUND, ExchangeRequestMessages.CREATE_NOT_FOUND);
+			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_NOT_FOUND);
 		}
 
 		Item requestedItem = items.get(itemId);
 		if (requestedItem.getUser().getId().equals(requesterId)) {
-			throw new ApiException(ErrorCode.FORBIDDEN, ExchangeRequestMessages.CREATE_FORBIDDEN);
+			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_FORBIDDEN);
 		}
 		if (requestedItem.getItemState() != ItemState.AVAILABLE) {
-			throw new ApiException(ErrorCode.CONFLICT, ExchangeRequestMessages.CREATE_CONFLICT);
+			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_CONFLICT);
 		}
 		checkQuantity(requestedItem, request.requestedQuantity());
 
@@ -71,10 +71,10 @@ public class ExchangeRequestService {
 		for (ExchangeRequestCreateRequest.OfferedItemRequest offeredRequest : request.offeredItems()) {
 			Item offeredItem = items.get(offeredRequest.itemId());
 			if (!offeredItem.getUser().getId().equals(requesterId)) {
-				throw new ApiException(ErrorCode.FORBIDDEN, ExchangeRequestMessages.CREATE_FORBIDDEN);
+				throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_FORBIDDEN);
 			}
 			if (offeredItem.getItemState() != ItemState.AVAILABLE) {
-				throw new ApiException(ErrorCode.CONFLICT, ExchangeRequestMessages.CREATE_CONFLICT);
+				throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_CONFLICT);
 			}
 			checkQuantity(offeredItem, offeredRequest.quantity());
 			offered.add(offeredItem);
@@ -82,7 +82,7 @@ public class ExchangeRequestService {
 
 		if (!exchangeRequestRepository.findByRequesterAndItemAndStatusForUpdate(
 				requesterId, itemId, ExchangeRequestStatus.PENDING).isEmpty()) {
-			throw new ApiException(ErrorCode.CONFLICT, ExchangeRequestMessages.CREATE_CONFLICT);
+			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_CONFLICT);
 		}
 
 		ExchangeRequest exchangeRequest = new ExchangeRequest(requester, requestedItem, request.requestedQuantity());
@@ -108,23 +108,22 @@ public class ExchangeRequestService {
 		Map<Long, Item> items = Map.of();
 		if (status == ExchangeRequestStatus.COMPLETED) {
 			Long itemId = exchangeRequestRepository.findItemIdById(exchangeRequestId)
-					.orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND,
-							ExchangeRequestMessages.STATUS_NOT_FOUND));
+					.orElseThrow(() -> new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_STATUS_NOT_FOUND));
 			List<Long> itemIds = new ArrayList<>();
 			itemIds.add(itemId);
 			itemIds.addAll(exchangeRequestRepository.findOfferedItemIdsByRequestId(exchangeRequestId));
 			items = lockItems(itemIds);
 			if (items.size() != itemIds.size()) {
-				throw new ApiException(ErrorCode.NOT_FOUND, ExchangeRequestMessages.STATUS_NOT_FOUND);
+				throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_STATUS_NOT_FOUND);
 			}
 		}
 		ExchangeRequest exchangeRequest = exchangeRequestRepository.findByIdForUpdate(exchangeRequestId)
-				.orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, ExchangeRequestMessages.STATUS_NOT_FOUND));
+				.orElseThrow(() -> new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_STATUS_NOT_FOUND));
 		if (!exchangeRequest.getItem().getUser().getId().equals(userId)) {
-			throw new ApiException(ErrorCode.FORBIDDEN, ExchangeRequestMessages.STATUS_FORBIDDEN);
+			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_STATUS_FORBIDDEN);
 		}
 		if (exchangeRequest.getRequestedStatus() != ExchangeRequestStatus.PENDING) {
-			throw new ApiException(ErrorCode.CONFLICT, ExchangeRequestMessages.STATUS_CONFLICT);
+			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_STATUS_CONFLICT);
 		}
 
 		if (status == ExchangeRequestStatus.COMPLETED) {
@@ -153,22 +152,21 @@ public class ExchangeRequestService {
 		if (itemId == null || itemId < 1 || request == null || request.requestedQuantity() == null
 				|| request.requestedQuantity() < 1 || request.offeredItems() == null
 				|| request.offeredItems().isEmpty()) {
-			throw new ApiException(ErrorCode.BAD_REQUEST, ExchangeRequestMessages.CREATE_BAD_REQUEST);
+			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_INVALID);
 		}
 		Set<Long> offeredIds = new HashSet<>();
 		for (ExchangeRequestCreateRequest.OfferedItemRequest offered : request.offeredItems()) {
 			if (offered == null || offered.itemId() == null || offered.itemId() < 1 || offered.quantity() == null
 					|| offered.quantity() < 1 || offered.itemId().equals(itemId)
 					|| !offeredIds.add(offered.itemId())) {
-				throw new ApiException(ErrorCode.BAD_REQUEST, ExchangeRequestMessages.CREATE_BAD_REQUEST);
+				throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_INVALID);
 			}
 		}
 	}
 
 	private static void checkQuantity(Item item, int requestedQuantity) {
 		if (item.getQuantity() < requestedQuantity) {
-			throw new ApiException(ErrorCode.UNPROCESSABLE_ENTITY,
-					ExchangeRequestMessages.CREATE_INSUFFICIENT_QUANTITY);
+			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_QUANTITY_EXCEEDED);
 		}
 	}
 

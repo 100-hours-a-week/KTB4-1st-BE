@@ -1,7 +1,7 @@
 package com.example.KTB_Agile_backend.exchange.service;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
-import com.example.KTB_Agile_backend.exchange.api.ExchangeRequestCreateRequest;
+import com.example.KTB_Agile_backend.exchange.dto.request.ExchangeRequestCreateRequest;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequest;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
 import com.example.KTB_Agile_backend.exchange.repository.ExchangeRequestRepository;
@@ -94,7 +94,8 @@ class ExchangeRequestServiceTest {
 		assertThatThrownBy(() -> service.updateStatus(pending.exchangeRequestId(), requester.getId(),
 				ExchangeRequestStatus.COMPLETED))
 				.isInstanceOf(ApiException.class)
-				.satisfies(exception -> assertThat(((ApiException) exception).code().value()).isEqualTo("FORBIDDEN"));
+				.satisfies(exception -> assertThat(((ApiException) exception).code().value())
+						.isEqualTo("EXCHANGE_REQUEST_STATUS_FORBIDDEN"));
 		service.updateStatus(pending.exchangeRequestId(), owner.getId(), ExchangeRequestStatus.REJECTED);
 		var retry = service.create(requester.getId(), target.getId(), request(1, offered, 1));
 
@@ -107,7 +108,8 @@ class ExchangeRequestServiceTest {
 		assertThatThrownBy(() -> service.updateStatus(pending.exchangeRequestId(), owner.getId(),
 				ExchangeRequestStatus.COMPLETED))
 				.isInstanceOf(ApiException.class)
-				.satisfies(exception -> assertThat(((ApiException) exception).code().value()).isEqualTo("CONFLICT"));
+				.satisfies(exception -> assertThat(((ApiException) exception).code().value())
+						.isEqualTo("EXCHANGE_REQUEST_STATUS_CONFLICT"));
 	}
 
 	@Test
@@ -120,20 +122,23 @@ class ExchangeRequestServiceTest {
 
 		assertThatThrownBy(() -> service.create(requester.getId(), target.getId(), request(1, offered, 1)))
 				.isInstanceOf(ApiException.class)
-				.satisfies(exception -> assertThat(((ApiException) exception).code().value()).isEqualTo("CONFLICT"));
+				.satisfies(exception -> assertThat(((ApiException) exception).code().value())
+						.isEqualTo("EXCHANGE_REQUEST_CREATE_CONFLICT"));
 		assertThatThrownBy(() -> service.create(requester.getId(), target.getId(), request(2, offered, 1)))
 				.isInstanceOf(ApiException.class)
 				.satisfies(exception -> assertThat(((ApiException) exception).code().value())
-						.isEqualTo("UNPROCESSABLE_ENTITY"));
+						.isEqualTo("EXCHANGE_REQUEST_CREATE_QUANTITY_EXCEEDED"));
 		assertThatThrownBy(() -> service.create(owner.getId(), target.getId(), request(1, offered, 1)))
 				.isInstanceOf(ApiException.class)
-				.satisfies(exception -> assertThat(((ApiException) exception).code().value()).isEqualTo("FORBIDDEN"));
+				.satisfies(exception -> assertThat(((ApiException) exception).code().value())
+						.isEqualTo("EXCHANGE_REQUEST_CREATE_FORBIDDEN"));
 		assertThatThrownBy(() -> service.create(requester.getId(), target.getId(),
 				new ExchangeRequestCreateRequest(1, List.of(
 						new ExchangeRequestCreateRequest.OfferedItemRequest(offered.getId(), 1),
 						new ExchangeRequestCreateRequest.OfferedItemRequest(offered.getId(), 1)))))
 				.isInstanceOf(ApiException.class)
-				.satisfies(exception -> assertThat(((ApiException) exception).code().value()).isEqualTo("BAD_REQUEST"));
+				.satisfies(exception -> assertThat(((ApiException) exception).code().value())
+						.isEqualTo("EXCHANGE_REQUEST_CREATE_INVALID"));
 	}
 
 	private <T> T persist(T entity) {

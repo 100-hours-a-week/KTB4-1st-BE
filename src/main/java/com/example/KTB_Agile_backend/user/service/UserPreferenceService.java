@@ -2,6 +2,7 @@ package com.example.KTB_Agile_backend.user.service;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
+import com.example.KTB_Agile_backend.user.exception.UserErrorCode;
 import com.example.KTB_Agile_backend.user.dto.UserPreferenceQuestion;
 import com.example.KTB_Agile_backend.user.dto.request.UserPreferenceRequest;
 import com.example.KTB_Agile_backend.user.dto.response.UserPreferenceResponse;
@@ -91,7 +92,7 @@ public class UserPreferenceService {
 	}
 
 	private static ApiException invalidQuestions() {
-		return new ApiException(ErrorCode.USER_PREFERENCE_INVALID);
+		return new ApiException(UserErrorCode.USER_PREFERENCE_INVALID);
 	}
 
 	private static ApiException unauthorized() {
@@ -99,11 +100,11 @@ public class UserPreferenceService {
 	}
 
 	private static ApiException alreadyExists() {
-		return new ApiException(ErrorCode.USER_PREFERENCE_ALREADY_EXISTS);
+		return new ApiException(UserErrorCode.USER_PREFERENCE_ALREADY_EXISTS);
 	}
 
 	private static ApiException notFound() {
-		return new ApiException(ErrorCode.USER_PREFERENCE_NOT_FOUND);
+		return new ApiException(UserErrorCode.USER_PREFERENCE_NOT_FOUND);
 	}
 
 }

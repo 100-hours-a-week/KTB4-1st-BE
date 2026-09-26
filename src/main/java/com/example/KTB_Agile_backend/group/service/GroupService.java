@@ -2,6 +2,7 @@ package com.example.KTB_Agile_backend.group.service;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
+import com.example.KTB_Agile_backend.group.exception.GroupErrorCode;
 import com.example.KTB_Agile_backend.group.dto.request.CreateGroupRequest;
 import com.example.KTB_Agile_backend.group.entity.Group;
 import com.example.KTB_Agile_backend.group.entity.GroupMember;
@@ -34,7 +35,7 @@ public class GroupService {
 
 		if (groupMemberRepository.countByUser_IdAndStatus(userId, GroupMemberStatus.ACTIVE)
 				>= MAX_ACTIVE_GROUPS) {
-			throw new ApiException(ErrorCode.CONFLICT, "가입할 수 있는 그룹은 최대 5개입니다.");
+			throw new ApiException(GroupErrorCode.GROUP_MAX_MEMBERSHIPS_REACHED);
 		}
 
 		Group group;
@@ -47,7 +48,7 @@ public class GroupService {
 					request.groupContent()
 			));
 		} catch (DataIntegrityViolationException exception) {
-			throw new ApiException(ErrorCode.CONFLICT, "이미 사용 중인 그룹명입니다.", java.util.List.of(), exception);
+			throw new ApiException(GroupErrorCode.GROUP_NAME_ALREADY_USED, java.util.List.of(), exception);
 		}
 		groupMemberRepository.save(new GroupMember(group, user));
 	}
@@ -56,12 +57,12 @@ public class GroupService {
 	public void join(Long userId, Long groupId) {
 		User user = findActiveUser(userId);
 		Group group = groupRepository.findByIdAndDeletedAtIsNull(groupId)
-				.orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "그룹을 찾을 수 없습니다."));
+				.orElseThrow(() -> new ApiException(GroupErrorCode.GROUP_NOT_FOUND));
 
 		GroupMember member = groupMemberRepository.findByGroup_IdAndUser_Id(groupId, userId).orElse(null);
 		if (member != null) {
 			if (member.isActive()) {
-				throw new ApiException(ErrorCode.CONFLICT, "이미 가입한 그룹입니다.");
+				throw new ApiException(GroupErrorCode.GROUP_ALREADY_JOINED);
 			}
 			checkGroupLimit(userId);
 			member.join();
@@ -75,12 +76,12 @@ public class GroupService {
 	@Transactional
 	public void leave(Long userId, Long groupId) {
 		Group group = groupRepository.findByIdAndDeletedAtIsNull(groupId)
-				.orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "그룹을 찾을 수 없습니다."));
+				.orElseThrow(() -> new ApiException(GroupErrorCode.GROUP_NOT_FOUND));
 		GroupMember member = groupMemberRepository.findByGroup_IdAndUser_Id(groupId, userId)
-				.orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "그룹 멤버를 찾을 수 없습니다."));
+				.orElseThrow(() -> new ApiException(GroupErrorCode.GROUP_MEMBER_NOT_FOUND));
 
 		if (!member.isActive()) {
-			throw new ApiException(ErrorCode.CONFLICT, "이미 탈퇴한 그룹입니다.");
+			throw new ApiException(GroupErrorCode.GROUP_ALREADY_LEFT);
 		}
 
 		member.leave(LocalDateTime.now());
@@ -97,7 +98,7 @@ public class GroupService {
 	private void checkGroupLimit(Long userId) {
 		if (groupMemberRepository.countByUser_IdAndStatus(userId, GroupMemberStatus.ACTIVE)
 				>= MAX_ACTIVE_GROUPS) {
-			throw new ApiException(ErrorCode.CONFLICT, "가입할 수 있는 그룹은 최대 5개입니다.");
+			throw new ApiException(GroupErrorCode.GROUP_MAX_MEMBERSHIPS_REACHED);
 		}
 	}
 }

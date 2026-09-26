@@ -1,7 +1,7 @@
 package com.example.KTB_Agile_backend.exchange.service;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
-import com.example.KTB_Agile_backend.exchange.api.ExchangeRequestCreateRequest;
+import com.example.KTB_Agile_backend.exchange.dto.request.ExchangeRequestCreateRequest;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
@@ -65,7 +65,7 @@ class ExchangeRequestConcurrencyTest {
 			try {
 				return service.create(fixture.requesterId(), fixture.targetId(), request).exchangeRequestId();
 			} catch (ApiException exception) {
-				if (exception.code().value().equals("CONFLICT")) {
+				if (exception.code().value().equals("EXCHANGE_REQUEST_CREATE_CONFLICT")) {
 					return -1L;
 				}
 				throw exception;
@@ -81,7 +81,7 @@ class ExchangeRequestConcurrencyTest {
 				service.updateStatus(createdIds.getFirst(), fixture.ownerId(), ExchangeRequestStatus.COMPLETED);
 				return true;
 			} catch (ApiException exception) {
-				if (exception.code().value().equals("CONFLICT")) {
+				if (exception.code().value().equals("EXCHANGE_REQUEST_STATUS_CONFLICT")) {
 					return false;
 				}
 				throw exception;

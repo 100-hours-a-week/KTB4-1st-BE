@@ -2,7 +2,7 @@ package com.example.KTB_Agile_backend.ai.text.service;
 
 import com.example.KTB_Agile_backend.auth.service.Hashing;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
-import com.example.KTB_Agile_backend.common.exception.ErrorCode;
+import com.example.KTB_Agile_backend.ai.exception.AiErrorCode;
 import com.example.KTB_Agile_backend.ai.text.dto.request.ModerationCheckRequest;
 import com.example.KTB_Agile_backend.ai.text.dto.response.ModerationCheckResponse;
 import com.example.KTB_Agile_backend.ai.text.entity.ModerationCheck;
@@ -19,6 +19,7 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -91,7 +92,7 @@ public class ModerationCheckService {
 		int consumed = moderationCheckRepository.consumeIfValid(
 				Hashing.sha256(checkId), userId, contentHash(title, content), now);
 		if (consumed != EXPECTED_CONSUMED_ROWS) {
-			throw new ApiException(ErrorCode.CONFLICT, "검수 ID가 유효하지 않거나 만료되었습니다.");
+			throw new ApiException(AiErrorCode.AI_TEXT_MODERATION_CHECK_INVALID);
 		}
 	}
 
@@ -100,8 +101,8 @@ public class ModerationCheckService {
 	}
 
 	private static ApiException aiFailure(Throwable cause) {
-		return new ApiException(ErrorCode.AI_TEXT_MODERATION_FAILED,
-				ErrorCode.AI_TEXT_MODERATION_FAILED.message(), cause);
+		return new ApiException(AiErrorCode.AI_TEXT_MODERATION_FAILED,
+				List.of(), cause);
 	}
 
 	public record AiModerationResponse(Boolean isAppropriate, String rejectionReason, String keyword) {

@@ -1,13 +1,13 @@
 package com.example.KTB_Agile_backend.exchange.controller;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
-import com.example.KTB_Agile_backend.common.exception.ErrorCode;
+import com.example.KTB_Agile_backend.common.exception.ApiErrorCode;
 import com.example.KTB_Agile_backend.common.exception.ErrorDetail;
+import com.example.KTB_Agile_backend.exchange.exception.ExchangeErrorCode;
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
-import com.example.KTB_Agile_backend.exchange.api.ExchangeRequestCreatedResponse;
-import com.example.KTB_Agile_backend.exchange.api.ExchangeRequestCreateRequest;
-import com.example.KTB_Agile_backend.exchange.api.ExchangeRequestMessages;
-import com.example.KTB_Agile_backend.exchange.api.ExchangeRequestStatusResponse;
+import com.example.KTB_Agile_backend.exchange.dto.request.ExchangeRequestCreateRequest;
+import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestCreatedResponse;
+import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestStatusResponse;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
 import com.example.KTB_Agile_backend.exchange.service.ExchangeRequestService;
 import tools.jackson.databind.JsonNode;
@@ -36,7 +36,7 @@ public class ExchangeRequestController {
 			@PathVariable String itemId,
 			@RequestBody JsonNode body
 	) {
-		long targetItemId = parseId(itemId, ExchangeRequestMessages.CREATE_BAD_REQUEST);
+		long targetItemId = parseId(itemId, ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_INVALID);
 		ExchangeRequestCreateRequest request = parseCreateRequest(body);
 		ExchangeRequestCreatedResponse response = exchangeRequestService.create(
 				Long.valueOf(authentication.getName()), targetItemId, request);
@@ -50,7 +50,7 @@ public class ExchangeRequestController {
 			@PathVariable String exchangeRequestId,
 			@RequestBody JsonNode body
 	) {
-		long requestId = parseId(exchangeRequestId, ExchangeRequestMessages.STATUS_BAD_REQUEST);
+		long requestId = parseId(exchangeRequestId, ExchangeErrorCode.EXCHANGE_REQUEST_STATUS_INVALID);
 		ExchangeRequestStatus status = parseStatus(body);
 		ExchangeRequestStatusResponse response = exchangeRequestService.updateStatus(
 				requestId, Long.valueOf(authentication.getName()), status);
@@ -59,20 +59,20 @@ public class ExchangeRequestController {
 
 	private static ExchangeRequestCreateRequest parseCreateRequest(JsonNode body) {
 		if (body == null || !body.isObject()) {
-			throw badRequest(ExchangeRequestMessages.CREATE_BAD_REQUEST);
+			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_INVALID);
 		}
 		JsonNode requestedQuantity = body.get("requestedQuantity");
 		JsonNode offeredItems = body.get("offeredItems");
 		if (!isPositiveInteger(requestedQuantity) || offeredItems == null || !offeredItems.isArray()
 				|| offeredItems.size() == 0) {
-			throw badRequest(ExchangeRequestMessages.CREATE_BAD_REQUEST);
+			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_INVALID);
 		}
 
 		List<ExchangeRequestCreateRequest.OfferedItemRequest> items = new ArrayList<>();
 		for (JsonNode offered : offeredItems) {
 			if (!offered.isObject() || !isPositiveLong(offered.get("itemId"))
 					|| !isPositiveInteger(offered.get("quantity"))) {
-				throw badRequest(ExchangeRequestMessages.CREATE_BAD_REQUEST);
+				throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_INVALID);
 			}
 			items.add(new ExchangeRequestCreateRequest.OfferedItemRequest(
 					offered.get("itemId").longValue(), offered.get("quantity").intValue()));
@@ -90,8 +90,8 @@ public class ExchangeRequestController {
 				return ExchangeRequestStatus.REJECTED;
 			}
 		}
-		throw badRequest(ExchangeRequestMessages.STATUS_BAD_REQUEST,
-				List.of(new ErrorDetail("status", ExchangeRequestMessages.INVALID_STATUS_REASON)));
+		throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_STATUS_INVALID,
+				List.of(new ErrorDetail("status", "COMPLETED 또는 REJECTED만 입력해 주세요.")));
 	}
 
 	private static boolean isPositiveInteger(JsonNode value) {
@@ -102,7 +102,7 @@ public class ExchangeRequestController {
 		return value != null && value.isIntegralNumber() && value.canConvertToLong() && value.longValue() > 0;
 	}
 
-	private static long parseId(String value, String message) {
+	private static long parseId(String value, ApiErrorCode errorCode) {
 		try {
 			long id = Long.parseLong(value);
 			if (id > 0) {
@@ -111,14 +111,6 @@ public class ExchangeRequestController {
 		} catch (NumberFormatException ignored) {
 			// Return the endpoint-specific bad request below.
 		}
-		throw badRequest(message);
-	}
-
-	private static ApiException badRequest(String message) {
-		return badRequest(message, List.of());
-	}
-
-	private static ApiException badRequest(String message, List<ErrorDetail> details) {
-		return new ApiException(ErrorCode.BAD_REQUEST, message, details);
+		throw new ApiException(errorCode);
 	}
 }

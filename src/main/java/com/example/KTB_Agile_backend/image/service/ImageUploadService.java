@@ -1,7 +1,7 @@
 package com.example.KTB_Agile_backend.image.service;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
-import com.example.KTB_Agile_backend.common.exception.ErrorCode;
+import com.example.KTB_Agile_backend.image.exception.ImageErrorCode;
 import com.example.KTB_Agile_backend.image.dto.request.PresignedUploadRequest;
 import com.example.KTB_Agile_backend.image.dto.response.PresignedUploadResponse;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,11 +44,11 @@ public class ImageUploadService {
 
 	public PresignedUploadResponse issue(Long userId, PresignedUploadRequest request) {
 		if (bucket.isBlank()) {
-			throw new ApiException(ErrorCode.INTERNAL_SERVER_ERROR, "S3 버킷이 설정되지 않았습니다.");
+			throw new ApiException(ImageErrorCode.S3_BUCKET_NOT_CONFIGURED);
 		}
 		String extension = FILE_EXTENSIONS.get(request.contentType());
 		if (extension == null) {
-			throw new ApiException(ErrorCode.BAD_REQUEST, "지원하지 않는 이미지 형식입니다.");
+			throw new ApiException(ImageErrorCode.UNSUPPORTED_IMAGE_TYPE);
 		}
 
 		String objectKey = OBJECT_KEY_PREFIX + userId + "/"

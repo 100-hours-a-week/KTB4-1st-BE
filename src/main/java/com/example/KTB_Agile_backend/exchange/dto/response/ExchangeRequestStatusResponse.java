@@ -1,4 +1,4 @@
-package com.example.KTB_Agile_backend.exchange.api;
+package com.example.KTB_Agile_backend.exchange.dto.response;
 
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
 
