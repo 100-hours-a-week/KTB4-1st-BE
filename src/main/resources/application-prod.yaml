@@ -1,4 +1,8 @@
 spring:
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
@@ -17,7 +21,7 @@ cloud:
       bucket: ${AWS_S3_BUCKET}
 
 cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  allowed-origins: "https://bakkucca.com,${CORS_ALLOWED_ORIGINS}"
 
 auth:
   jwt:

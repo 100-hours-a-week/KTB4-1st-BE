@@ -43,4 +43,8 @@ public class OfferedItem {
 		this.item = item;
 		this.quantity = quantity;
 	}
+
+	public void changeQuantity(Integer quantity) {
+		this.quantity = quantity;
+	}
 }

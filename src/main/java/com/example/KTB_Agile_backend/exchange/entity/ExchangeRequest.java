@@ -49,9 +49,6 @@ public class ExchangeRequest extends UpdatableEntity {
 	@Column(name = "requested_status", nullable = false, length = 20)
 	private ExchangeRequestStatus requestedStatus = ExchangeRequestStatus.PENDING;
 
-	@Column(name = "chat_room_id")
-	private Long chatRoomId;
-
 	@OneToMany(mappedBy = "exchangeRequest", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<OfferedItem> offeredItems = new ArrayList<>();
 
@@ -63,6 +60,14 @@ public class ExchangeRequest extends UpdatableEntity {
 
 	public void addOfferedItem(Item item, Integer quantity) {
 		offeredItems.add(new OfferedItem(this, item, quantity));
+	}
+
+	public void updateRequestedQuantity(Integer requestedQuantity) {
+		this.requestedQuantity = requestedQuantity;
+	}
+
+	public void removeOfferedItem(OfferedItem offeredItem) {
+		offeredItems.remove(offeredItem);
 	}
 
 	public void changeStatus(ExchangeRequestStatus status) {

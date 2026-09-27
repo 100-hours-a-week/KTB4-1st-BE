@@ -4,4 +4,5 @@ public enum ExchangeRequestStatus {
 	PENDING,
 	COMPLETED,
 	REJECTED,
+	CANCELED,
 }

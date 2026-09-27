@@ -1,3 +1,7 @@
+spring:
+  flyway:
+    enabled: false
+
 cloud:
   aws:
     s3:

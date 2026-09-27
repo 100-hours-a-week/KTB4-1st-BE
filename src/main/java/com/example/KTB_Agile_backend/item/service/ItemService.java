@@ -71,6 +71,7 @@ public class ItemService {
 	private final S3ImageObjectService s3ImageObjectService;
 	private final UserRepository userRepository;
 	private final ModerationCheckService moderationCheckService;
+	private final ItemCashService itemCashService;
 
 	@Transactional
 	public ItemCreateResponse create(Long userId, CreateItemRequest request) {
@@ -85,13 +86,20 @@ public class ItemService {
 				.map(objectKey -> Image.fromS3Object(user, objectKey))
 				.toList();
 
-		moderationCheckService.consumeForItem(
+		String keyword = moderationCheckService.consumeForItem(
 				userId,
 				request.moderationCheckId(),
 				request.title(),
 				request.content()
 		);
-		Item item = itemRepository.saveAndFlush(new Item(
+		Long unitPrice = itemCashService.resolveUnitPrice(
+				request.title(),
+				request.content(),
+				keyword,
+				request.valueGapToleranceScore(),
+				request.exchangeUrgencyScore()
+		);
+		Item item = new Item(
 				user,
 				request.title(),
 				request.content(),
@@ -99,7 +107,9 @@ public class ItemService {
 				request.itemState(),
 				request.exchangeUrgencyScore(),
 				request.valueGapToleranceScore()
-		));
+		);
+		item.setUnitPrice(unitPrice);
+		itemRepository.saveAndFlush(item);
 		itemStatsRepository.save(new ItemStats(item));
 		groupItemRepository.saveAll(groups.stream()
 				.map(group -> new GroupItem(group, item))

@@ -17,6 +17,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -44,6 +45,18 @@ public class ExchangeRequestController {
 				.body(new ApiResponse<>(response, null));
 	}
 
+	@PutMapping("/exchange-requests/{exchangeRequestId}")
+	public ResponseEntity<Void> update(
+			Authentication authentication,
+			@PathVariable String exchangeRequestId,
+			@RequestBody JsonNode body
+	) {
+		long requestId = parseId(exchangeRequestId, ExchangeErrorCode.EXCHANGE_REQUEST_UPDATE_INVALID);
+		ExchangeRequestCreateRequest request = parseRequest(body, ExchangeErrorCode.EXCHANGE_REQUEST_UPDATE_INVALID);
+		exchangeRequestService.update(requestId, Long.valueOf(authentication.getName()), request);
+		return ResponseEntity.noContent().build();
+	}
+
 	@PatchMapping("/exchange-requests/{exchangeRequestId}/status")
 	public ResponseEntity<ApiResponse<ExchangeRequestStatusResponse>> updateStatus(
 			Authentication authentication,
@@ -58,21 +71,25 @@ public class ExchangeRequestController {
 	}
 
 	private static ExchangeRequestCreateRequest parseCreateRequest(JsonNode body) {
+		return parseRequest(body, ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_INVALID);
+	}
+
+	private static ExchangeRequestCreateRequest parseRequest(JsonNode body, ApiErrorCode invalidCode) {
 		if (body == null || !body.isObject()) {
-			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_INVALID);
+			throw new ApiException(invalidCode);
 		}
 		JsonNode requestedQuantity = body.get("requestedQuantity");
 		JsonNode offeredItems = body.get("offeredItems");
 		if (!isPositiveInteger(requestedQuantity) || offeredItems == null || !offeredItems.isArray()
 				|| offeredItems.size() == 0) {
-			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_INVALID);
+			throw new ApiException(invalidCode);
 		}
 
 		List<ExchangeRequestCreateRequest.OfferedItemRequest> items = new ArrayList<>();
 		for (JsonNode offered : offeredItems) {
 			if (!offered.isObject() || !isPositiveLong(offered.get("itemId"))
 					|| !isPositiveInteger(offered.get("quantity"))) {
-				throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_INVALID);
+				throw new ApiException(invalidCode);
 			}
 			items.add(new ExchangeRequestCreateRequest.OfferedItemRequest(
 					offered.get("itemId").longValue(), offered.get("quantity").intValue()));
@@ -89,9 +106,12 @@ public class ExchangeRequestController {
 			if (ExchangeRequestStatus.REJECTED.name().equals(status.stringValue())) {
 				return ExchangeRequestStatus.REJECTED;
 			}
+			if (ExchangeRequestStatus.CANCELED.name().equals(status.stringValue())) {
+				return ExchangeRequestStatus.CANCELED;
+			}
 		}
 		throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_STATUS_INVALID,
-				List.of(new ErrorDetail("status", "COMPLETED 또는 REJECTED만 입력해 주세요.")));
+				List.of(new ErrorDetail("status", "COMPLETED, REJECTED 또는 CANCELED만 입력해 주세요.")));
 	}
 
 	private static boolean isPositiveInteger(JsonNode value) {

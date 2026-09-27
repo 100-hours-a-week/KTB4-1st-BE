@@ -41,10 +41,10 @@ class ExchangeRequestControllerTest {
 	}
 
 	@Test
-	void createsRequestAndReturnsLocationAndNullChatRoom() throws Exception {
+	void createsRequestAndReturnsChatRoomId() throws Exception {
 		when(service.create(eq(42L), eq(123L), any())).thenReturn(new ExchangeRequestCreatedResponse(
 				301L, 123L, 1, List.of(new ExchangeRequestCreatedResponse.OfferedItemResponse(213L, 2)),
-				ExchangeRequestStatus.PENDING, null, OffsetDateTime.parse("2026-09-05T11:00:00+09:00")));
+				ExchangeRequestStatus.PENDING, 401L, OffsetDateTime.parse("2026-09-05T11:00:00+09:00")));
 
 		mockMvc.perform(post("/items/123/exchange-requests")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
@@ -57,7 +57,7 @@ class ExchangeRequestControllerTest {
 				.andExpect(jsonPath("$.data.exchangeRequestId").value(301))
 				.andExpect(jsonPath("$.data.requestedStatus").value("PENDING"))
 				.andExpect(jsonPath("$.data.offeredItems[0].quantity").value(2))
-				.andExpect(jsonPath("$.data.chatRoomId").value(org.hamcrest.Matchers.nullValue()));
+				.andExpect(jsonPath("$.data.chatRoomId").value(401));
 
 		verify(service).create(eq(42L), eq(123L), any());
 	}
@@ -115,6 +115,18 @@ class ExchangeRequestControllerTest {
 				.andExpect(jsonPath("$.data.status").value("COMPLETED"));
 
 		verify(service).updateStatus(301L, 42L, ExchangeRequestStatus.COMPLETED);
+
+		when(service.updateStatus(301L, 42L, ExchangeRequestStatus.CANCELED)).thenReturn(
+				new ExchangeRequestStatusResponse(301L, 123L, ExchangeRequestStatus.CANCELED,
+						OffsetDateTime.parse("2026-09-05T16:00:00+09:00")));
+		mockMvc.perform(patch("/exchange-requests/301/status")
+					.principal(new UsernamePasswordAuthenticationToken("42", null))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"status\":\"CANCELED\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.status").value("CANCELED"));
+
+		verify(service).updateStatus(301L, 42L, ExchangeRequestStatus.CANCELED);
 	}
 
 	@Test
@@ -126,6 +138,7 @@ class ExchangeRequestControllerTest {
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.error.code").value("EXCHANGE_REQUEST_STATUS_INVALID"))
 				.andExpect(jsonPath("$.error.details[0].field").value("status"))
-				.andExpect(jsonPath("$.error.details[0].reason").value("COMPLETED 또는 REJECTED만 입력해 주세요."));
+				.andExpect(jsonPath("$.error.details[0].reason")
+						.value("COMPLETED, REJECTED 또는 CANCELED만 입력해 주세요."));
 	}
 }
