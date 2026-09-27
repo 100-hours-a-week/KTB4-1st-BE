@@ -76,7 +76,7 @@ class ItemServiceTest {
 				imageRepository,
 				s3ImageObjectService,
 				userRepository,
-				mock(ModerationCheckService.class)
+				mock(ModerationCheckService.class), itemCashService()
 		);
 		User user = mock(User.class);
 		Group firstGroup = group("첫 그룹");
@@ -123,7 +123,7 @@ class ItemServiceTest {
 				imageRepository,
 				mock(S3ImageObjectService.class),
 				userRepository,
-				mock(ModerationCheckService.class)
+				mock(ModerationCheckService.class), itemCashService()
 		);
 		User owner = user(42L);
 		Item item = spy(new Item(owner, "기존 제목", "기존 내용"));
@@ -202,7 +202,7 @@ class ItemServiceTest {
 				mock(ImageRepository.class),
 				s3ImageObjectService,
 				userRepository,
-				mock(ModerationCheckService.class)
+				mock(ModerationCheckService.class), itemCashService()
 		);
 		User requester = user(42L);
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(requester));
@@ -252,7 +252,7 @@ class ItemServiceTest {
 		ItemService service = new ItemService(
 				mock(ItemRepository.class), itemStatsRepository, itemViewRepository, itemLikeRepository, groupRepository,
 				groupMemberRepository, groupItemRepository, imageRepository, mock(S3ImageObjectService.class),
-				mock(UserRepository.class), mock(ModerationCheckService.class));
+				mock(UserRepository.class), mock(ModerationCheckService.class), itemCashService());
 		Group group = group("그룹");
 		when(groupRepository.findByIdAndDeletedAtIsNull(101L)).thenReturn(Optional.of(group));
 		when(groupMemberRepository.findByGroup_IdAndUser_Id(101L, 42L))
@@ -302,7 +302,7 @@ class ItemServiceTest {
 				imageRepository,
 				mock(S3ImageObjectService.class),
 				userRepository,
-				mock(ModerationCheckService.class)
+				mock(ModerationCheckService.class), itemCashService()
 		);
 
 		User owner = mock(User.class);
@@ -391,7 +391,7 @@ class ItemServiceTest {
 				imageRepository,
 				mock(S3ImageObjectService.class),
 				userRepository,
-				mock(ModerationCheckService.class)
+				mock(ModerationCheckService.class), itemCashService()
 		);
 
 		User viewer = user(42L);
@@ -412,6 +412,12 @@ class ItemServiceTest {
 		service.findDetail(42L, 123L);
 
 		verify(stats).increaseViewCount();
+	}
+
+	private static ItemCashService itemCashService() {
+		ItemCashService itemCashService = mock(ItemCashService.class);
+		when(itemCashService.resolveUnitPrice(any(), any(), any(), any(), any())).thenReturn(1L);
+		return itemCashService;
 	}
 
 	private static CreateItemRequest request(List<Long> groupIds, List<String> objectKeys) {
@@ -477,7 +483,7 @@ class ItemServiceTest {
 				imageRepository,
 				mock(S3ImageObjectService.class),
 				userRepository,
-				mock(ModerationCheckService.class)
+				mock(ModerationCheckService.class), itemCashService()
 		);
 	}
 
