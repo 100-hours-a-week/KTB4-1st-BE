@@ -34,16 +34,26 @@ public class ModerationCheck extends UpdatableEntity {
 	@Column(name = "content_hash", nullable = false, length = 64, columnDefinition = "CHAR(64)")
 	private String contentHash;
 
+	@Column(length = 255)
+	private String keyword;
+
 	@Column(name = "expires_at", nullable = false)
 	private LocalDateTime expiresAt;
 
 	@Column(name = "consumed_at")
 	private LocalDateTime consumedAt;
 
-	public ModerationCheck(String checkIdHash, Long userId, String contentHash, LocalDateTime expiresAt) {
+	public ModerationCheck(
+			String checkIdHash,
+			Long userId,
+			String contentHash,
+			String keyword,
+			LocalDateTime expiresAt
+	) {
 		this.checkIdHash = Objects.requireNonNull(checkIdHash, "checkIdHash must not be null");
 		this.userId = Objects.requireNonNull(userId, "userId must not be null");
 		this.contentHash = Objects.requireNonNull(contentHash, "contentHash must not be null");
+		this.keyword = keyword;
 		this.expiresAt = Objects.requireNonNull(expiresAt, "expiresAt must not be null");
 	}
 }

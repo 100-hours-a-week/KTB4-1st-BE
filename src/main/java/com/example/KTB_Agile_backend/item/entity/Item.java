@@ -56,6 +56,9 @@ public class Item extends SoftDeletableEntity {
 	@Column(name = "max_unit_price", nullable = false)
 	private Long maxUnitPrice = 0L;
 
+	@Column(name = "unit_price", nullable = false)
+	private Long unitPrice = 0L;
+
 	@Column(name = "exchange_urgency_score", nullable = false, precision = 3, scale = 2)
 	private BigDecimal exchangeUrgencyScore = new BigDecimal("0.50");
 
@@ -126,6 +129,10 @@ public class Item extends SoftDeletableEntity {
 		if (this.quantity == 0) {
 			this.itemState = ItemState.UNAVAILABLE;
 		}
+	}
+
+	public void setUnitPrice(Long unitPrice) {
+		this.unitPrice = requireNonNull(unitPrice, "unitPrice must not be null");
 	}
 
 }
