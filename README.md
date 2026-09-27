@@ -64,19 +64,11 @@ Configure an S3 Lifecycle rule on the bucket with the tag filter `pending=true` 
 
 The backend role needs `s3:PutObject`, `s3:GetObject`, `s3:GetObjectTagging`, `s3:PutObjectTagging`, and `s3:DeleteObject` on the image prefix.
 
-For an existing MySQL database, apply this schema change before deploying:
-
-```sql
-ALTER TABLE images
-    ADD COLUMN object_key VARCHAR(512) NULL,
-    MODIFY COLUMN image_url TEXT NULL;
-
-CREATE UNIQUE INDEX uk_images_object_key ON images (object_key);
-```
-
 Existing URL-backed image rows continue to work; newly uploaded images store their S3 key and receive fresh read URLs from item APIs.
 
-In the `prod` profile, Flyway applies versioned SQL migrations from `src/main/resources/db/migration` before Hibernate validates the schema. The first migration creates the exchange and chat tables if they do not already exist. Existing non-empty databases are baselined at version `0`; confirm `DB_URL` points to the intended database before the first startup with migrations enabled.
+## Database schema
+
+In the `prod` profile, Flyway V1 creates the complete current schema, including image object keys, before Hibernate validates it. Point `DB_URL` at a new, empty MySQL schema for the first startup; the database user needs permission to create tables, indexes, and foreign keys. Hibernate uses `ddl-auto=validate` and will not change the schema itself. After V1 has been deployed, add future schema changes as new versioned migrations instead of editing V1.
 
 ## WebSocket chat messages
 
