@@ -416,7 +416,7 @@ class ItemServiceTest {
 
 	private static ItemCashService itemCashService() {
 		ItemCashService itemCashService = mock(ItemCashService.class);
-		when(itemCashService.resolveUnitPrice(any(), any(), any(), any(), any())).thenReturn(1L);
+		lenient().when(itemCashService.resolveUnitPrice(any(), any(), any(), any(), any())).thenReturn(1L);
 		return itemCashService;
 	}
 

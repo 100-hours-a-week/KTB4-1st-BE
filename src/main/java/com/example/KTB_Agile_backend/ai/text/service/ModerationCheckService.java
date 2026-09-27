@@ -73,9 +73,6 @@ public class ModerationCheckService {
 			return new ModerationCheckResponse(false, aiResponse.rejectionReason(), null);
 		}
 		String keyword = aiResponse.keyword() == null ? null : aiResponse.keyword().strip();
-		if (keyword != null && keyword.isEmpty()) {
-			keyword = null;
-		}
 		if (keyword != null && keyword.length() > 255) {
 			throw aiFailure(null);
 		}
