@@ -72,6 +72,7 @@ public class ItemService {
 	private final UserRepository userRepository;
 	private final ModerationCheckService moderationCheckService;
 	private final ItemCashService itemCashService;
+	private final ItemPriceRangeCalculator itemPriceRangeCalculator;
 
 	@Transactional
 	public ItemCreateResponse create(Long userId, CreateItemRequest request) {
@@ -99,6 +100,11 @@ public class ItemService {
 				request.valueGapToleranceScore(),
 				request.exchangeUrgencyScore()
 		);
+		ItemPriceRangeCalculator.PriceRange priceRange = itemPriceRangeCalculator.calculate(
+				unitPrice,
+				request.valueGapToleranceScore(),
+				request.exchangeUrgencyScore()
+		);
 		Item item = new Item(
 				user,
 				request.title(),
@@ -108,7 +114,7 @@ public class ItemService {
 				request.exchangeUrgencyScore(),
 				request.valueGapToleranceScore()
 		);
-		item.setUnitPrice(unitPrice);
+		item.setUnitPrices(unitPrice, priceRange.minUnitPrice(), priceRange.maxUnitPrice());
 		itemRepository.saveAndFlush(item);
 		itemStatsRepository.save(new ItemStats(item));
 		groupItemRepository.saveAll(groups.stream()
@@ -142,6 +148,12 @@ public class ItemService {
 				request.exchangeUrgencyScore(),
 				request.valueGapToleranceScore()
 		);
+		ItemPriceRangeCalculator.PriceRange priceRange = itemPriceRangeCalculator.calculate(
+				item.getUnitPrice(),
+				request.valueGapToleranceScore(),
+				request.exchangeUrgencyScore()
+		);
+		item.setUnitPrices(item.getUnitPrice(), priceRange.minUnitPrice(), priceRange.maxUnitPrice());
 		replaceGroups(item, groups);
 		replaceImages(item, images);
 	}

@@ -46,8 +46,8 @@ public class ItemCashService {
 			String title,
 			String content,
 			String keyword,
-			BigDecimal valueTolerance,
-			BigDecimal tradeSpeed
+			BigDecimal valueGapToleranceScore,
+			BigDecimal exchangeUrgencyScore
 	) {
 		String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.strip();
 		LocalDateTime now = LocalDateTime.now();
@@ -58,7 +58,8 @@ public class ItemCashService {
 				return cached.getUnitPrice();
 			}
 		}
-		AiPriceResponse response = estimatePrice(title, content, normalizedKeyword, valueTolerance, tradeSpeed);
+		AiPriceResponse response = estimatePrice(
+				title, content, normalizedKeyword, valueGapToleranceScore, exchangeUrgencyScore);
 		if (response.keyword() == null || response.keyword().isBlank()
 				|| response.unitPrice() == null || response.unitPrice() < 0) {
 			throw estimationFailed(null);
@@ -82,8 +83,8 @@ public class ItemCashService {
 			String title,
 			String content,
 			String keyword,
-			BigDecimal valueTolerance,
-			BigDecimal tradeSpeed
+			BigDecimal valueGapToleranceScore,
+			BigDecimal exchangeUrgencyScore
 	) {
 		if (aiEndpoint.isBlank()) {
 			throw new ApiException(AiErrorCode.AI_ITEM_PRICE_ENDPOINT_NOT_CONFIGURED);
@@ -92,7 +93,8 @@ public class ItemCashService {
 			AiPriceResponse response = restClient.post()
 					.uri(aiEndpoint)
 					.contentType(MediaType.APPLICATION_JSON)
-					.body(new AiPriceRequest(title, content, keyword, null, valueTolerance, tradeSpeed))
+					.body(new AiPriceRequest(
+							title, content, keyword, null, valueGapToleranceScore, exchangeUrgencyScore))
 					.retrieve()
 					.body(AiPriceResponse.class);
 			if (response == null) {
