@@ -131,8 +131,10 @@ public class Item extends SoftDeletableEntity {
 		}
 	}
 
-	public void setUnitPrice(Long unitPrice) {
+	public void setUnitPrices(Long unitPrice, Long minUnitPrice, Long maxUnitPrice) {
 		this.unitPrice = requireNonNull(unitPrice, "unitPrice must not be null");
+		this.minUnitPrice = requireNonNull(minUnitPrice, "minUnitPrice must not be null");
+		this.maxUnitPrice = requireNonNull(maxUnitPrice, "maxUnitPrice must not be null");
 	}
 
 }
