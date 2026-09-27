@@ -21,7 +21,7 @@ cloud:
       bucket: ${AWS_S3_BUCKET}
 
 cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  allowed-origins: "https://bakkucca.com,${CORS_ALLOWED_ORIGINS}"
 
 auth:
   jwt:
