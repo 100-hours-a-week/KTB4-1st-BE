@@ -229,7 +229,7 @@ class ItemServiceTest {
 		Group group = group("그룹");
 		GroupMember member = new GroupMember(group, mock(User.class));
 		member.leave(LocalDateTime.now());
-		when(groupRepository.findByIdAndDeletedAtIsNull(101L)).thenReturn(Optional.of(group));
+		when(groupRepository.existsByIdAndDeletedAtIsNull(101L)).thenReturn(true);
 		when(groupMemberRepository.findByGroup_IdAndUser_Id(101L, 42L)).thenReturn(Optional.of(member));
 
 		ApiException exception = assertThrows(ApiException.class,
@@ -255,7 +255,7 @@ class ItemServiceTest {
 				mock(UserRepository.class), mock(ModerationCheckService.class), itemCashService(),
 				new ItemPriceRangeCalculator());
 		Group group = group("그룹");
-		when(groupRepository.findByIdAndDeletedAtIsNull(101L)).thenReturn(Optional.of(group));
+		when(groupRepository.existsByIdAndDeletedAtIsNull(101L)).thenReturn(true);
 		when(groupMemberRepository.findByGroup_IdAndUser_Id(101L, 42L))
 				.thenReturn(Optional.of(new GroupMember(group, memberUser)));
 		List<Item> firstItems = new ArrayList<>();

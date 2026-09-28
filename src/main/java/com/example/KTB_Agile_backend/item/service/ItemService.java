@@ -209,8 +209,9 @@ public class ItemService {
 
 	@Transactional(readOnly = true)
 	public ItemPageResponse findByGroup(Long userId, Long groupId, String cursor) {
-		groupRepository.findByIdAndDeletedAtIsNull(groupId)
-				.orElseThrow(() -> new ApiException(GroupErrorCode.GROUP_NOT_FOUND));
+		if (!groupRepository.existsByIdAndDeletedAtIsNull(groupId)) {
+			throw new ApiException(GroupErrorCode.GROUP_NOT_FOUND);
+		}
 		GroupMember member = groupMemberRepository.findByGroup_IdAndUser_Id(groupId, userId)
 				.orElseThrow(() -> new ApiException(GroupErrorCode.GROUP_MEMBERSHIP_REQUIRED));
 		if (member.getStatus() != GroupMemberStatus.ACTIVE) {
