@@ -1,6 +1,7 @@
 package com.example.KTB_Agile_backend.exchange.entity;
 
 import com.example.KTB_Agile_backend.common.entity.UpdatableEntity;
+import com.example.KTB_Agile_backend.group.entity.Group;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.user.entity.User;
 import jakarta.persistence.CascadeType;
@@ -42,6 +43,10 @@ public class ExchangeRequest extends UpdatableEntity {
 	@JoinColumn(name = "item_id", nullable = false)
 	private Item item;
 
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "group_id")
+	private Group group;
+
 	@Column(name = "requested_quantity", nullable = false)
 	private Integer requestedQuantity;
 
@@ -52,10 +57,15 @@ public class ExchangeRequest extends UpdatableEntity {
 	@OneToMany(mappedBy = "exchangeRequest", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<OfferedItem> offeredItems = new ArrayList<>();
 
-	public ExchangeRequest(User requester, Item item, Integer requestedQuantity) {
+	public ExchangeRequest(User requester, Item item, Integer requestedQuantity, Group group) {
 		this.requester = requester;
 		this.item = item;
 		this.requestedQuantity = requestedQuantity;
+		this.group = group;
+	}
+
+	public ExchangeRequest(User requester, Item item, Integer requestedQuantity) {
+		this(requester, item, requestedQuantity, null);
 	}
 
 	public void addOfferedItem(Item item, Integer quantity) {

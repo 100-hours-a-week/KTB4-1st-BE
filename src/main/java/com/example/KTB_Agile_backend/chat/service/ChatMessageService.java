@@ -53,11 +53,10 @@ public class ChatMessageService {
 		return toResponse(message);
 	}
 
-	@Transactional(readOnly = true)
+	@Transactional
 	public ChatMessagePageResponse findMessages(Long chatRoomId, Long userId, String cursor) {
-		if (chatMemberRepository.findActiveMember(chatRoomId, userId).isEmpty()) {
-			throw new ApiException(ErrorCode.FORBIDDEN);
-		}
+		ChatMember member = chatMemberRepository.findActiveMember(chatRoomId, userId)
+				.orElseThrow(() -> new ApiException(ErrorCode.FORBIDDEN));
 
 		Long cursorId = CursorCodec.decodeId(cursor);
 		Pageable pageable = PageRequest.of(0, FETCH_SIZE);
@@ -65,6 +64,9 @@ public class ChatMessageService {
 				? chatMessageRepository.findAllByChatRoom_IdOrderByIdDesc(chatRoomId, pageable)
 				: chatMessageRepository.findAllByChatRoom_IdAndIdLessThanOrderByIdDesc(
 						chatRoomId, cursorId, pageable);
+		if (cursorId == null && !fetchedMessages.isEmpty()) {
+			member.markReadThrough(fetchedMessages.get(0).getId());
+		}
 
 		boolean hasNext = fetchedMessages.size() > PAGE_SIZE;
 		List<ChatMessage> messages = new ArrayList<>(hasNext

@@ -45,9 +45,18 @@ public class ChatMember extends BaseEntity {
 	@Column(name = "left_at")
 	private LocalDateTime leftAt;
 
+	@Column(name = "last_read_message_id")
+	private Long lastReadMessageId;
+
 	public ChatMember(ChatRoom chatRoom, User user, ChatMemberRole memberRole) {
 		this.chatRoom = chatRoom;
 		this.user = user;
 		this.memberRole = memberRole;
+	}
+
+	public void markReadThrough(Long messageId) {
+		if (messageId != null && (lastReadMessageId == null || messageId > lastReadMessageId)) {
+			lastReadMessageId = messageId;
+		}
 	}
 }
