@@ -93,15 +93,10 @@ public class ItemService {
 				request.title(),
 				request.content()
 		);
-		Long unitPrice = itemCashService.resolveUnitPrice(
+		ItemPriceRangeCalculator.PriceRange priceRange = itemCashService.resolvePrice(
 				request.title(),
 				request.content(),
 				keyword,
-				request.valueGapToleranceScore(),
-				request.exchangeUrgencyScore()
-		);
-		ItemPriceRangeCalculator.PriceRange priceRange = itemPriceRangeCalculator.calculate(
-				unitPrice,
 				request.valueGapToleranceScore(),
 				request.exchangeUrgencyScore()
 		);
@@ -114,7 +109,7 @@ public class ItemService {
 				request.exchangeUrgencyScore(),
 				request.valueGapToleranceScore()
 		);
-		item.setUnitPrices(unitPrice, priceRange.minUnitPrice(), priceRange.maxUnitPrice());
+		item.setUnitPrices(priceRange.unitPrice(), priceRange.minUnitPrice(), priceRange.maxUnitPrice());
 		itemRepository.saveAndFlush(item);
 		itemStatsRepository.save(new ItemStats(item));
 		groupItemRepository.saveAll(groups.stream()
@@ -122,7 +117,6 @@ public class ItemService {
 				.toList());
 		images.forEach(image -> image.attachTo(item));
 		imageRepository.saveAllAndFlush(images);
-		// ponytail: update tags before DB commit to avoid deleting committed images; add an outbox if orphan repair must be guaranteed.
 		s3ImageObjectService.markRegistered(request.objectKeys());
 
 		return new ItemCreateResponse(item.getId());
@@ -189,7 +183,6 @@ public class ItemService {
 				toImageInfos(imageRepository.findAllByItem_IdOrderByIdAsc(itemId)),
 				stats == null ? 0L : stats.getLikeCount(),
 				stats == null ? 0L : stats.getViewCount(),
-				// ponytail: exchange request domain is not implemented yet; replace with its aggregate count later.
 				0L,
 				itemLikeRepository.existsByItem_IdAndUser_Id(itemId, userId),
 				toOffsetDateTime(item.getCreatedAt()),
@@ -386,7 +379,6 @@ public class ItemService {
 				item.getItemState(),
 				thumbnails.get(item.getId()),
 				likeCounts.getOrDefault(item.getId(), 0L),
-				// ponytail: exchange request domain is not implemented yet; replace with its aggregate count later.
 				0L,
 				likedItemIds.contains(item.getId()),
 				toOffsetDateTime(item.getCreatedAt())
