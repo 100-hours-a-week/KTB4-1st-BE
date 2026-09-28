@@ -153,6 +153,28 @@ class ExchangeRequestServiceTest {
 	}
 
 	@Test
+	void requesterCanLoadPendingRequestForEditing() {
+		User owner = persist(new User("owner"));
+		User requester = persist(new User("requester"));
+		Item target = persist(item(owner, 5, ItemState.AVAILABLE));
+		Item offered = persist(item(requester, 2, ItemState.AVAILABLE));
+		var pending = service.create(requester.getId(), target.getId(), request(1, offered, 2));
+
+		var response = service.findForEdit(pending.exchangeRequestId(), requester.getId());
+
+		assertThat(response.exchangeRequestId()).isEqualTo(pending.exchangeRequestId());
+		assertThat(response.itemId()).isEqualTo(target.getId());
+		assertThat(response.requestedQuantity()).isEqualTo(1);
+		assertThat(response.offeredItems()).extracting("itemId").containsExactly(offered.getId());
+		assertThat(response.offeredItems()).extracting("quantity").containsExactly(2);
+		assertThat(response.requestedStatus()).isEqualTo(ExchangeRequestStatus.PENDING);
+		assertThatThrownBy(() -> service.findForEdit(pending.exchangeRequestId(), owner.getId()))
+				.isInstanceOf(ApiException.class)
+				.satisfies(exception -> assertThat(((ApiException) exception).code().value())
+						.isEqualTo("EXCHANGE_REQUEST_UPDATE_FORBIDDEN"));
+	}
+
+	@Test
 	void validatesOwnersAvailabilityQuantitiesAndDuplicatePendingRequests() {
 		User owner = persist(new User("owner"));
 		User requester = persist(new User("requester"));
