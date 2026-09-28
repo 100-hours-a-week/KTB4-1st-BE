@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -44,6 +45,15 @@ public class ItemController {
 			@Valid @RequestBody UpdateItemRequest request
 	) {
 		itemService.update(Long.valueOf(authentication.getName()), itemId, request);
+		return ResponseEntity.noContent().build();
+	}
+
+	@DeleteMapping("/items/{itemId}")
+	public ResponseEntity<Void> delete(
+			Authentication authentication,
+			@PathVariable Long itemId
+	) {
+		itemService.delete(Long.valueOf(authentication.getName()), itemId);
 		return ResponseEntity.noContent().build();
 	}
 

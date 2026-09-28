@@ -18,6 +18,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import static java.util.Objects.requireNonNull;
 
@@ -135,6 +136,12 @@ public class Item extends SoftDeletableEntity {
 		this.unitPrice = requireNonNull(unitPrice, "unitPrice must not be null");
 		this.minUnitPrice = requireNonNull(minUnitPrice, "minUnitPrice must not be null");
 		this.maxUnitPrice = requireNonNull(maxUnitPrice, "maxUnitPrice must not be null");
+	}
+
+	public void delete() {
+		if (!isDeleted()) {
+			markDeleted(LocalDateTime.now());
+		}
 	}
 
 }
