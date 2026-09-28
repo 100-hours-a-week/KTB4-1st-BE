@@ -2,8 +2,9 @@ package com.example.KTB_Agile_backend.item.service;
 
 import com.example.KTB_Agile_backend.ai.exception.AiErrorCode;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
-import com.example.KTB_Agile_backend.item.entity.ItemCash;
-import com.example.KTB_Agile_backend.item.repository.ItemCashRepository;
+import com.example.KTB_Agile_backend.item.cache.ItemPriceCache;
+import com.example.KTB_Agile_backend.item.dto.ai.ItemPriceEstimationRequest;
+import com.example.KTB_Agile_backend.item.dto.ai.ItemPriceEstimationResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -14,7 +15,6 @@ import org.springframework.web.client.RestClientException;
 
 import java.math.BigDecimal;
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -23,17 +23,17 @@ public class ItemCashService {
 	private static final Duration CACHE_TTL = Duration.ofHours(24);
 	private static final int MAX_KEYWORD_LENGTH = 255;
 
-	private final ItemCashRepository itemCashRepository;
+	private final ItemPriceCache itemPriceCache;
 	private final RestClient restClient;
 	private final String aiEndpoint;
 
 	public ItemCashService(
-			ItemCashRepository itemCashRepository,
+			ItemPriceCache itemPriceCache,
 			@Value("${ai.item-price-url:}") String aiEndpoint,
 			@Value("${ai.connect-timeout-seconds:5}") long connectTimeoutSeconds,
 			@Value("${ai.read-timeout-seconds:90}") long readTimeoutSeconds
 	) {
-		this.itemCashRepository = itemCashRepository;
+		this.itemPriceCache = itemPriceCache;
 		this.aiEndpoint = aiEndpoint;
 		SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
 		requestFactory.setConnectTimeout(Duration.ofSeconds(connectTimeoutSeconds));
@@ -50,15 +50,13 @@ public class ItemCashService {
 			BigDecimal exchangeUrgencyScore
 	) {
 		String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.strip();
-		LocalDateTime now = LocalDateTime.now();
-		if (normalizedKeyword != null && !normalizedKeyword.isEmpty()) {
-			ItemCash cached = itemCashRepository.findByKeywordAndExpiresAtAfter(normalizedKeyword, now)
-					.orElse(null);
-			if (cached != null) {
-				return cached.getUnitPrice();
+		if (normalizedKeyword != null) {
+			var cachedUnitPrice = itemPriceCache.get(normalizedKeyword);
+			if (cachedUnitPrice.isPresent()) {
+				return cachedUnitPrice.get();
 			}
 		}
-		AiPriceResponse response = estimatePrice(
+		ItemPriceEstimationResponse response = estimatePrice(
 				title, content, normalizedKeyword, valueGapToleranceScore, exchangeUrgencyScore);
 		if (response.keyword() == null || response.keyword().isBlank()
 				|| response.unitPrice() == null || response.unitPrice() < 0) {
@@ -69,17 +67,13 @@ public class ItemCashService {
 		if (responseKeyword.length() > MAX_KEYWORD_LENGTH) {
 			throw estimationFailed(null);
 		}
-		LocalDateTime expiresAt = LocalDateTime.now().plus(CACHE_TTL);
-		ItemCash itemCash = itemCashRepository.findByKeyword(responseKeyword).orElse(null);
-		if (itemCash == null) {
-			itemCashRepository.save(new ItemCash(responseKeyword, response.unitPrice(), expiresAt));
-		} else {
-			itemCash.refresh(response.unitPrice(), expiresAt);
+		if (normalizedKeyword != null) {
+			itemPriceCache.put(normalizedKeyword, response.unitPrice(), CACHE_TTL);
 		}
 		return response.unitPrice();
 	}
 
-	private AiPriceResponse estimatePrice(
+	private ItemPriceEstimationResponse estimatePrice(
 			String title,
 			String content,
 			String keyword,
@@ -90,13 +84,13 @@ public class ItemCashService {
 			throw new ApiException(AiErrorCode.AI_ITEM_PRICE_ENDPOINT_NOT_CONFIGURED);
 		}
 		try {
-			AiPriceResponse response = restClient.post()
+			ItemPriceEstimationResponse response = restClient.post()
 					.uri(aiEndpoint)
 					.contentType(MediaType.APPLICATION_JSON)
-					.body(new AiPriceRequest(
-							title, content, keyword, null, valueGapToleranceScore, exchangeUrgencyScore))
+					.body(new ItemPriceEstimationRequest(
+							title, content, keyword, null, exchangeUrgencyScore, valueGapToleranceScore))
 					.retrieve()
-					.body(AiPriceResponse.class);
+					.body(ItemPriceEstimationResponse.class);
 			if (response == null) {
 				throw estimationFailed(null);
 			}
@@ -108,18 +102,5 @@ public class ItemCashService {
 
 	private static ApiException estimationFailed(Throwable cause) {
 		return new ApiException(AiErrorCode.AI_ITEM_PRICE_ESTIMATION_FAILED, List.of(), cause);
-	}
-
-	private record AiPriceRequest(
-			String title,
-			String content,
-			String keyword,
-			Long unitPrice,
-			BigDecimal valueTolerance,
-			BigDecimal tradeSpeed
-	) {
-	}
-
-	private record AiPriceResponse(String keyword, Long unitPrice, Long minUnitPrice, Long maxUnitPrice) {
 	}
 }
