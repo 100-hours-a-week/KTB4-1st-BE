@@ -18,8 +18,7 @@ public final class CursorCodec {
 		}
 
 		try {
-			long id = Long.parseLong(new String(
-					Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8));
+			long id = Long.parseLong(decodeValue(cursor));
 			if (id <= 0) {
 				throw new IllegalArgumentException();
 			}
@@ -30,7 +29,17 @@ public final class CursorCodec {
 	}
 
 	public static String encodeId(Long id) {
-		return Base64.getUrlEncoder().withoutPadding().encodeToString(
-				String.valueOf(id).getBytes(StandardCharsets.UTF_8));
+		return encodeValue(String.valueOf(id));
+	}
+
+	public static String encodeValue(String value) {
+		return Base64.getUrlEncoder().withoutPadding().encodeToString(value.getBytes(StandardCharsets.UTF_8));
+	}
+
+	public static String decodeValue(String cursor) {
+		if (cursor == null || cursor.isBlank()) {
+			return null;
+		}
+		return new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
 	}
 }

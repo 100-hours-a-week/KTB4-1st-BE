@@ -9,6 +9,8 @@ import com.example.KTB_Agile_backend.chat.repository.ChatMemberRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatMessageRepository;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
+import com.example.KTB_Agile_backend.common.pagination.CursorCodec;
+import com.example.KTB_Agile_backend.common.pagination.CursorPage;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequest;
 import com.example.KTB_Agile_backend.image.entity.Image;
 import com.example.KTB_Agile_backend.image.repository.ImageRepository;
@@ -21,12 +23,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,14 +57,14 @@ public class ChatRoomQueryService {
 				: chatMemberRepository.findChatRoomsByUserIdAfter(
 						userId, direction, cursor.lastMessageAt(), cursor.chatRoomId(), pageable);
 
-		boolean hasNext = fetched.size() > size;
-		List<ChatMember> page = hasNext ? fetched.subList(0, size) : fetched;
-		if (page.isEmpty()) {
+		CursorPage<ChatMember> page = CursorPage.from(
+				fetched, size, member -> encodeCursor(member.getChatRoom()));
+		if (page.items().isEmpty()) {
 			return new ChatRoomPageResponse(List.of(), null, false);
 		}
 
-		List<Long> roomIds = page.stream().map(member -> member.getChatRoom().getId()).toList();
-		List<Long> itemIds = page.stream()
+		List<Long> roomIds = page.items().stream().map(member -> member.getChatRoom().getId()).toList();
+		List<Long> itemIds = page.items().stream()
 				.map(member -> member.getChatRoom().getExchangeRequest().getItem().getId())
 				.toList();
 		Map<Long, ChatMessage> latestMessages = new HashMap<>();
@@ -75,11 +75,10 @@ public class ChatRoomQueryService {
 				.forEach(count -> unreadCounts.put(count.getChatRoomId(), count.getUnreadMessageCount()));
 		Map<Long, String> thumbnails = findThumbnails(itemIds);
 
-		List<ChatRoomSummary> chatRooms = page.stream()
+		List<ChatRoomSummary> chatRooms = page.items().stream()
 				.map(member -> toSummary(userId, member, latestMessages, unreadCounts, thumbnails))
 				.toList();
-		String nextCursor = hasNext ? encodeCursor(page.get(page.size() - 1).getChatRoom()) : null;
-		return new ChatRoomPageResponse(chatRooms, nextCursor, hasNext);
+		return new ChatRoomPageResponse(chatRooms, page.nextCursor(), page.hasNext());
 	}
 
 	private Map<Long, String> findThumbnails(List<Long> itemIds) {
@@ -148,7 +147,7 @@ public class ChatRoomQueryService {
 			return null;
 		}
 		try {
-			String value = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
+			String value = CursorCodec.decodeValue(cursor);
 			String[] parts = value.split("\\|", -1);
 			if (parts.length != CURSOR_PART_COUNT) {
 				throw new IllegalArgumentException();
@@ -166,7 +165,7 @@ public class ChatRoomQueryService {
 
 	private static String encodeCursor(ChatRoom room) {
 		String value = room.getLastMessageAt() + "|" + room.getId();
-		return Base64.getUrlEncoder().withoutPadding().encodeToString(value.getBytes(StandardCharsets.UTF_8));
+		return CursorCodec.encodeValue(value);
 	}
 
 	private static ApiException badPageRequest() {
