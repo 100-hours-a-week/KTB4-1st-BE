@@ -5,23 +5,14 @@ Spring Boot backend project built with Java 25 and Gradle.
 ## Run
 
 ```bash
-docker compose up -d --wait mysql
-./gradlew bootRun
-```
-
-Local execution uses the `dev` profile by default and MySQL 8.4 from Docker Compose on `127.0.0.1:3307`. Flyway applies pending migrations at startup. The dev profile uses a local-only JWT key when `JWT_SECRET` is unset. Tests continue to use an in-memory H2 database.
-To select the production profile, set `SPRING_PROFILES_ACTIVE=prod`.
-
-Configure another local database with Spring Boot's datasource environment variables:
-
-```bash
-SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/ktb \
+SPRING_DATASOURCE_URL=jdbc:mysql://mysql-server-host:3306/ktb \
 SPRING_DATASOURCE_USERNAME=ktb \
-SPRING_DATASOURCE_PASSWORD=change-me \
-SPRING_DATASOURCE_DRIVER_CLASS_NAME=com.mysql.cj.jdbc.Driver \
-JPA_DDL_AUTO=validate \
+SPRING_DATASOURCE_PASSWORD=your-password \
 ./gradlew bootRun
 ```
+
+The `dev` profile is selected by default and connects to the MySQL server managed by Docker Compose outside this repository. Set the JDBC URL and credentials provided by that server's operator; Flyway applies pending migrations at startup. The dev profile uses a local-only JWT key when `JWT_SECRET` is unset. Tests continue to use an in-memory H2 database.
+To select the production profile, set `SPRING_PROFILES_ACTIVE=prod`.
 
 The database must be empty on its first Flyway startup; migrations create the schema.
 
@@ -71,7 +62,7 @@ Existing URL-backed image rows continue to work; newly uploaded images store the
 
 ## Database schema
 
-In the `dev` and `prod` profiles, Flyway applies versioned migrations before Hibernate validates the schema. Point a fresh local or production database at an empty MySQL schema for the first startup; the database user needs permission to create tables, indexes, and foreign keys. Hibernate uses `ddl-auto=validate` and will not change the schema itself. After V1 has been deployed, add future schema changes as new versioned migrations instead of editing V1.
+In the `dev` and `prod` profiles, Flyway applies versioned migrations before Hibernate validates the schema. Point the server at an empty MySQL schema for its first startup; the database user needs permission to create tables, indexes, and foreign keys. Hibernate uses `ddl-auto=validate` and will not change the schema itself. After V1 has been deployed, add future schema changes as new versioned migrations instead of editing V1.
 
 ## WebSocket chat messages
 
