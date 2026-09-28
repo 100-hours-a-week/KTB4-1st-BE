@@ -93,7 +93,9 @@ public class SecurityConfig {
 						.authenticationEntryPoint((request, response, cause) -> writeError(
 								response,
 								objectMapper,
-								ErrorCode.AUTHENTICATION_REQUIRED
+								request.getRequestURI().endsWith("/users/me/items")
+										? ErrorCode.UNAUTHORIZED
+										: ErrorCode.AUTHENTICATION_REQUIRED
 						))
 						.accessDeniedHandler((request, response, cause) -> writeError(
 								response,

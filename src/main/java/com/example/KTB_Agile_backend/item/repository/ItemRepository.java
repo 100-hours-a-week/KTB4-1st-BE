@@ -26,4 +26,12 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
 			Long cursorId,
 			Pageable pageable
 	);
+
+	List<Item> findAllByUser_IdAndDeletedAtIsNullOrderByIdDesc(Long userId, Pageable pageable);
+
+	List<Item> findAllByUser_IdAndDeletedAtIsNullAndIdLessThanOrderByIdDesc(
+			Long userId,
+			Long cursorId,
+			Pageable pageable
+	);
 }

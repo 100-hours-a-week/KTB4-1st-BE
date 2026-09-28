@@ -84,7 +84,16 @@ public class ExchangeRequestController {
 	}
 
 	private static ExchangeRequestCreateRequest parseCreateRequest(JsonNode body) {
-		return parseRequest(body, ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_INVALID);
+		ExchangeRequestCreateRequest request = parseRequest(body, ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_INVALID);
+		JsonNode groupId = body.get("groupId");
+		if (groupId == null) {
+			return request;
+		}
+		if (!isPositiveLong(groupId)) {
+			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_INVALID);
+		}
+		return new ExchangeRequestCreateRequest(
+				groupId.longValue(), request.requestedQuantity(), request.offeredItems());
 	}
 
 	private static ExchangeRequestCreateRequest parseRequest(JsonNode body, ApiErrorCode invalidCode) {

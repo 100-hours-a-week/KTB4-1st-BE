@@ -3,6 +3,7 @@ package com.example.KTB_Agile_backend.group.service;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.common.pagination.CursorCodec;
+import com.example.KTB_Agile_backend.common.pagination.CursorPage;
 import com.example.KTB_Agile_backend.group.dto.response.GroupPageResponse;
 import com.example.KTB_Agile_backend.group.dto.response.GroupSummary;
 import com.example.KTB_Agile_backend.group.entity.GroupMemberStatus;
@@ -14,8 +15,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.List;
 
 @Service
@@ -52,19 +51,8 @@ public class GroupQueryService {
 				: groupRepository.findSearchSummariesAfter(
 						userId, GroupMemberStatus.ACTIVE, normalizedKeyword, cursorId, pageable);
 
-		boolean hasNext = groups.size() > size;
-		List<GroupSummary> pageGroups = hasNext
-				? groups.subList(0, size)
-				: groups;
-		String nextCursor = hasNext
-				? CursorCodec.encodeId(pageGroups.get(pageGroups.size() - 1).groupId())
-				: null;
-
-		return new GroupPageResponse(
-				pageGroups,
-				nextCursor,
-				hasNext
-		);
+		CursorPage<GroupSummary> page = CursorPage.fromIds(groups, size, GroupSummary::groupId);
+		return new GroupPageResponse(page.items(), page.nextCursor(), page.hasNext());
 	}
 
 	@Transactional(readOnly = true)
@@ -81,15 +69,9 @@ public class GroupQueryService {
 						pageable
 				);
 
-		boolean hasNext = groups.size() > RECOMMENDATION_PAGE_SIZE;
-		List<GroupSummary> pageGroups = hasNext
-				? groups.subList(0, RECOMMENDATION_PAGE_SIZE)
-				: groups;
-		String nextCursor = hasNext
-				? encodeRecommendationCursor(pageGroups.get(pageGroups.size() - 1))
-				: null;
-
-		return new GroupPageResponse(pageGroups, nextCursor, hasNext);
+		CursorPage<GroupSummary> page = CursorPage.from(
+				groups, RECOMMENDATION_PAGE_SIZE, GroupQueryService::encodeRecommendationCursor);
+		return new GroupPageResponse(page.items(), page.nextCursor(), page.hasNext());
 	}
 
 	private static RecommendationCursor decodeRecommendationCursor(String cursor) {
@@ -98,8 +80,7 @@ public class GroupQueryService {
 		}
 
 		try {
-			String[] values = new String(
-					Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8).split(":", -1);
+			String[] values = CursorCodec.decodeValue(cursor).split(":", -1);
 			if (values.length != RECOMMENDATION_CURSOR_PARTS) {
 				throw new IllegalArgumentException();
 			}
@@ -121,8 +102,7 @@ public class GroupQueryService {
 
 	private static String encodeRecommendationCursor(GroupSummary group) {
 		String value = group.memberCount() + ":" + group.groupId();
-		return Base64.getUrlEncoder().withoutPadding().encodeToString(
-				value.getBytes(StandardCharsets.UTF_8));
+		return CursorCodec.encodeValue(value);
 	}
 
 	private record RecommendationCursor(long memberCount, long groupId) {
