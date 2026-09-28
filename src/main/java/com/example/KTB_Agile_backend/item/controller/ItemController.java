@@ -6,6 +6,7 @@ import com.example.KTB_Agile_backend.item.dto.request.UpdateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.response.ItemCreateResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
+import com.example.KTB_Agile_backend.item.dto.response.MyItemPageResponse;
 import com.example.KTB_Agile_backend.item.service.ItemService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -64,6 +65,17 @@ public class ItemController {
 	) {
 		ItemDetailResponse response = itemService.findDetail(
 				Long.valueOf(authentication.getName()), itemId);
+		return ResponseEntity.ok(new ApiResponse<>(response, null));
+	}
+
+	@GetMapping("/users/me/items")
+	public ResponseEntity<ApiResponse<MyItemPageResponse>> findMyItems(
+			Authentication authentication,
+			@RequestParam(defaultValue = "10") String size,
+			@RequestParam(required = false) String cursor
+	) {
+		MyItemPageResponse response = itemService.findMyItems(
+				Long.valueOf(authentication.getName()), size, cursor);
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 

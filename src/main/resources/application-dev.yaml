@@ -1,7 +1,14 @@
 spring:
+  flyway:
+    enabled: true
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:com.mysql.cj.jdbc.Driver}
   jpa:
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:update}
+      ddl-auto: ${JPA_DDL_AUTO:validate}
     properties:
       hibernate:
         show_sql: true
@@ -11,7 +18,7 @@ cors:
 
 auth:
   jwt:
-    secret: ${JWT_SECRET:}
+    secret: ${JWT_SECRET:local-development-only-secret-for-jwt}
   cookie:
     secure: ${COOKIE_SECURE:false}
   oauth:

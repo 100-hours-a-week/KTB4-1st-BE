@@ -6,6 +6,6 @@ public record ItemPriceEstimationRequest(
 		String title,
 		String content,
 		BigDecimal valueGapToleranceScore,
-		BigDecimal tradeUrgencyScore
+		BigDecimal exchangeUrgencyScore
 ) {
 }

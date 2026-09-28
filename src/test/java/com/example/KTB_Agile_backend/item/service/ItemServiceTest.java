@@ -1,6 +1,7 @@
 package com.example.KTB_Agile_backend.item.service;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
+import com.example.KTB_Agile_backend.exchange.repository.ExchangeRequestRepository;
 import com.example.KTB_Agile_backend.group.entity.Group;
 import com.example.KTB_Agile_backend.group.entity.GroupItem;
 import com.example.KTB_Agile_backend.group.entity.GroupMember;
@@ -76,7 +77,8 @@ class ItemServiceTest {
 				imageRepository,
 				s3ImageObjectService,
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator()
+				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
+				mock(ExchangeRequestRepository.class)
 		);
 		User user = mock(User.class);
 		Group firstGroup = group("첫 그룹");
@@ -123,7 +125,8 @@ class ItemServiceTest {
 				imageRepository,
 				mock(S3ImageObjectService.class),
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator()
+				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
+				mock(ExchangeRequestRepository.class)
 		);
 		User owner = user(42L);
 		Item item = spy(new Item(owner, "기존 제목", "기존 내용"));
@@ -202,7 +205,8 @@ class ItemServiceTest {
 				mock(ImageRepository.class),
 				s3ImageObjectService,
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator()
+				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
+				mock(ExchangeRequestRepository.class)
 		);
 		User requester = user(42L);
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(requester));
@@ -229,7 +233,7 @@ class ItemServiceTest {
 		Group group = group("그룹");
 		GroupMember member = new GroupMember(group, mock(User.class));
 		member.leave(LocalDateTime.now());
-		when(groupRepository.findByIdAndDeletedAtIsNull(101L)).thenReturn(Optional.of(group));
+		when(groupRepository.existsByIdAndDeletedAtIsNull(101L)).thenReturn(true);
 		when(groupMemberRepository.findByGroup_IdAndUser_Id(101L, 42L)).thenReturn(Optional.of(member));
 
 		ApiException exception = assertThrows(ApiException.class,
@@ -253,9 +257,9 @@ class ItemServiceTest {
 				mock(ItemRepository.class), itemStatsRepository, itemViewRepository, itemLikeRepository, groupRepository,
 				groupMemberRepository, groupItemRepository, imageRepository, mock(S3ImageObjectService.class),
 				mock(UserRepository.class), mock(ModerationCheckService.class), itemCashService(),
-				new ItemPriceRangeCalculator());
+				new ItemPriceRangeCalculator(), mock(ExchangeRequestRepository.class));
 		Group group = group("그룹");
-		when(groupRepository.findByIdAndDeletedAtIsNull(101L)).thenReturn(Optional.of(group));
+		when(groupRepository.existsByIdAndDeletedAtIsNull(101L)).thenReturn(true);
 		when(groupMemberRepository.findByGroup_IdAndUser_Id(101L, 42L))
 				.thenReturn(Optional.of(new GroupMember(group, memberUser)));
 		List<Item> firstItems = new ArrayList<>();
@@ -303,7 +307,8 @@ class ItemServiceTest {
 				imageRepository,
 				mock(S3ImageObjectService.class),
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator()
+				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
+				mock(ExchangeRequestRepository.class)
 		);
 
 		User owner = mock(User.class);
@@ -392,7 +397,8 @@ class ItemServiceTest {
 				imageRepository,
 				mock(S3ImageObjectService.class),
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator()
+				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
+				mock(ExchangeRequestRepository.class)
 		);
 
 		User viewer = user(42L);
@@ -485,7 +491,8 @@ class ItemServiceTest {
 				imageRepository,
 				mock(S3ImageObjectService.class),
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator()
+				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
+				mock(ExchangeRequestRepository.class)
 		);
 	}
 

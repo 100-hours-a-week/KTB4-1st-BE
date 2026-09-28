@@ -68,10 +68,13 @@ public class GlobalExceptionHandler {
 		if (log.isErrorEnabled()) {
 			log.error("Unhandled API exception: {} {}", request.getMethod(), request.getRequestURI(), exception);
 		}
+		String message = request.getRequestURI().endsWith("/users/me/items")
+				? "내가 등록한 물품 목록 조회 중 서버 오류가 발생했습니다."
+				: ErrorCode.INTERNAL_SERVER_ERROR.message();
 		return response(ErrorCode.INTERNAL_SERVER_ERROR.status(),
 				new ErrorResponse(
 						ErrorCode.INTERNAL_SERVER_ERROR.value(),
-						ErrorCode.INTERNAL_SERVER_ERROR.message(),
+						message,
 						List.of()
 				));
 	}

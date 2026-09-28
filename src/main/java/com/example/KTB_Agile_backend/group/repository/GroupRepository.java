@@ -20,6 +20,8 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	Optional<Group> findByIdAndDeletedAtIsNull(Long groupId);
 
+	boolean existsByIdAndDeletedAtIsNull(Long groupId);
+
 	List<Group> findAllByIdInAndDeletedAtIsNull(Collection<Long> groupIds);
 
 	@Query("""

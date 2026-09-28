@@ -18,6 +18,9 @@ import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequest;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
 import com.example.KTB_Agile_backend.exchange.entity.OfferedItem;
 import com.example.KTB_Agile_backend.exchange.repository.ExchangeRequestRepository;
+import com.example.KTB_Agile_backend.group.entity.Group;
+import com.example.KTB_Agile_backend.group.entity.GroupItem;
+import com.example.KTB_Agile_backend.group.repository.GroupItemRepository;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
@@ -41,12 +44,14 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class ExchangeRequestService {
 
+	private static final int MAX_INFERRED_GROUP_COUNT = 1;
 	private static final ZoneOffset API_OFFSET = ZoneOffset.ofHours(9);
 
 	private final ExchangeRequestRepository exchangeRequestRepository;
 	private final ChatMemberRepository chatMemberRepository;
 	private final ChatRoomRepository chatRoomRepository;
 	private final ItemRepository itemRepository;
+	private final GroupItemRepository groupItemRepository;
 	private final UserRepository userRepository;
 
 	@Transactional
@@ -66,6 +71,7 @@ public class ExchangeRequestService {
 		if (items.size() != itemIds.size() || items.values().stream().anyMatch(Item::isDeleted)) {
 			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_NOT_FOUND);
 		}
+		Group group = findRequestGroup(request.groupId(), itemId);
 
 		validateItems(requesterId, itemId, request, items,
 				ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_FORBIDDEN,
@@ -78,7 +84,8 @@ public class ExchangeRequestService {
 			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_CONFLICT);
 		}
 
-		ExchangeRequest exchangeRequest = new ExchangeRequest(requester, requestedItem, request.requestedQuantity());
+		ExchangeRequest exchangeRequest = new ExchangeRequest(
+				requester, requestedItem, request.requestedQuantity(), group);
 		for (ExchangeRequestCreateRequest.OfferedItemRequest offeredRequest : request.offeredItems()) {
 			exchangeRequest.addOfferedItem(items.get(offeredRequest.itemId()), offeredRequest.quantity());
 		}
@@ -200,6 +207,22 @@ public class ExchangeRequestService {
 		if (exchangeRequest.getRequestedStatus() != ExchangeRequestStatus.PENDING) {
 			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_UPDATE_CONFLICT);
 		}
+	}
+
+	private Group findRequestGroup(Long groupId, Long itemId) {
+		List<GroupItem> groupItems = groupItemRepository.findActiveGroupItemsByItemId(itemId);
+		if (groupId == null) {
+			if (groupItems.size() > MAX_INFERRED_GROUP_COUNT) {
+				throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_INVALID,
+						"여러 그룹에 등록된 물품은 groupId를 지정해 주세요.");
+			}
+			return groupItems.isEmpty() ? null : groupItems.getFirst().getGroup();
+		}
+		return groupItems.stream()
+				.filter(groupItem -> groupItem.getGroup().getId().equals(groupId))
+				.map(GroupItem::getGroup)
+				.findFirst()
+				.orElseThrow(() -> new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_NOT_FOUND));
 	}
 
 	private static void validate(
