@@ -3,6 +3,8 @@ package com.example.KTB_Agile_backend.item.service;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.common.pagination.CursorCodec;
+import com.example.KTB_Agile_backend.common.pagination.CursorPage;
+import com.example.KTB_Agile_backend.exchange.repository.ExchangeRequestRepository;
 import com.example.KTB_Agile_backend.group.exception.GroupErrorCode;
 import com.example.KTB_Agile_backend.group.entity.Group;
 import com.example.KTB_Agile_backend.group.entity.GroupItem;
@@ -20,6 +22,7 @@ import com.example.KTB_Agile_backend.item.dto.response.ItemCreateResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemSummary;
+import com.example.KTB_Agile_backend.item.dto.response.MyItemPageResponse;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemLike;
 import com.example.KTB_Agile_backend.item.entity.ItemStats;
@@ -56,6 +59,8 @@ public class ItemService {
 
 	private static final int PAGE_SIZE = 20;
 	private static final int FETCH_SIZE = PAGE_SIZE + 1;
+	private static final int MAX_PAGE_SIZE = 100;
+	private static final String MY_ITEMS_BAD_REQUEST_MESSAGE = "size 또는 cursor 값이 올바르지 않습니다.";
 	private static final int CONTENT_PREVIEW_LENGTH = 70;
 	private static final Duration VIEW_COUNT_COOLDOWN = Duration.ofHours(24);
 	private static final ZoneOffset API_OFFSET = ZoneOffset.ofHours(9);
@@ -73,6 +78,7 @@ public class ItemService {
 	private final ModerationCheckService moderationCheckService;
 	private final ItemCashService itemCashService;
 	private final ItemPriceRangeCalculator itemPriceRangeCalculator;
+	private final ExchangeRequestRepository exchangeRequestRepository;
 
 	@Transactional
 	public ItemCreateResponse create(Long userId, CreateItemRequest request) {
@@ -223,22 +229,106 @@ public class ItemService {
 		List<Item> items = cursorId == null
 				? groupItemRepository.findActiveItemsByGroupId(groupId, pageable)
 				: groupItemRepository.findActiveItemsByGroupIdAfter(groupId, cursorId, pageable);
-		boolean hasNext = items.size() > PAGE_SIZE;
-		List<Item> pageItems = hasNext ? items.subList(0, PAGE_SIZE) : items;
-		Map<Long, Long> likeCounts = findLikeCounts(pageItems);
-		Set<Long> likedItemIds = findLikedItemIds(userId, pageItems);
-		Map<Long, String> thumbnails = findThumbnails(pageItems);
-		String nextCursor = hasNext
-				? CursorCodec.encodeId(pageItems.get(pageItems.size() - 1).getId())
-				: null;
+		CursorPage<Item> page = CursorPage.fromIds(items, PAGE_SIZE, Item::getId);
+		Map<Long, Long> likeCounts = findLikeCounts(page.items());
+		Set<Long> likedItemIds = findLikedItemIds(userId, page.items());
+		Map<Long, String> thumbnails = findThumbnails(page.items());
 
 		return new ItemPageResponse(
-				pageItems.stream()
+				page.items().stream()
 						.map(item -> toSummary(item, likeCounts, likedItemIds, thumbnails))
 						.toList(),
-				nextCursor,
-				hasNext
+				page.nextCursor(),
+				page.hasNext()
 		);
+	}
+
+	@Transactional(readOnly = true)
+	public MyItemPageResponse findMyItems(Long userId, String sizeValue, String cursor) {
+		int size = parseMyItemsSize(sizeValue);
+		Long cursorId;
+		try {
+			cursorId = CursorCodec.decodeId(cursor);
+		} catch (ApiException exception) {
+			throw invalidMyItemsRequest(exception);
+		}
+		Pageable pageable = PageRequest.of(0, size + 1);
+		List<Item> items = cursorId == null
+				? itemRepository.findAllByUser_IdAndDeletedAtIsNullOrderByIdDesc(userId, pageable)
+				: itemRepository.findAllByUser_IdAndDeletedAtIsNullAndIdLessThanOrderByIdDesc(
+						userId, cursorId, pageable);
+		CursorPage<Item> page = CursorPage.fromIds(items, size, Item::getId);
+		Map<Long, Long> likeCounts = findLikeCounts(page.items());
+		Set<Long> likedItemIds = findLikedItemIds(userId, page.items());
+		Map<Long, String> thumbnails = findThumbnails(page.items());
+		Map<Long, List<MyItemPageResponse.GroupInfo>> groups = findGroupInfos(page.items());
+		Map<Long, Long> exchangeRequestCounts = findExchangeRequestCounts(page.items());
+
+		return new MyItemPageResponse(
+				page.items().stream()
+						.map(item -> new MyItemPageResponse.MyItem(
+								item.getId(),
+								groups.getOrDefault(item.getId(), List.of()),
+								item.getTitle(),
+								contentPreview(item.getContent()),
+								item.getQuantity(),
+								item.getItemState(),
+								thumbnails.get(item.getId()),
+								likeCounts.getOrDefault(item.getId(), 0L),
+								exchangeRequestCounts.getOrDefault(item.getId(), 0L),
+								likedItemIds.contains(item.getId()),
+								toOffsetDateTime(item.getCreatedAt())
+						))
+						.toList(),
+				page.nextCursor(),
+				page.hasNext()
+		);
+	}
+
+	private static int parseMyItemsSize(String sizeValue) {
+		try {
+			int size = Integer.parseInt(sizeValue);
+			if (size >= 1 && size <= MAX_PAGE_SIZE) {
+				return size;
+			}
+		} catch (NumberFormatException ignored) {
+			// Return the endpoint-specific bad request below.
+		}
+		throw invalidMyItemsRequest();
+	}
+
+	private Map<Long, List<MyItemPageResponse.GroupInfo>> findGroupInfos(List<Item> items) {
+		if (items.isEmpty()) {
+			return Map.of();
+		}
+		Map<Long, List<MyItemPageResponse.GroupInfo>> groups = new HashMap<>();
+		groupItemRepository.findActiveGroupItemsByItemIds(itemIds(items)).forEach(groupItem ->
+				groups.computeIfAbsent(groupItem.getItem().getId(), ignored -> new ArrayList<>()).add(
+						new MyItemPageResponse.GroupInfo(
+								groupItem.getGroup().getId(),
+								groupItem.getGroup().getGroupName()
+						)
+				)
+		);
+		return groups;
+	}
+
+	private Map<Long, Long> findExchangeRequestCounts(List<Item> items) {
+		if (items.isEmpty()) {
+			return Map.of();
+		}
+		Map<Long, Long> counts = new HashMap<>();
+		exchangeRequestRepository.findExchangeRequestCountsByItemIds(itemIds(items))
+				.forEach(count -> counts.put(count.getItemId(), count.getExchangeRequestCount()));
+		return counts;
+	}
+
+	private static ApiException invalidMyItemsRequest() {
+		return new ApiException(ErrorCode.BAD_REQUEST, MY_ITEMS_BAD_REQUEST_MESSAGE);
+	}
+
+	private static ApiException invalidMyItemsRequest(Throwable cause) {
+		return new ApiException(ErrorCode.BAD_REQUEST, MY_ITEMS_BAD_REQUEST_MESSAGE, cause);
 	}
 
 	private List<Group> findRegistrableGroups(Long userId, Collection<Long> groupIds) {

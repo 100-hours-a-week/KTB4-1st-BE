@@ -10,6 +10,7 @@ import com.example.KTB_Agile_backend.chat.repository.ChatMessageRepository;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.common.pagination.CursorCodec;
+import com.example.KTB_Agile_backend.common.pagination.CursorPage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -68,17 +69,14 @@ public class ChatMessageService {
 			member.markReadThrough(fetchedMessages.get(0).getId());
 		}
 
-		boolean hasNext = fetchedMessages.size() > PAGE_SIZE;
-		List<ChatMessage> messages = new ArrayList<>(hasNext
-				? fetchedMessages.subList(0, PAGE_SIZE)
-				: fetchedMessages);
-		String nextCursor = hasNext
-				? CursorCodec.encodeId(messages.get(messages.size() - 1).getId())
-				: null;
+		CursorPage<ChatMessage> page = CursorPage.fromIds(fetchedMessages, PAGE_SIZE, ChatMessage::getId);
+		List<ChatMessage> messages = new ArrayList<>(page.items());
 		Collections.reverse(messages);
 
 		return new ChatMessagePageResponse(
-				messages.stream().map(ChatMessageService::toResponse).toList(), nextCursor, hasNext
+				messages.stream().map(ChatMessageService::toResponse).toList(),
+				page.nextCursor(),
+				page.hasNext()
 		);
 	}
 
