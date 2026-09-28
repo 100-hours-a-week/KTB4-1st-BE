@@ -204,7 +204,9 @@ public class ItemService {
 				0L,
 				itemLikeRepository.existsByItem_IdAndUser_Id(itemId, userId),
 				toOffsetDateTime(item.getCreatedAt()),
-				toOffsetDateTime(item.getUpdatedAt())
+				toOffsetDateTime(item.getUpdatedAt()),
+				item.getExchangeUrgencyScore(),
+				item.getValueGapToleranceScore()
 		);
 	}
 
