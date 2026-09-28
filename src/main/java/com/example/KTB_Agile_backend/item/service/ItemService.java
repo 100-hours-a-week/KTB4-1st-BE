@@ -159,6 +159,18 @@ public class ItemService {
 	}
 
 	@Transactional
+	public void delete(Long userId, Long itemId) {
+		userRepository.findActiveById(userId)
+				.orElseThrow(() -> new ApiException(ErrorCode.AUTHENTICATION_REQUIRED));
+		Item item = itemRepository.findByIdAndDeletedAtIsNull(itemId)
+				.orElseThrow(() -> new ApiException(ItemErrorCode.ITEM_NOT_FOUND));
+		if (!item.getUser().getId().equals(userId)) {
+			throw new ApiException(ItemErrorCode.ITEM_DELETE_FORBIDDEN);
+		}
+		item.delete();
+	}
+
+	@Transactional
 	public ItemDetailResponse findDetail(Long userId, Long itemId) {
 		Item item = itemRepository.findByIdAndDeletedAtIsNull(itemId)
 				.orElseThrow(() -> new ApiException(ItemErrorCode.ITEM_NOT_FOUND));
