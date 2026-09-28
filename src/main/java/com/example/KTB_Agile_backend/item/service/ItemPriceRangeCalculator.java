@@ -21,9 +21,9 @@ public class ItemPriceRangeCalculator {
 				.multiply(BigDecimal.ONE.subtract(discountRatio))
 				.setScale(0, RoundingMode.HALF_UP)
 				.longValueExact();
-		return new PriceRange(minUnitPrice, unitPrice);
+		return new PriceRange(unitPrice, minUnitPrice, unitPrice);
 	}
 
-	public record PriceRange(Long minUnitPrice, Long maxUnitPrice) {
+	public record PriceRange(Long unitPrice, Long minUnitPrice, Long maxUnitPrice) {
 	}
 }

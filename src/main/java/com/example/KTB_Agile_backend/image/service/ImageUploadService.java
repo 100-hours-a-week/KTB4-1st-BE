@@ -53,7 +53,6 @@ public class ImageUploadService {
 
 		String objectKey = OBJECT_KEY_PREFIX + userId + "/"
 				+ UUID.randomUUID() + extension;
-		// ponytail: PUT presign does not enforce a size ceiling; use a POST policy when limits are required.
 		PutObjectRequest putObjectRequest = PutObjectRequest.builder()
 				.bucket(bucket)
 				.key(objectKey)
