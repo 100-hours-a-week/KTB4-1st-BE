@@ -43,6 +43,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class ExchangeRequestService {
 
+	private static final int MAX_INFERRED_GROUP_COUNT = 1;
 	private static final ZoneOffset API_OFFSET = ZoneOffset.ofHours(9);
 
 	private final ExchangeRequestRepository exchangeRequestRepository;
@@ -190,7 +191,7 @@ public class ExchangeRequestService {
 	private Group findRequestGroup(Long groupId, Long itemId) {
 		List<GroupItem> groupItems = groupItemRepository.findActiveGroupItemsByItemId(itemId);
 		if (groupId == null) {
-			if (groupItems.size() > 1) {
+			if (groupItems.size() > MAX_INFERRED_GROUP_COUNT) {
 				throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_INVALID,
 						"여러 그룹에 등록된 물품은 groupId를 지정해 주세요.");
 			}

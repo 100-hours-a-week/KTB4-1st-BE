@@ -36,6 +36,8 @@ import java.util.Map;
 public class ChatRoomQueryService {
 
 	private static final int MAX_PAGE_SIZE = 100;
+	private static final int CURSOR_PART_COUNT = 2;
+	private static final int MIN_CHAT_ROOM_ID = 1;
 	private static final String INVALID_PAGE_MESSAGE = "direction, size 또는 cursor 값이 올바르지 않습니다.";
 	private static final ZoneOffset API_OFFSET = ZoneOffset.ofHours(9);
 
@@ -148,17 +150,17 @@ public class ChatRoomQueryService {
 		try {
 			String value = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
 			String[] parts = value.split("\\|", -1);
-			if (parts.length != 2) {
+			if (parts.length != CURSOR_PART_COUNT) {
 				throw new IllegalArgumentException();
 			}
 			LocalDateTime lastMessageAt = LocalDateTime.parse(parts[0]);
 			long chatRoomId = Long.parseLong(parts[1]);
-			if (chatRoomId < 1) {
+			if (chatRoomId < MIN_CHAT_ROOM_ID) {
 				throw new IllegalArgumentException();
 			}
 			return new ChatRoomCursor(lastMessageAt, chatRoomId);
 		} catch (IllegalArgumentException | DateTimeParseException exception) {
-			throw badPageRequest();
+			throw badPageRequest(exception);
 		}
 	}
 
@@ -169,6 +171,10 @@ public class ChatRoomQueryService {
 
 	private static ApiException badPageRequest() {
 		return new ApiException(ErrorCode.BAD_REQUEST, INVALID_PAGE_MESSAGE);
+	}
+
+	private static ApiException badPageRequest(Throwable cause) {
+		return new ApiException(ErrorCode.BAD_REQUEST, INVALID_PAGE_MESSAGE, cause);
 	}
 
 	private static OffsetDateTime toOffsetDateTime(LocalDateTime dateTime) {

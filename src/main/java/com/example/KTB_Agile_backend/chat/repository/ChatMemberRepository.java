@@ -17,13 +17,13 @@ public interface ChatMemberRepository extends JpaRepository<ChatMember, Long> {
 		select member from ChatMember member
 		where member.chatRoom.id = :chatRoomId
 		  and member.chatRoom.deletedAt is null
-		  and member.user.id = :userId
+		  and member.user.id = :memberUserId
 		  and member.user.deletedAt is null
 		  and member.leftAt is null
 		""")
 	Optional<ChatMember> findActiveMember(
 			@Param("chatRoomId") Long chatRoomId,
-			@Param("userId") Long userId
+			@Param("memberUserId") Long userId
 	);
 
 	@Query("""
