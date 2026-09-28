@@ -7,6 +7,7 @@ import com.example.KTB_Agile_backend.exchange.exception.ExchangeErrorCode;
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
 import com.example.KTB_Agile_backend.exchange.dto.request.ExchangeRequestCreateRequest;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestCreatedResponse;
+import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestEditResponse;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestStatusResponse;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
 import com.example.KTB_Agile_backend.exchange.service.ExchangeRequestService;
@@ -14,6 +15,7 @@ import tools.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,6 +32,17 @@ import java.util.List;
 public class ExchangeRequestController {
 
 	private final ExchangeRequestService exchangeRequestService;
+
+	@GetMapping("/exchange-requests/{exchangeRequestId}")
+	public ResponseEntity<ApiResponse<ExchangeRequestEditResponse>> findForEdit(
+			Authentication authentication,
+			@PathVariable String exchangeRequestId
+	) {
+		long requestId = parseId(exchangeRequestId, ExchangeErrorCode.EXCHANGE_REQUEST_UPDATE_INVALID);
+		ExchangeRequestEditResponse response = exchangeRequestService.findForEdit(
+				requestId, Long.valueOf(authentication.getName()));
+		return ResponseEntity.ok(new ApiResponse<>(response, null));
+	}
 
 	@PostMapping("/items/{itemId}/exchange-requests")
 	public ResponseEntity<ApiResponse<ExchangeRequestCreatedResponse>> create(

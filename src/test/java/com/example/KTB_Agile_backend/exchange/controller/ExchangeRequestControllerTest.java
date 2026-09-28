@@ -2,6 +2,7 @@ package com.example.KTB_Agile_backend.exchange.controller;
 
 import com.example.KTB_Agile_backend.common.exception.GlobalExceptionHandler;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestCreatedResponse;
+import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestEditResponse;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestStatusResponse;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
 import com.example.KTB_Agile_backend.exchange.service.ExchangeRequestService;
@@ -20,8 +21,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -60,6 +63,39 @@ class ExchangeRequestControllerTest {
 				.andExpect(jsonPath("$.data.chatRoomId").value(401));
 
 		verify(service).create(eq(42L), eq(123L), any());
+	}
+
+	@Test
+	void returnsPendingRequestValuesForEditing() throws Exception {
+		when(service.findForEdit(301L, 42L)).thenReturn(new ExchangeRequestEditResponse(
+				301L, 123L, 2,
+				List.of(new ExchangeRequestEditResponse.OfferedItemResponse(213L, 3)),
+				ExchangeRequestStatus.PENDING));
+
+		mockMvc.perform(get("/exchange-requests/301")
+					.principal(new UsernamePasswordAuthenticationToken("42", null)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.exchangeRequestId").value(301))
+				.andExpect(jsonPath("$.data.itemId").value(123))
+				.andExpect(jsonPath("$.data.requestedQuantity").value(2))
+				.andExpect(jsonPath("$.data.offeredItems[0].itemId").value(213))
+				.andExpect(jsonPath("$.data.offeredItems[0].quantity").value(3))
+				.andExpect(jsonPath("$.data.requestedStatus").value("PENDING"));
+
+		verify(service).findForEdit(301L, 42L);
+	}
+
+	@Test
+	void updatesRequestAndReturnsNoContent() throws Exception {
+		mockMvc.perform(put("/exchange-requests/301")
+					.principal(new UsernamePasswordAuthenticationToken("42", null))
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"requestedQuantity":2,"offeredItems":[{"itemId":213,"quantity":3}]}
+							"""))
+				.andExpect(status().isNoContent());
+
+		verify(service).update(eq(301L), eq(42L), any());
 	}
 
 	@Test
