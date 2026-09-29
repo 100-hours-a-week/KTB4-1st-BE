@@ -8,6 +8,7 @@ import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
 import com.example.KTB_Agile_backend.item.dto.response.MyItemPageResponse;
 import com.example.KTB_Agile_backend.item.service.ItemService;
+import com.example.KTB_Agile_backend.item.service.ItemQueryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -29,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ItemController {
 
 	private final ItemService itemService;
+	private final ItemQueryService itemQueryService;
 
 	@PostMapping("/items")
 	public ResponseEntity<ApiResponse<ItemCreateResponse>> create(
@@ -63,8 +65,9 @@ public class ItemController {
 			Authentication authentication,
 			@PathVariable Long itemId
 	) {
-		ItemDetailResponse response = itemService.findDetail(
-				Long.valueOf(authentication.getName()), itemId);
+		Long userId = Long.valueOf(authentication.getName());
+		itemService.recordView(userId, itemId);
+		ItemDetailResponse response = itemQueryService.findDetail(userId, itemId);
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 
@@ -74,7 +77,7 @@ public class ItemController {
 			@RequestParam(defaultValue = "10") String size,
 			@RequestParam(required = false) String cursor
 	) {
-		MyItemPageResponse response = itemService.findMyItems(
+		MyItemPageResponse response = itemQueryService.findMyItems(
 				Long.valueOf(authentication.getName()), size, cursor);
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
@@ -85,7 +88,7 @@ public class ItemController {
 			@PathVariable Long groupId,
 			@RequestParam(required = false) String cursor
 	) {
-		ItemPageResponse response = itemService.findByGroup(
+		ItemPageResponse response = itemQueryService.findByGroup(
 				Long.valueOf(authentication.getName()), groupId, cursor);
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
