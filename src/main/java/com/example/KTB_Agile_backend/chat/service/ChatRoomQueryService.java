@@ -36,8 +36,6 @@ import java.util.Map;
 public class ChatRoomQueryService {
 
 	private static final int MAX_PAGE_SIZE = 100;
-	private static final int CURSOR_PART_COUNT = 2;
-	private static final int MIN_CHAT_ROOM_ID = 1;
 	private static final String INVALID_PAGE_MESSAGE = "direction, size 또는 cursor 값이 올바르지 않습니다.";
 	private static final ZoneOffset API_OFFSET = ZoneOffset.ofHours(9);
 
@@ -50,7 +48,7 @@ public class ChatRoomQueryService {
 	public ChatRoomPageResponse findChatRooms(Long userId, String directionValue, String sizeValue, String cursorValue) {
 		String direction = parseDirection(directionValue);
 		int size = parseSize(sizeValue);
-		ChatRoomCursor cursor = decodeCursor(cursorValue);
+		ChatRoomCursor cursor = ChatRoomCursor.decode(cursorValue);
 		Pageable pageable = PageRequest.of(0, size + 1);
 		List<ChatMember> fetched = cursor == null
 				? chatMemberRepository.findChatRoomsByUserId(userId, direction, pageable)
@@ -58,7 +56,7 @@ public class ChatRoomQueryService {
 						userId, direction, cursor.lastMessageAt(), cursor.chatRoomId(), pageable);
 
 		CursorPage<ChatMember> page = CursorPage.from(
-				fetched, size, member -> encodeCursor(member.getChatRoom()));
+				fetched, size, member -> ChatRoomCursor.encode(member.getChatRoom()));
 		if (page.items().isEmpty()) {
 			return new ChatRoomPageResponse(List.of(), null, false);
 		}
@@ -142,38 +140,8 @@ public class ChatRoomQueryService {
 		throw badPageRequest();
 	}
 
-	private static ChatRoomCursor decodeCursor(String cursor) {
-		if (cursor == null || cursor.isBlank()) {
-			return null;
-		}
-		try {
-			String value = CursorCodec.decodeValue(cursor);
-			String[] parts = value.split("\\|", -1);
-			if (parts.length != CURSOR_PART_COUNT) {
-				throw new IllegalArgumentException();
-			}
-			LocalDateTime lastMessageAt = LocalDateTime.parse(parts[0]);
-			long chatRoomId = Long.parseLong(parts[1]);
-			if (chatRoomId < MIN_CHAT_ROOM_ID) {
-				throw new IllegalArgumentException();
-			}
-			return new ChatRoomCursor(lastMessageAt, chatRoomId);
-		} catch (IllegalArgumentException | DateTimeParseException exception) {
-			throw badPageRequest(exception);
-		}
-	}
-
-	private static String encodeCursor(ChatRoom room) {
-		String value = room.getLastMessageAt() + "|" + room.getId();
-		return CursorCodec.encodeValue(value);
-	}
-
 	private static ApiException badPageRequest() {
 		return new ApiException(ErrorCode.BAD_REQUEST, INVALID_PAGE_MESSAGE);
-	}
-
-	private static ApiException badPageRequest(Throwable cause) {
-		return new ApiException(ErrorCode.BAD_REQUEST, INVALID_PAGE_MESSAGE, cause);
 	}
 
 	private static OffsetDateTime toOffsetDateTime(LocalDateTime dateTime) {
@@ -181,5 +149,31 @@ public class ChatRoomQueryService {
 	}
 
 	private record ChatRoomCursor(LocalDateTime lastMessageAt, Long chatRoomId) {
+		private static final int PART_COUNT = 2;
+		private static final long MIN_CHAT_ROOM_ID = 1;
+
+		private static ChatRoomCursor decode(String cursor) {
+			if (cursor == null || cursor.isBlank()) {
+				return null;
+			}
+			try {
+				String[] parts = CursorCodec.decodeValue(cursor).split("\\|", -1);
+				if (parts.length != PART_COUNT) {
+					throw new IllegalArgumentException();
+				}
+				LocalDateTime lastMessageAt = LocalDateTime.parse(parts[0]);
+				long chatRoomId = Long.parseLong(parts[1]);
+				if (chatRoomId < MIN_CHAT_ROOM_ID) {
+					throw new IllegalArgumentException();
+				}
+				return new ChatRoomCursor(lastMessageAt, chatRoomId);
+			} catch (IllegalArgumentException | DateTimeParseException exception) {
+				throw new ApiException(ErrorCode.INVALID_CURSOR, List.of(), exception);
+			}
+		}
+
+		private static String encode(ChatRoom room) {
+			return CursorCodec.encodeValue(room.getLastMessageAt() + "|" + room.getId());
+		}
 	}
 }
