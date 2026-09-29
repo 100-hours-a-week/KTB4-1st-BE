@@ -60,7 +60,10 @@ localhost와 127.0.0.1은 쿠키 저장 위치와 로컬 네트워크 처리에�
 | 400 | 요청 본문/필수 값이 잘못됨 |
 | 401 | access token, refresh token, state 또는 Kakao 인가 코드 인증 실패 |
 | 403 | 권한 부족 |
+| 404 | 요청한 API 또는 리소스를 찾을 수 없음 |
+| 405 | 지원하지 않는 HTTP 메서드 |
 | 409 | 소셜 계정 충돌 |
+| 415 | 지원하지 않는 Content-Type |
 | 500 | 서버 내부 오류 |
 
 애플리케이션이 처리한 오류는 JSON 응답입니다. Tomcat의 HTML 400 Bad Request가 보이면
@@ -264,12 +267,12 @@ Set-Cookie: refresh_token=<refreshToken>; HttpOnly; Max-Age=1209600
 {
   "data": null,
   "error": {
-    "code": "UNAUTHORIZED",
-    "message": "인증에 실패했습니다. 인가 코드가 만료되었거나 유효하지 않습니다.",
+    "code": "AUTH_OAUTH_AUTHENTICATION_FAILED",
+    "message": "OAuth 인증에 실패했습니다.",
     "details": [
       {
         "field": "authorizationCode",
-        "reason": "만료되었거나 이미 사용된 인가 코드입니다."
+        "reason": "인가 코드가 만료되었거나 유효하지 않습니다."
       }
     ]
   }
@@ -484,22 +487,23 @@ JWT secret, Kakao client secret, Kakao Admin key는 Postman 요청에 넣지 않
 | 회원가입 | POST | /auth/oauth | Content-Type: application/json<br>Accept: application/json (선택)<br>Cookie: oauth_state=state 값 | {<br>  "provider": "KAKAO",<br>  "authorizationCode": "카카오 인가 코드",<br>  "state": "state 값"<br>} | 필수<br>provider: String<br>authorizationCode: String<br>state: String<br><br>body.state와 oauth_state 쿠키가 같아야 합니다.<br>응답 시 refresh_token 쿠키 발급<br>HttpOnly; Secure; SameSite=Lax; Path=/auth; Max-Age=1209600 | 201 | {<br>  "data": {<br>    "accessToken": "우리 서비스 Access Token",<br>    "tokenType": "Bearer",<br>    "expiresIn": 900,<br>    "isNewUser": true,<br>    "user": {<br>      "userId": 101,<br>      "nickname": "닉네임",<br>      "profileImageUrl": "https://example.com/profile.png"<br>    }<br>  },<br>  "error": null<br>} |
 | 로그인 | POST | /auth/oauth | Content-Type: application/json<br>Accept: application/json (선택)<br>Cookie: oauth_state=state 값 | {<br>  "provider": "KAKAO",<br>  "authorizationCode": "카카오 인가 코드",<br>  "state": "state 값"<br>} | 필수<br>provider: String<br>authorizationCode: String<br>state: String<br><br>기존 사용자라면 isNewUser는 false입니다.<br>응답 시 refresh_token 쿠키 발급<br>HttpOnly; Secure; SameSite=Lax; Path=/auth; Max-Age=1209600 | 200 | {<br>  "data": {<br>    "accessToken": "우리 서비스 Access Token",<br>    "tokenType": "Bearer",<br>    "expiresIn": 900,<br>    "isNewUser": false,<br>    "user": {<br>      "userId": 101,<br>      "nickname": "닉네임",<br>      "profileImageUrl": "https://example.com/profile.png"<br>    }<br>  },<br>  "error": null<br>} |
 | Access Token 재발급 | POST | /auth/refresh | Accept: application/json (선택)<br>Cookie: refresh_token=refresh token 값 | 없음 | refresh_token 쿠키 필수<br>Authorization 헤더 불필요 | 200 | {<br>  "data": {<br>    "accessToken": "새 Access Token",<br>    "tokenType": "Bearer",<br>    "expiresIn": 900,<br>    "needsPreferenceSetup": true<br>  },<br>  "error": null<br>} |
-| 로그아웃 | POST | /auth/logout | Accept: application/json (선택)<br>Authorization: Bearer Access Token<br>Cookie: refresh_token=refresh token 값 | 없음 | Access Token과 refresh_token 쿠키 필요<br>정상 처리 후 refresh_token 쿠키 삭제 | 204 | 응답 본문 없음 |
+| 로그아웃 | POST | /auth/logout | Accept: application/json (선택)<br>Authorization: Bearer Access Token<br>Cookie: refresh_token=refresh token 값 (선택) | 없음 | Access Token 필요<br>refresh_token 쿠키가 있으면 폐기<br>정상 처리 후 refresh_token 쿠키 삭제 | 204 | 응답 본문 없음 |
 | 회원 탈퇴 | DELETE | /users | Accept: application/json (선택)<br>Authorization: Bearer Access Token | 없음 | Access Token 필요<br>테스트 계정의 상태가 변경되므로 모든 테스트 마지막에 실행 | 204 | 응답 본문 없음 |
 
 ### 14-3. 실패 API 명세
 
 | 기능 | Response Status | Response Body |
 |---|---:|---|
-| POST /auth/oauth | 400 | {<br>  "data": null,<br>  "error": {<br>    "code": "BAD_REQUEST",<br>    "message": "인가 코드가 유효하지 않습니다.",<br>    "details": [<br>      {<br>        "field": "authorizationCode",<br>        "reason": "유효하지 않은 인가 코드입니다."<br>      },<br>      {<br>        "field": "state",<br>        "reason": "state는 필수 입력값입니다."<br>      }<br>    ]<br>  }<br>} |
-| POST /auth/oauth | 401 | {<br>  "data": null,<br>  "error": {<br>    "code": "UNAUTHORIZED",<br>    "message": "인증에 실패했습니다. 인가 코드가 만료되었거나 유효하지 않습니다.",<br>    "details": [<br>      {<br>        "field": "authorizationCode",<br>        "reason": "만료되었거나 이미 사용된 인가 코드입니다."<br>      }<br>    ]<br>  }<br>} |
+| POST /auth/oauth | 400 | {<br>  "data": null,<br>  "error": {<br>    "code": "REQUEST_VALIDATION_FAILED",<br>    "message": "요청 값이 올바르지 않습니다.",<br>    "details": [<br>      {<br>        "field": "authorizationCode",<br>        "reason": "유효하지 않은 인가 코드입니다."<br>      },<br>      {<br>        "field": "state",<br>        "reason": "state는 필수 입력값입니다."<br>      }<br>    ]<br>  }<br>} |
+| POST /auth/oauth | 401 | {<br>  "data": null,<br>  "error": {<br>    "code": "AUTH_OAUTH_AUTHENTICATION_FAILED",<br>    "message": "OAuth 인증에 실패했습니다.",<br>    "details": [<br>      {<br>        "field": "authorizationCode",<br>        "reason": "인가 코드가 만료되었거나 유효하지 않습니다."<br>      }<br>    ]<br>  }<br>} |
+| POST /auth/oauth | 401 | {<br>  "data": null,<br>  "error": {<br>    "code": "AUTH_OAUTH_STATE_INVALID",<br>    "message": "OAuth 인증 상태가 유효하지 않습니다.",<br>    "details": [<br>      {<br>        "field": "state",<br>        "reason": "OAuth 인증 상태가 유효하지 않습니다."<br>      }<br>    ]<br>  }<br>} |
 | POST /auth/oauth | 409 | {<br>  "data": null,<br>  "error": {<br>    "code": "SOCIAL_ACCOUNT_CONFLICT",<br>    "message": "계정 연결 정보가 충돌했습니다.",<br>    "details": [<br>      {<br>        "field": "socialAccount",<br>        "reason": "해당 계정이 다른 사용자와 연결되어 있습니다."<br>      }<br>    ]<br>  }<br>} |
-| POST /auth/oauth | 500 | {<br>  "data": null,<br>  "error": {<br>    "code": "INTERNAL_SERVER_ERROR",<br>    "message": "인증 처리 중 서버 오류가 발생했습니다.",<br>    "details": []<br>  }<br>} |
-| POST /auth/refresh | 401 | {<br>  "data": null,<br>  "error": {<br>    "code": "UNAUTHORIZED",<br>    "message": "Refresh Token이 만료되었거나 유효하지 않습니다.",<br>    "details": []<br>  }<br>} |
-| POST /auth/refresh | 500 | {<br>  "data": null,<br>  "error": {<br>    "code": "INTERNAL_SERVER_ERROR",<br>    "message": "토큰 재발급 중 서버 오류가 발생했습니다.",<br>    "details": []<br>  }<br>} |
-| POST /auth/logout | 401 | {<br>  "data": null,<br>  "error": {<br>    "code": "UNAUTHORIZED",<br>    "message": "로그인이 필요하거나 Access Token이 만료되었거나 유효하지 않습니다.",<br>    "details": []<br>  }<br>} |
-| POST /auth/logout | 500 | {<br>  "data": null,<br>  "error": {<br>    "code": "INTERNAL_SERVER_ERROR",<br>    "message": "로그아웃 처리 중 서버 오류가 발생했습니다.",<br>    "details": []<br>  }<br>} |
-| DELETE /users | 401 | {<br>  "data": null,<br>  "error": {<br>    "code": "UNAUTHORIZED",<br>    "message": "로그인이 필요합니다.",<br>    "details": []<br>  }<br>} |
+| POST /auth/oauth | 500 | {<br>  "data": null,<br>  "error": {<br>    "code": "INTERNAL_SERVER_ERROR",<br>    "message": "서버 오류가 발생했습니다.",<br>    "details": []<br>  }<br>} |
+| POST /auth/refresh | 401 | {<br>  "data": null,<br>  "error": {<br>    "code": "AUTH_REFRESH_TOKEN_INVALID",<br>    "message": "Refresh Token이 만료되었거나 유효하지 않습니다.",<br>    "details": []<br>  }<br>} |
+| POST /auth/refresh | 500 | {<br>  "data": null,<br>  "error": {<br>    "code": "INTERNAL_SERVER_ERROR",<br>    "message": "서버 오류가 발생했습니다.",<br>    "details": []<br>  }<br>} |
+| POST /auth/logout | 401 | {<br>  "data": null,<br>  "error": {<br>    "code": "AUTHENTICATION_REQUIRED",<br>    "message": "로그인이 필요합니다.",<br>    "details": []<br>  }<br>} |
+| POST /auth/logout | 500 | {<br>  "data": null,<br>  "error": {<br>    "code": "INTERNAL_SERVER_ERROR",<br>    "message": "서버 오류가 발생했습니다.",<br>    "details": []<br>  }<br>} |
+| DELETE /users | 401 | {<br>  "data": null,<br>  "error": {<br>    "code": "AUTHENTICATION_REQUIRED",<br>    "message": "로그인이 필요합니다.",<br>    "details": []<br>  }<br>} |
 
 ### 14-4. 프론트엔드 요청 예시
 
