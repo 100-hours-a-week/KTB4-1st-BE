@@ -30,9 +30,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -45,8 +42,6 @@ import java.util.Set;
 public class ExchangeRequestService {
 
 	private static final int MAX_INFERRED_GROUP_COUNT = 1;
-	private static final ZoneOffset API_OFFSET = ZoneOffset.ofHours(9);
-
 	private final ExchangeRequestRepository exchangeRequestRepository;
 	private final ChatMemberRepository chatMemberRepository;
 	private final ChatRoomRepository chatRoomRepository;
@@ -100,7 +95,7 @@ public class ExchangeRequestService {
 				exchangeRequest.getId(), itemId, request.requestedQuantity(),
 				request.offeredItems().stream()
 						.map(item -> new OfferedItemResponse(item.itemId(), item.quantity())).toList(),
-				exchangeRequest.getRequestedStatus(), chatRoom.getId(), toOffsetDateTime(exchangeRequest.getCreatedAt())
+				exchangeRequest.getRequestedStatus(), chatRoom.getId(), exchangeRequest.getCreatedAt()
 		);
 	}
 
@@ -190,7 +185,7 @@ public class ExchangeRequestService {
 		exchangeRequestRepository.saveAndFlush(exchangeRequest);
 		return new ExchangeRequestStatusResponse(
 				exchangeRequest.getId(), exchangeRequest.getItem().getId(), status,
-				toOffsetDateTime(exchangeRequest.getUpdatedAt())
+				exchangeRequest.getUpdatedAt()
 		);
 	}
 
@@ -302,9 +297,5 @@ public class ExchangeRequestService {
 		if (item.getQuantity() < requestedQuantity) {
 			throw new ApiException(errorCode);
 		}
-	}
-
-	private static OffsetDateTime toOffsetDateTime(LocalDateTime timestamp) {
-		return timestamp == null ? null : timestamp.atOffset(API_OFFSET);
 	}
 }

@@ -14,7 +14,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -99,8 +99,8 @@ class ItemControllerTest {
 				128L,
 				2L,
 				false,
-				OffsetDateTime.parse("2026-09-04T13:30:00+09:00"),
-				OffsetDateTime.parse("2026-09-04T13:30:00+09:00"),
+				LocalDateTime.parse("2026-09-04T13:30:00"),
+				LocalDateTime.parse("2026-09-04T13:30:00"),
 				null,
 				null
 		));

@@ -43,8 +43,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -63,7 +61,6 @@ public class ItemService {
 	private static final String MY_ITEMS_BAD_REQUEST_MESSAGE = "size 또는 cursor 값이 올바르지 않습니다.";
 	private static final int CONTENT_PREVIEW_LENGTH = 70;
 	private static final Duration VIEW_COUNT_COOLDOWN = Duration.ofHours(24);
-	private static final ZoneOffset API_OFFSET = ZoneOffset.ofHours(9);
 
 	private final ItemRepository itemRepository;
 	private final ItemStatsRepository itemStatsRepository;
@@ -203,8 +200,8 @@ public class ItemService {
 				stats == null ? 0L : stats.getViewCount(),
 				0L,
 				itemLikeRepository.existsByItem_IdAndUser_Id(itemId, userId),
-				toOffsetDateTime(item.getCreatedAt()),
-				toOffsetDateTime(item.getUpdatedAt()),
+				item.getCreatedAt(),
+				item.getUpdatedAt(),
 				item.getExchangeUrgencyScore(),
 				item.getValueGapToleranceScore()
 		);
@@ -291,7 +288,7 @@ public class ItemService {
 								likeCounts.getOrDefault(item.getId(), 0L),
 								exchangeRequestCounts.getOrDefault(item.getId(), 0L),
 								likedItemIds.contains(item.getId()),
-								toOffsetDateTime(item.getCreatedAt())
+								item.getCreatedAt()
 						))
 						.toList(),
 				page.nextCursor(),
@@ -486,7 +483,7 @@ public class ItemService {
 				likeCounts.getOrDefault(item.getId(), 0L),
 				0L,
 				likedItemIds.contains(item.getId()),
-				toOffsetDateTime(item.getCreatedAt())
+				item.getCreatedAt()
 		);
 	}
 
@@ -495,9 +492,4 @@ public class ItemService {
 				? content
 				: content.substring(0, CONTENT_PREVIEW_LENGTH - 3) + "...";
 	}
-
-	private static OffsetDateTime toOffsetDateTime(LocalDateTime timestamp) {
-		return timestamp == null ? null : timestamp.atOffset(API_OFFSET);
-	}
-
 }

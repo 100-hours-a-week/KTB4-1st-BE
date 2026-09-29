@@ -34,7 +34,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -370,8 +369,8 @@ class ItemServiceTest {
 				128L,
 				0L,
 				false,
-				OffsetDateTime.parse("2026-09-04T13:30:00+09:00"),
-				OffsetDateTime.parse("2026-09-04T13:30:00+09:00"),
+				LocalDateTime.parse("2026-09-04T13:30:00"),
+				LocalDateTime.parse("2026-09-04T13:30:00"),
 				null,
 				null
 		));

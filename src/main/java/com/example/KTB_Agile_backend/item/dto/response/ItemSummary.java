@@ -2,7 +2,7 @@ package com.example.KTB_Agile_backend.item.dto.response;
 
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 public record ItemSummary(
 		Long itemId,
@@ -15,7 +15,7 @@ public record ItemSummary(
 		Long likeCount,
 		Long exchangeRequestCount,
 		Boolean isLiked,
-		OffsetDateTime createdAt
+		LocalDateTime createdAt
 ) {
 
 	public record Owner(

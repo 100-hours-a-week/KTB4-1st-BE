@@ -2,7 +2,7 @@ package com.example.KTB_Agile_backend.chat.dto.response;
 
 import com.example.KTB_Agile_backend.chat.entity.ChatRoomStatus;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 public record ChatRoomSummary(
 		Long chatRoomId,
@@ -14,7 +14,7 @@ public record ChatRoomSummary(
 		TargetItem targetItem,
 		LastMessage lastMessage,
 		long unreadMessageCount,
-		OffsetDateTime lastMessageAt
+		LocalDateTime lastMessageAt
 ) {
 	public record GroupInfo(Long groupId, String groupName) {
 	}
@@ -25,6 +25,6 @@ public record ChatRoomSummary(
 	public record TargetItem(Long itemId, String title, String thumbnailImageUrl) {
 	}
 
-	public record LastMessage(Long messageId, String content, Long senderId, OffsetDateTime createdAt) {
+	public record LastMessage(Long messageId, String content, Long senderId, LocalDateTime createdAt) {
 	}
 }
