@@ -10,8 +10,7 @@ public enum AuthErrorCode implements ApiErrorCode {
 	AUTH_OAUTH_AUTHENTICATION_FAILED("AUTH_OAUTH_AUTHENTICATION_FAILED", HttpStatus.UNAUTHORIZED, "OAuth 인증에 실패했습니다."),
 	AUTH_PROVIDER_REQUIRED("AUTH_PROVIDER_REQUIRED", HttpStatus.BAD_REQUEST, "provider는 필수 입력값입니다."),
 	AUTH_PROVIDER_UNSUPPORTED("AUTH_PROVIDER_UNSUPPORTED", HttpStatus.BAD_REQUEST, "지원하지 않는 OAuth provider입니다."),
-	AUTH_REFRESH_TOKEN_INVALID("AUTH_REFRESH_TOKEN_INVALID", HttpStatus.UNAUTHORIZED,
-			"Refresh Token이 만료되었거나 유효하지 않습니다.");
+	AUTH_REFRESH_TOKEN_INVALID("AUTH_REFRESH_TOKEN_INVALID", HttpStatus.UNAUTHORIZED, "Refresh Token이 만료되었거나 유효하지 않습니다.");
 
 	private final String codeValue;
 	private final HttpStatus httpStatus;

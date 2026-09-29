@@ -371,7 +371,9 @@ class ItemServiceTest {
 				0L,
 				false,
 				OffsetDateTime.parse("2026-09-04T13:30:00+09:00"),
-				OffsetDateTime.parse("2026-09-04T13:30:00+09:00")
+				OffsetDateTime.parse("2026-09-04T13:30:00+09:00"),
+				null,
+				null
 		));
 		verify(itemViewRepository).save(any());
 		verify(stats).increaseViewCount();

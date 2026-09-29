@@ -112,14 +112,8 @@ public class Item extends SoftDeletableEntity {
 		this.content = requireNonNull(content, "content must not be null");
 		this.quantity = quantity;
 		this.itemState = requireNonNull(itemState, "itemState must not be null");
-		this.exchangeUrgencyScore = requireNonNull(
-				exchangeUrgencyScore,
-				"exchangeUrgencyScore must not be null"
-		);
-		this.valueGapToleranceScore = requireNonNull(
-				valueGapToleranceScore,
-				"valueGapToleranceScore must not be null"
-		);
+		this.exchangeUrgencyScore = requireNonNull(exchangeUrgencyScore, "exchangeUrgencyScore must not be null");
+		this.valueGapToleranceScore = requireNonNull(valueGapToleranceScore, "valueGapToleranceScore must not be null");
 	}
 
 	public void deductForCompletedExchange(int quantity) {
