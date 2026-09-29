@@ -11,7 +11,6 @@ import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.exchange.exception.ExchangeErrorCode;
 import com.example.KTB_Agile_backend.exchange.dto.request.ExchangeRequestCreateRequest;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestCreatedResponse;
-import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestEditResponse;
 import com.example.KTB_Agile_backend.exchange.dto.response.OfferedItemResponse;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestStatusResponse;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequest;
@@ -96,22 +95,6 @@ public class ExchangeRequestService {
 				request.offeredItems().stream()
 						.map(item -> new OfferedItemResponse(item.itemId(), item.quantity())).toList(),
 				exchangeRequest.getRequestedStatus(), chatRoom.getId(), exchangeRequest.getCreatedAt()
-		);
-	}
-
-	@Transactional(readOnly = true)
-	public ExchangeRequestEditResponse findForEdit(Long exchangeRequestId, Long requesterId) {
-		ExchangeRequest exchangeRequest = exchangeRequestRepository.findById(exchangeRequestId)
-				.orElseThrow(() -> new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_UPDATE_NOT_FOUND));
-		validateEditableRequest(exchangeRequest, requesterId);
-		return new ExchangeRequestEditResponse(
-				exchangeRequest.getId(),
-				exchangeRequest.getItem().getId(),
-				exchangeRequest.getRequestedQuantity(),
-				exchangeRequest.getOfferedItems().stream()
-						.map(offered -> new OfferedItemResponse(
-								offered.getItem().getId(), offered.getQuantity())).toList(),
-				exchangeRequest.getRequestedStatus()
 		);
 	}
 

@@ -53,12 +53,6 @@ public class UserPreferenceService {
 		return UserPreferenceResponse.from(preference);
 	}
 
-	@Transactional(readOnly = true)
-	public UserPreferenceResponse get(Long userId) {
-		findActiveUser(userId);
-		return UserPreferenceResponse.from(findPreference(userId));
-	}
-
 	private User findActiveUser(Long userId) {
 		return userRepository.findActiveById(userId)
 				.orElseThrow(UserPreferenceService::unauthorized);

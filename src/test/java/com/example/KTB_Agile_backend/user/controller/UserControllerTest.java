@@ -8,6 +8,7 @@ import com.example.KTB_Agile_backend.user.dto.UserPreferenceQuestion;
 import com.example.KTB_Agile_backend.user.dto.response.UserPreferenceResponse;
 import com.example.KTB_Agile_backend.user.service.AccountWithdrawalService;
 import com.example.KTB_Agile_backend.user.service.UserPreferenceService;
+import com.example.KTB_Agile_backend.user.service.UserPreferenceQueryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -34,6 +35,7 @@ class UserControllerTest {
 
 	private AccountWithdrawalService accountWithdrawalService;
 	private UserPreferenceService userPreferenceService;
+	private UserPreferenceQueryService userPreferenceQueryService;
 	private GroupQueryService groupQueryService;
 	private MockMvc mockMvc;
 
@@ -41,12 +43,14 @@ class UserControllerTest {
 	void setUp() {
 		accountWithdrawalService = mock(AccountWithdrawalService.class);
 		userPreferenceService = mock(UserPreferenceService.class);
+		userPreferenceQueryService = mock(UserPreferenceQueryService.class);
 		groupQueryService = mock(GroupQueryService.class);
 		mockMvc = MockMvcBuilders
 				.standaloneSetup(new UserController(
-						accountWithdrawalService,
-						userPreferenceService,
-						groupQueryService
+					accountWithdrawalService,
+					userPreferenceService,
+					userPreferenceQueryService,
+					groupQueryService
 				))
 				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
@@ -141,7 +145,7 @@ class UserControllerTest {
 
 	@Test
 	void getsPreferencesForAuthenticatedUser() throws Exception {
-		when(userPreferenceService.get(42L)).thenReturn(new UserPreferenceResponse(
+		when(userPreferenceQueryService.get(42L)).thenReturn(new UserPreferenceResponse(
 				123L,
 				List.of(new UserPreferenceResponse.Answer(
 						UserPreferenceQuestion.CONVERSATION_STYLE,
@@ -158,7 +162,7 @@ class UserControllerTest {
 				.andExpect(jsonPath("$.data.answers[0].answer").value("CONCISE"))
 				.andExpect(jsonPath("$.data.createdAt").value("2026-09-04T15:30:00"));
 
-		verify(userPreferenceService).get(42L);
+		verify(userPreferenceQueryService).get(42L);
 	}
 
 	@Test

@@ -24,11 +24,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
-@Import(ExchangeRequestService.class)
+@Import({ExchangeRequestService.class, ExchangeRequestQueryService.class})
 class ExchangeRequestServiceTest {
 
 	@Autowired
 	private ExchangeRequestService service;
+
+	@Autowired
+	private ExchangeRequestQueryService queryService;
 
 	@Autowired
 	private ExchangeRequestRepository exchangeRequestRepository;
@@ -160,7 +163,7 @@ class ExchangeRequestServiceTest {
 		Item offered = persist(item(requester, 2, ItemState.AVAILABLE));
 		var pending = service.create(requester.getId(), target.getId(), request(1, offered, 2));
 
-		var response = service.findForEdit(pending.exchangeRequestId(), requester.getId());
+		var response = queryService.findForEdit(pending.exchangeRequestId(), requester.getId());
 
 		assertThat(response.exchangeRequestId()).isEqualTo(pending.exchangeRequestId());
 		assertThat(response.itemId()).isEqualTo(target.getId());
@@ -168,7 +171,7 @@ class ExchangeRequestServiceTest {
 		assertThat(response.offeredItems()).extracting("itemId").containsExactly(offered.getId());
 		assertThat(response.offeredItems()).extracting("quantity").containsExactly(2);
 		assertThat(response.requestedStatus()).isEqualTo(ExchangeRequestStatus.PENDING);
-		assertThatThrownBy(() -> service.findForEdit(pending.exchangeRequestId(), owner.getId()))
+		assertThatThrownBy(() -> queryService.findForEdit(pending.exchangeRequestId(), owner.getId()))
 				.isInstanceOf(ApiException.class)
 				.satisfies(exception -> assertThat(((ApiException) exception).code().value())
 						.isEqualTo("EXCHANGE_REQUEST_UPDATE_FORBIDDEN"));

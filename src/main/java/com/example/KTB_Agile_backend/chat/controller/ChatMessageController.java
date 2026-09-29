@@ -4,6 +4,7 @@ import com.example.KTB_Agile_backend.chat.dto.request.ChatMessageSendRequest;
 import com.example.KTB_Agile_backend.chat.dto.response.ChatMessagePageResponse;
 import com.example.KTB_Agile_backend.chat.dto.response.ChatMessageResponse;
 import com.example.KTB_Agile_backend.chat.service.ChatMessageService;
+import com.example.KTB_Agile_backend.chat.service.ChatMessageQueryService;
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +25,7 @@ import java.security.Principal;
 public class ChatMessageController {
 
 	private final ChatMessageService chatMessageService;
+	private final ChatMessageQueryService chatMessageQueryService;
 	private final SimpMessagingTemplate messagingTemplate;
 
 	@GetMapping("/chat/rooms/{chatRoomId}/messages")
@@ -32,8 +34,12 @@ public class ChatMessageController {
 			@RequestParam(required = false) String cursor,
 			Authentication authentication
 	) {
-		ChatMessagePageResponse response = chatMessageService.findMessages(
-				chatRoomId, Long.valueOf(authentication.getName()), cursor);
+		Long userId = Long.valueOf(authentication.getName());
+		ChatMessagePageResponse response = chatMessageQueryService.findMessages(chatRoomId, userId, cursor);
+		if ((cursor == null || cursor.isBlank()) && !response.messages().isEmpty()) {
+			Long latestMessageId = response.messages().get(response.messages().size() - 1).messageId();
+			chatMessageService.markReadThrough(chatRoomId, userId, latestMessageId);
+		}
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 

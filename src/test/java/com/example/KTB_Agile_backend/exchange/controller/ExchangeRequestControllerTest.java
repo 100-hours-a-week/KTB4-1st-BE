@@ -7,6 +7,7 @@ import com.example.KTB_Agile_backend.exchange.dto.response.OfferedItemResponse;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestStatusResponse;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
 import com.example.KTB_Agile_backend.exchange.service.ExchangeRequestService;
+import com.example.KTB_Agile_backend.exchange.service.ExchangeRequestQueryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -33,13 +34,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ExchangeRequestControllerTest {
 
 	private ExchangeRequestService service;
+	private ExchangeRequestQueryService queryService;
 	private MockMvc mockMvc;
 
 	@BeforeEach
 	void setUp() {
 		service = mock(ExchangeRequestService.class);
+		queryService = mock(ExchangeRequestQueryService.class);
 		mockMvc = MockMvcBuilders
-				.standaloneSetup(new ExchangeRequestController(service))
+				.standaloneSetup(new ExchangeRequestController(service, queryService))
 				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
 	}
@@ -68,7 +71,7 @@ class ExchangeRequestControllerTest {
 
 	@Test
 	void returnsPendingRequestValuesForEditing() throws Exception {
-		when(service.findForEdit(301L, 42L)).thenReturn(new ExchangeRequestEditResponse(
+		when(queryService.findForEdit(301L, 42L)).thenReturn(new ExchangeRequestEditResponse(
 				301L, 123L, 2,
 				List.of(new OfferedItemResponse(213L, 3)),
 				ExchangeRequestStatus.PENDING));
@@ -83,7 +86,7 @@ class ExchangeRequestControllerTest {
 				.andExpect(jsonPath("$.data.offeredItems[0].quantity").value(3))
 				.andExpect(jsonPath("$.data.requestedStatus").value("PENDING"));
 
-		verify(service).findForEdit(301L, 42L);
+		verify(queryService).findForEdit(301L, 42L);
 	}
 
 	@Test

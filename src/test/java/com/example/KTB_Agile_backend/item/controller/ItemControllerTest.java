@@ -7,6 +7,7 @@ import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.service.ItemService;
+import com.example.KTB_Agile_backend.item.service.ItemQueryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -31,13 +32,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ItemControllerTest {
 
 	private ItemService itemService;
+	private ItemQueryService itemQueryService;
 	private MockMvc mockMvc;
 
 	@BeforeEach
 	void setUp() {
 		itemService = mock(ItemService.class);
+		itemQueryService = mock(ItemQueryService.class);
 		mockMvc = MockMvcBuilders
-				.standaloneSetup(new ItemController(itemService))
+				.standaloneSetup(new ItemController(itemService, itemQueryService))
 				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
 	}
@@ -69,7 +72,7 @@ class ItemControllerTest {
 
 	@Test
 	void listsItemsByGroupWithCursor() throws Exception {
-		when(itemService.findByGroup(42L, 7L, "cursor"))
+		when(itemQueryService.findByGroup(42L, 7L, "cursor"))
 				.thenReturn(new ItemPageResponse(List.of(), null, false));
 
 		mockMvc.perform(get("/groups/7/items")
@@ -80,12 +83,12 @@ class ItemControllerTest {
 				.andExpect(jsonPath("$.data.hasNext").value(false))
 				.andExpect(jsonPath("$.data.nextCursor").doesNotExist());
 
-		verify(itemService).findByGroup(42L, 7L, "cursor");
+		verify(itemQueryService).findByGroup(42L, 7L, "cursor");
 	}
 
 	@Test
 	void getsItemDetail() throws Exception {
-		when(itemService.findDetail(42L, 123L)).thenReturn(new ItemDetailResponse(
+		when(itemQueryService.findDetail(42L, 123L)).thenReturn(new ItemDetailResponse(
 				123L,
 				List.of(new ItemDetailResponse.GroupInfo(101L, "카테뷰")),
 				"게시글 제목1",
@@ -116,7 +119,8 @@ class ItemControllerTest {
 				.andExpect(jsonPath("$.data.viewCount").value(128))
 				.andExpect(jsonPath("$.data.isLiked").value(false));
 
-		verify(itemService).findDetail(42L, 123L);
+		verify(itemService).recordView(42L, 123L);
+		verify(itemQueryService).findDetail(42L, 123L);
 	}
 
 	private static String createPayload() {
