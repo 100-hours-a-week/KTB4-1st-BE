@@ -3,6 +3,7 @@ package com.example.KTB_Agile_backend.exchange.controller;
 import com.example.KTB_Agile_backend.common.exception.GlobalExceptionHandler;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestCreatedResponse;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestEditResponse;
+import com.example.KTB_Agile_backend.exchange.dto.response.OfferedItemResponse;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestStatusResponse;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
 import com.example.KTB_Agile_backend.exchange.service.ExchangeRequestService;
@@ -46,7 +47,7 @@ class ExchangeRequestControllerTest {
 	@Test
 	void createsRequestAndReturnsChatRoomId() throws Exception {
 		when(service.create(eq(42L), eq(123L), any())).thenReturn(new ExchangeRequestCreatedResponse(
-				301L, 123L, 1, List.of(new ExchangeRequestCreatedResponse.OfferedItemResponse(213L, 2)),
+				301L, 123L, 1, List.of(new OfferedItemResponse(213L, 2)),
 				ExchangeRequestStatus.PENDING, 401L, OffsetDateTime.parse("2026-09-05T11:00:00+09:00")));
 
 		mockMvc.perform(post("/items/123/exchange-requests")
@@ -69,7 +70,7 @@ class ExchangeRequestControllerTest {
 	void returnsPendingRequestValuesForEditing() throws Exception {
 		when(service.findForEdit(301L, 42L)).thenReturn(new ExchangeRequestEditResponse(
 				301L, 123L, 2,
-				List.of(new ExchangeRequestEditResponse.OfferedItemResponse(213L, 3)),
+				List.of(new OfferedItemResponse(213L, 3)),
 				ExchangeRequestStatus.PENDING));
 
 		mockMvc.perform(get("/exchange-requests/301")

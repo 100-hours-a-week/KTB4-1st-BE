@@ -14,7 +14,4 @@ public record ExchangeRequestCreatedResponse(
 		Long chatRoomId,
 		OffsetDateTime createdAt
 ) {
-
-	public record OfferedItemResponse(Long itemId, Integer quantity) {
-	}
 }

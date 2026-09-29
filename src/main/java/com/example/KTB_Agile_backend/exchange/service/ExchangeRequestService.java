@@ -11,8 +11,8 @@ import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.exchange.exception.ExchangeErrorCode;
 import com.example.KTB_Agile_backend.exchange.dto.request.ExchangeRequestCreateRequest;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestCreatedResponse;
-import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestCreatedResponse.OfferedItemResponse;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestEditResponse;
+import com.example.KTB_Agile_backend.exchange.dto.response.OfferedItemResponse;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestStatusResponse;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequest;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
@@ -114,7 +114,7 @@ public class ExchangeRequestService {
 				exchangeRequest.getItem().getId(),
 				exchangeRequest.getRequestedQuantity(),
 				exchangeRequest.getOfferedItems().stream()
-						.map(offered -> new ExchangeRequestEditResponse.OfferedItemResponse(
+						.map(offered -> new OfferedItemResponse(
 								offered.getItem().getId(), offered.getQuantity())).toList(),
 				exchangeRequest.getRequestedStatus()
 		);
