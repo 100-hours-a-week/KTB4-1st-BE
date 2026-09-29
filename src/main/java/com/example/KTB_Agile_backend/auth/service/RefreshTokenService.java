@@ -2,6 +2,7 @@ package com.example.KTB_Agile_backend.auth.service;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.auth.exception.AuthErrorCode;
+import com.example.KTB_Agile_backend.common.util.Hashing;
 import com.example.KTB_Agile_backend.user.entity.RefreshToken;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.repository.RefreshTokenRepository;

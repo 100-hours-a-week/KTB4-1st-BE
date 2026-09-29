@@ -1,4 +1,4 @@
-package com.example.KTB_Agile_backend.auth.service;
+package com.example.KTB_Agile_backend.common.util;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
