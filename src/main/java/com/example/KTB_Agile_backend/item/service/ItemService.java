@@ -257,12 +257,7 @@ public class ItemService {
 	@Transactional(readOnly = true)
 	public MyItemPageResponse findMyItems(Long userId, String sizeValue, String cursor) {
 		int size = parseMyItemsSize(sizeValue);
-		Long cursorId;
-		try {
-			cursorId = CursorCodec.decodeId(cursor);
-		} catch (ApiException exception) {
-			throw invalidMyItemsRequest(exception);
-		}
+		Long cursorId = CursorCodec.decodeId(cursor);
 		Pageable pageable = PageRequest.of(0, size + 1);
 		List<Item> items = cursorId == null
 				? itemRepository.findAllByUser_IdAndDeletedAtIsNullOrderByIdDesc(userId, pageable)
@@ -336,10 +331,6 @@ public class ItemService {
 
 	private static ApiException invalidMyItemsRequest() {
 		return new ApiException(ErrorCode.BAD_REQUEST, MY_ITEMS_BAD_REQUEST_MESSAGE);
-	}
-
-	private static ApiException invalidMyItemsRequest(Throwable cause) {
-		return new ApiException(ErrorCode.BAD_REQUEST, MY_ITEMS_BAD_REQUEST_MESSAGE, cause);
 	}
 
 	private List<Group> findRegistrableGroups(Long userId, Collection<Long> groupIds) {
