@@ -15,7 +15,4 @@ public record ExchangeRequestEditResponse(
 	public ExchangeRequestEditResponse {
 		offeredItems = List.copyOf(offeredItems);
 	}
-
-	public record OfferedItemResponse(Long itemId, Integer quantity) {
-	}
 }
