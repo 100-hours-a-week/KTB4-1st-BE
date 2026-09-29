@@ -82,9 +82,6 @@ public class OAuthStateService {
 	}
 
 	private static ApiException authenticationFailed() {
-		return new ApiException(
-			AuthErrorCode.AUTH_OAUTH_STATE_INVALID,
-				AUTHENTICATION_DETAILS
-		);
+		return new ApiException(AuthErrorCode.AUTH_OAUTH_STATE_INVALID, AUTHENTICATION_DETAILS);
 	}
 }

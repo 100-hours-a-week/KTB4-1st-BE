@@ -110,8 +110,7 @@ public class ModerationCheckService {
 	}
 
 	private static ApiException aiFailure(Throwable cause) {
-		return new ApiException(AiErrorCode.AI_TEXT_MODERATION_FAILED,
-				List.of(), cause);
+		return new ApiException(AiErrorCode.AI_TEXT_MODERATION_FAILED, List.of(), cause);
 	}
 
 	public record AiModerationResponse(Boolean isAppropriate, String rejectionReason, String keyword) {
