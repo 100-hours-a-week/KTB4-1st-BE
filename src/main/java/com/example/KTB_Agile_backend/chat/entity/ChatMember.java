@@ -19,6 +19,8 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+import static java.util.Objects.requireNonNull;
+
 @Entity
 @Table(name = "chat_members")
 @Getter
@@ -58,5 +60,9 @@ public class ChatMember extends BaseEntity {
 		if (messageId != null && (lastReadMessageId == null || messageId > lastReadMessageId)) {
 			lastReadMessageId = messageId;
 		}
+	}
+
+	public void leave(LocalDateTime leftAt) {
+		this.leftAt = requireNonNull(leftAt, "leftAt must not be null");
 	}
 }
