@@ -14,7 +14,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -48,7 +48,7 @@ class ExchangeRequestControllerTest {
 	void createsRequestAndReturnsChatRoomId() throws Exception {
 		when(service.create(eq(42L), eq(123L), any())).thenReturn(new ExchangeRequestCreatedResponse(
 				301L, 123L, 1, List.of(new OfferedItemResponse(213L, 2)),
-				ExchangeRequestStatus.PENDING, 401L, OffsetDateTime.parse("2026-09-05T11:00:00+09:00")));
+				ExchangeRequestStatus.PENDING, 401L, LocalDateTime.parse("2026-09-05T11:00:00")));
 
 		mockMvc.perform(post("/items/123/exchange-requests")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
@@ -141,7 +141,7 @@ class ExchangeRequestControllerTest {
 	void updatesRequestStatus() throws Exception {
 		when(service.updateStatus(301L, 42L, ExchangeRequestStatus.COMPLETED)).thenReturn(
 				new ExchangeRequestStatusResponse(301L, 123L, ExchangeRequestStatus.COMPLETED,
-						OffsetDateTime.parse("2026-09-05T16:00:00+09:00")));
+						LocalDateTime.parse("2026-09-05T16:00:00")));
 
 		mockMvc.perform(patch("/exchange-requests/301/status")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
@@ -155,7 +155,7 @@ class ExchangeRequestControllerTest {
 
 		when(service.updateStatus(301L, 42L, ExchangeRequestStatus.CANCELED)).thenReturn(
 				new ExchangeRequestStatusResponse(301L, 123L, ExchangeRequestStatus.CANCELED,
-						OffsetDateTime.parse("2026-09-05T16:00:00+09:00")));
+						LocalDateTime.parse("2026-09-05T16:00:00")));
 		mockMvc.perform(patch("/exchange-requests/301/status")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
 					.contentType(MediaType.APPLICATION_JSON)

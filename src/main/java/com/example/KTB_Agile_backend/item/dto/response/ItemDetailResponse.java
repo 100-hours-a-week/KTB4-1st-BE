@@ -3,7 +3,7 @@ package com.example.KTB_Agile_backend.item.dto.response;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public record ItemDetailResponse(
@@ -19,8 +19,8 @@ public record ItemDetailResponse(
 		Long viewCount,
 		Long exchangeRequestCount,
 		Boolean isLiked,
-		OffsetDateTime createdAt,
-		OffsetDateTime updatedAt,
+		LocalDateTime createdAt,
+		LocalDateTime updatedAt,
 		BigDecimal exchangeUrgencyScore,
 		BigDecimal valueGapToleranceScore
 ) {

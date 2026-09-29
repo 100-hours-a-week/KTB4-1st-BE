@@ -24,8 +24,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.List;
@@ -37,8 +35,6 @@ public class ChatRoomQueryService {
 
 	private static final int MAX_PAGE_SIZE = 100;
 	private static final String INVALID_PAGE_MESSAGE = "direction, size 또는 cursor 값이 올바르지 않습니다.";
-	private static final ZoneOffset API_OFFSET = ZoneOffset.ofHours(9);
-
 	private final ChatMemberRepository chatMemberRepository;
 	private final ChatMessageRepository chatMessageRepository;
 	private final ImageRepository imageRepository;
@@ -105,7 +101,7 @@ public class ChatRoomQueryService {
 		ChatRoomSummary.LastMessage lastMessageResponse = lastMessage == null ? null
 				: new ChatRoomSummary.LastMessage(
 						lastMessage.getId(), lastMessage.getContent(), lastMessage.getUser().getId(),
-						toOffsetDateTime(lastMessage.getCreatedAt()));
+						lastMessage.getCreatedAt());
 		return new ChatRoomSummary(
 				room.getId(), room.getChatRoomStatus(), request.getId(), sent ? "SENT" : "RECEIVED",
 				request.getGroup() == null ? null : new ChatRoomSummary.GroupInfo(
@@ -114,7 +110,7 @@ public class ChatRoomQueryService {
 						otherUser.getId(), otherUser.getNickname(), otherUser.getProfileImageUrl()),
 				new ChatRoomSummary.TargetItem(item.getId(), item.getTitle(), thumbnails.get(item.getId())),
 				lastMessageResponse, unreadCounts.getOrDefault(room.getId(), 0L),
-				toOffsetDateTime(room.getLastMessageAt())
+				room.getLastMessageAt()
 		);
 	}
 
@@ -142,10 +138,6 @@ public class ChatRoomQueryService {
 
 	private static ApiException badPageRequest() {
 		return new ApiException(ErrorCode.BAD_REQUEST, INVALID_PAGE_MESSAGE);
-	}
-
-	private static OffsetDateTime toOffsetDateTime(LocalDateTime dateTime) {
-		return dateTime.atOffset(API_OFFSET);
 	}
 
 	private record ChatRoomCursor(LocalDateTime lastMessageAt, Long chatRoomId) {
