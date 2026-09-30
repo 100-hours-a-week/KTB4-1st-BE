@@ -124,6 +124,21 @@ public class ExchangeRequestService {
 	}
 
 	@Transactional
+	public void cancel(Long exchangeRequestId, Long requesterId) {
+		ExchangeRequest exchangeRequest = exchangeRequestRepository.findByIdForUpdate(exchangeRequestId)
+				.orElseThrow(() -> new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_NOT_FOUND));
+		if (!exchangeRequest.getRequester().getId().equals(requesterId)) {
+			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_FORBIDDEN);
+		}
+		if (exchangeRequest.getRequestedStatus() != ExchangeRequestStatus.PENDING) {
+			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_CONFLICT);
+		}
+		exchangeRequest.changeStatus(ExchangeRequestStatus.CANCELED);
+		chatRoomRepository.findByExchangeRequest_Id(exchangeRequestId).ifPresent(ChatRoom::close);
+		exchangeRequestRepository.saveAndFlush(exchangeRequest);
+	}
+
+	@Transactional
 	public ExchangeRequestStatusResponse updateStatus(
 			Long exchangeRequestId,
 			Long userId,
