@@ -73,7 +73,7 @@ public class ExchangeRequestController {
 		return ResponseEntity.noContent().build();
 	}
 
-	@DeleteMapping({"/exchange-requests/{exchangeRequestId}", "/api/exchange-requests/{exchangeRequestId}"})
+	@DeleteMapping("/exchange-requests/{exchangeRequestId}")
 	public ResponseEntity<Void> cancel(
 			Authentication authentication,
 			@PathVariable String exchangeRequestId

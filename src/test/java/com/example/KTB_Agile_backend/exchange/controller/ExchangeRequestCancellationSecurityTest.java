@@ -44,17 +44,16 @@ class ExchangeRequestCancellationSecurityTest {
 	void rejectsMissingInvalidAndExpiredTokensBeforeCallingService() throws Exception {
 		when(jwtDecoder.decode("invalid")).thenThrow(new JwtException("invalid token"));
 		when(jwtDecoder.decode("expired")).thenThrow(new JwtException("expired token"));
-		for (String path : List.of("/exchange-requests/301", "/api/exchange-requests/301")) {
-			for (String token : List.of("", "invalid", "expired")) {
-				mockMvc.perform(delete(path).servletPath(path)
-							.header("Authorization", "Bearer " + token))
-						.andExpect(status().isUnauthorized())
-						.andExpect(jsonPath("$.data").isEmpty())
-						.andExpect(jsonPath("$.error.code").value("AUTHENTICATION_REQUIRED"))
-						.andExpect(jsonPath("$.error.message")
-								.value("로그인이 필요합니다."))
-						.andExpect(jsonPath("$.error.details").isEmpty());
-			}
+		String path = "/exchange-requests/301";
+		for (String token : List.of("", "invalid", "expired")) {
+			mockMvc.perform(delete(path).servletPath(path)
+						.header("Authorization", "Bearer " + token))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.data").isEmpty())
+				.andExpect(jsonPath("$.error.code").value("AUTHENTICATION_REQUIRED"))
+				.andExpect(jsonPath("$.error.message")
+						.value("로그인이 필요합니다."))
+				.andExpect(jsonPath("$.error.details").isEmpty());
 		}
 		verifyNoInteractions(service, queryService);
 	}
