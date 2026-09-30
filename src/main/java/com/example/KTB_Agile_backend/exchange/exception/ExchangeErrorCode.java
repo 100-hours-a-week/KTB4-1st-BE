@@ -32,13 +32,9 @@ public enum ExchangeErrorCode implements ApiErrorCode {
 	EXCHANGE_REQUEST_STATUS_CONFLICT("EXCHANGE_REQUEST_STATUS_CONFLICT", HttpStatus.CONFLICT,
 			"이미 처리되었거나 현재 상태에서는 변경할 수 없습니다."),
 	EXCHANGE_REQUEST_CANCEL_INVALID("BAD_REQUEST", HttpStatus.BAD_REQUEST, "교환 요청 ID가 올바르지 않습니다."),
-	EXCHANGE_REQUEST_CANCEL_UNAUTHORIZED("UNAUTHORIZED", HttpStatus.UNAUTHORIZED,
-			"로그인이 필요하거나 Access Token이 만료되었거나 유효하지 않습니다."),
 	EXCHANGE_REQUEST_CANCEL_FORBIDDEN("FORBIDDEN", HttpStatus.FORBIDDEN, "교환 요청을 취소할 권한이 없습니다."),
 	EXCHANGE_REQUEST_CANCEL_NOT_FOUND("NOT_FOUND", HttpStatus.NOT_FOUND, "교환 요청을 찾을 수 없습니다."),
-	EXCHANGE_REQUEST_CANCEL_CONFLICT("CONFLICT", HttpStatus.CONFLICT, "이미 처리되었거나 취소된 교환 요청입니다."),
-	EXCHANGE_REQUEST_CANCEL_FAILED("INTERNAL_SERVER_ERROR", HttpStatus.INTERNAL_SERVER_ERROR,
-			"교환 요청 취소 중 서버 오류가 발생했습니다.");
+	EXCHANGE_REQUEST_CANCEL_CONFLICT("CONFLICT", HttpStatus.CONFLICT, "이미 처리되었거나 취소된 교환 요청입니다.");
 
 	private final String codeValue;
 	private final HttpStatus httpStatus;

@@ -1,8 +1,6 @@
 package com.example.KTB_Agile_backend.security;
 
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
-import com.example.KTB_Agile_backend.common.exception.ApiErrorCode;
-import com.example.KTB_Agile_backend.exchange.exception.ExchangeErrorCode;
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
 import com.example.KTB_Agile_backend.common.response.ErrorResponse;
 import tools.jackson.databind.ObjectMapper;
@@ -95,10 +93,7 @@ public class SecurityConfig {
 						.authenticationEntryPoint((request, response, cause) -> writeError(
 								response,
 								objectMapper,
-								"DELETE".equals(request.getMethod())
-										&& request.getServletPath().matches("(/api)?/exchange-requests/[^/]+")
-										? ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_UNAUTHORIZED
-										: ErrorCode.AUTHENTICATION_REQUIRED
+								ErrorCode.AUTHENTICATION_REQUIRED
 						))
 						.accessDeniedHandler((request, response, cause) -> writeError(
 								response,
@@ -116,7 +111,7 @@ public class SecurityConfig {
 	private static void writeError(
 			HttpServletResponse response,
 			ObjectMapper objectMapper,
-			ApiErrorCode code
+			ErrorCode code
 	) throws IOException {
 		response.setStatus(code.status().value());
 		response.setContentType(MediaType.APPLICATION_JSON_VALUE);

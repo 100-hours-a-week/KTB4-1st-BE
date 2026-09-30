@@ -1,7 +1,6 @@
 package com.example.KTB_Agile_backend.common.exception;
 
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
-import com.example.KTB_Agile_backend.exchange.exception.ExchangeErrorCode;
 import com.example.KTB_Agile_backend.common.response.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -92,10 +91,7 @@ public class GlobalExceptionHandler {
 		if (log.isErrorEnabled()) {
 			log.error("Unhandled API exception: {} {}", request.getMethod(), request.getRequestURI(), exception);
 		}
-		ApiErrorCode code = "DELETE".equals(request.getMethod())
-				&& request.getServletPath().matches("(/api)?/exchange-requests/[^/]+")
-				? ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_FAILED : ErrorCode.INTERNAL_SERVER_ERROR;
-		return response(code.status(), new ErrorResponse(code.value(), code.message(), List.of()));
+		return response(ErrorCode.INTERNAL_SERVER_ERROR);
 	}
 
 	private static ResponseEntity<ApiResponse<Void>> response(ErrorCode errorCode) {

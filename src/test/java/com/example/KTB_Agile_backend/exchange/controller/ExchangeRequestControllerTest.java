@@ -150,7 +150,7 @@ class ExchangeRequestControllerTest {
 					.principal(new UsernamePasswordAuthenticationToken("42", null)))
 				.andExpect(status().isInternalServerError())
 				.andExpect(jsonPath("$.error.code").value("INTERNAL_SERVER_ERROR"))
-				.andExpect(jsonPath("$.error.message").value("교환 요청 취소 중 서버 오류가 발생했습니다."));
+				.andExpect(jsonPath("$.error.message").value("서버 오류가 발생했습니다."));
 	}
 
 	@Test
