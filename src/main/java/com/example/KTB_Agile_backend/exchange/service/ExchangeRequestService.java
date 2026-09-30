@@ -11,8 +11,7 @@ import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.exchange.exception.ExchangeErrorCode;
 import com.example.KTB_Agile_backend.exchange.dto.request.ExchangeRequestCreateRequest;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestCreatedResponse;
-import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestCreatedResponse.OfferedItemResponse;
-import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestEditResponse;
+import com.example.KTB_Agile_backend.exchange.dto.response.OfferedItemResponse;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestStatusResponse;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequest;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
@@ -30,9 +29,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -45,8 +41,6 @@ import java.util.Set;
 public class ExchangeRequestService {
 
 	private static final int MAX_INFERRED_GROUP_COUNT = 1;
-	private static final ZoneOffset API_OFFSET = ZoneOffset.ofHours(9);
-
 	private final ExchangeRequestRepository exchangeRequestRepository;
 	private final ChatMemberRepository chatMemberRepository;
 	private final ChatRoomRepository chatRoomRepository;
@@ -100,23 +94,7 @@ public class ExchangeRequestService {
 				exchangeRequest.getId(), itemId, request.requestedQuantity(),
 				request.offeredItems().stream()
 						.map(item -> new OfferedItemResponse(item.itemId(), item.quantity())).toList(),
-				exchangeRequest.getRequestedStatus(), chatRoom.getId(), toOffsetDateTime(exchangeRequest.getCreatedAt())
-		);
-	}
-
-	@Transactional(readOnly = true)
-	public ExchangeRequestEditResponse findForEdit(Long exchangeRequestId, Long requesterId) {
-		ExchangeRequest exchangeRequest = exchangeRequestRepository.findById(exchangeRequestId)
-				.orElseThrow(() -> new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_UPDATE_NOT_FOUND));
-		validateEditableRequest(exchangeRequest, requesterId);
-		return new ExchangeRequestEditResponse(
-				exchangeRequest.getId(),
-				exchangeRequest.getItem().getId(),
-				exchangeRequest.getRequestedQuantity(),
-				exchangeRequest.getOfferedItems().stream()
-						.map(offered -> new ExchangeRequestEditResponse.OfferedItemResponse(
-								offered.getItem().getId(), offered.getQuantity())).toList(),
-				exchangeRequest.getRequestedStatus()
+				exchangeRequest.getRequestedStatus(), chatRoom.getId(), exchangeRequest.getCreatedAt()
 		);
 	}
 
@@ -142,6 +120,21 @@ public class ExchangeRequestService {
 
 		exchangeRequest.updateRequestedQuantity(request.requestedQuantity());
 		updateOfferedItems(exchangeRequest, request, items);
+		exchangeRequestRepository.saveAndFlush(exchangeRequest);
+	}
+
+	@Transactional
+	public void cancel(Long exchangeRequestId, Long requesterId) {
+		ExchangeRequest exchangeRequest = exchangeRequestRepository.findByIdForUpdate(exchangeRequestId)
+				.orElseThrow(() -> new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_NOT_FOUND));
+		if (!exchangeRequest.getRequester().getId().equals(requesterId)) {
+			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_FORBIDDEN);
+		}
+		if (exchangeRequest.getRequestedStatus() != ExchangeRequestStatus.PENDING) {
+			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_CONFLICT);
+		}
+		exchangeRequest.changeStatus(ExchangeRequestStatus.CANCELED);
+		chatRoomRepository.findByExchangeRequest_Id(exchangeRequestId).ifPresent(ChatRoom::close);
 		exchangeRequestRepository.saveAndFlush(exchangeRequest);
 	}
 
@@ -190,7 +183,7 @@ public class ExchangeRequestService {
 		exchangeRequestRepository.saveAndFlush(exchangeRequest);
 		return new ExchangeRequestStatusResponse(
 				exchangeRequest.getId(), exchangeRequest.getItem().getId(), status,
-				toOffsetDateTime(exchangeRequest.getUpdatedAt())
+				exchangeRequest.getUpdatedAt()
 		);
 	}
 
@@ -302,9 +295,5 @@ public class ExchangeRequestService {
 		if (item.getQuantity() < requestedQuantity) {
 			throw new ApiException(errorCode);
 		}
-	}
-
-	private static OffsetDateTime toOffsetDateTime(LocalDateTime timestamp) {
-		return timestamp == null ? null : timestamp.atOffset(API_OFFSET);
 	}
 }

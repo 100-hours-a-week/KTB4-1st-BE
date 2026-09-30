@@ -7,6 +7,7 @@ import com.example.KTB_Agile_backend.user.dto.request.UserPreferenceRequest;
 import com.example.KTB_Agile_backend.user.dto.response.UserPreferenceResponse;
 import com.example.KTB_Agile_backend.user.service.AccountWithdrawalService;
 import com.example.KTB_Agile_backend.user.service.UserPreferenceService;
+import com.example.KTB_Agile_backend.user.service.UserPreferenceQueryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -21,6 +22,7 @@ public class UserController {
 
 	private final AccountWithdrawalService accountWithdrawalService;
 	private final UserPreferenceService userPreferenceService;
+	private final UserPreferenceQueryService userPreferenceQueryService;
 	private final GroupQueryService groupQueryService;
 
 	@DeleteMapping
@@ -60,7 +62,7 @@ public class UserController {
 	public ResponseEntity<ApiResponse<UserPreferenceResponse>> getPreferences(
 			Authentication authentication
 	) {
-		UserPreferenceResponse response = userPreferenceService.get(Long.valueOf(authentication.getName()));
+		UserPreferenceResponse response = userPreferenceQueryService.get(Long.valueOf(authentication.getName()));
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 }

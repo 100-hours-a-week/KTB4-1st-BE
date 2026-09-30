@@ -34,7 +34,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -59,7 +58,6 @@ class ItemServiceTest {
 		ItemRepository itemRepository = mock(ItemRepository.class);
 		ItemStatsRepository itemStatsRepository = mock(ItemStatsRepository.class);
 		ItemViewRepository itemViewRepository = mock(ItemViewRepository.class);
-		ItemLikeRepository itemLikeRepository = mock(ItemLikeRepository.class);
 		GroupRepository groupRepository = mock(GroupRepository.class);
 		GroupMemberRepository groupMemberRepository = mock(GroupMemberRepository.class);
 		GroupItemRepository groupItemRepository = mock(GroupItemRepository.class);
@@ -70,15 +68,13 @@ class ItemServiceTest {
 				itemRepository,
 				itemStatsRepository,
 				itemViewRepository,
-				itemLikeRepository,
 				groupRepository,
 				groupMemberRepository,
 				groupItemRepository,
 				imageRepository,
 				s3ImageObjectService,
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
-				mock(ExchangeRequestRepository.class)
+				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator()
 		);
 		User user = mock(User.class);
 		Group firstGroup = group("첫 그룹");
@@ -118,15 +114,13 @@ class ItemServiceTest {
 				itemRepository,
 				mock(ItemStatsRepository.class),
 				mock(ItemViewRepository.class),
-				mock(ItemLikeRepository.class),
 				groupRepository,
 				groupMemberRepository,
 				groupItemRepository,
 				imageRepository,
 				mock(S3ImageObjectService.class),
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
-				mock(ExchangeRequestRepository.class)
+				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator()
 		);
 		User owner = user(42L);
 		Item item = spy(new Item(owner, "기존 제목", "기존 내용"));
@@ -198,15 +192,13 @@ class ItemServiceTest {
 				mock(ItemRepository.class),
 				mock(ItemStatsRepository.class),
 				mock(ItemViewRepository.class),
-				mock(ItemLikeRepository.class),
 				groupRepository,
 				groupMemberRepository,
 				mock(GroupItemRepository.class),
 				mock(ImageRepository.class),
 				s3ImageObjectService,
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
-				mock(ExchangeRequestRepository.class)
+				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator()
 		);
 		User requester = user(42L);
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(requester));
@@ -228,8 +220,9 @@ class ItemServiceTest {
 	void rejectsLeftMemberFromGroupItemList() {
 		GroupRepository groupRepository = mock(GroupRepository.class);
 		GroupMemberRepository groupMemberRepository = mock(GroupMemberRepository.class);
-		ItemService service = service(mock(ItemRepository.class), groupRepository,
-				groupMemberRepository, mock(ImageRepository.class));
+		ItemQueryService service = queryService(mock(ItemRepository.class), mock(ItemStatsRepository.class),
+				mock(ItemLikeRepository.class), groupRepository, groupMemberRepository,
+				mock(GroupItemRepository.class), mock(ImageRepository.class));
 		Group group = group("그룹");
 		GroupMember member = new GroupMember(group, mock(User.class));
 		member.leave(LocalDateTime.now());
@@ -248,16 +241,12 @@ class ItemServiceTest {
 		GroupMemberRepository groupMemberRepository = mock(GroupMemberRepository.class);
 		GroupItemRepository groupItemRepository = mock(GroupItemRepository.class);
 		ItemStatsRepository itemStatsRepository = mock(ItemStatsRepository.class);
-		ItemViewRepository itemViewRepository = mock(ItemViewRepository.class);
 		ItemLikeRepository itemLikeRepository = mock(ItemLikeRepository.class);
 		ImageRepository imageRepository = mock(ImageRepository.class);
 		User owner = user(10L);
 		User memberUser = user(42L);
-		ItemService service = new ItemService(
-				mock(ItemRepository.class), itemStatsRepository, itemViewRepository, itemLikeRepository, groupRepository,
-				groupMemberRepository, groupItemRepository, imageRepository, mock(S3ImageObjectService.class),
-				mock(UserRepository.class), mock(ModerationCheckService.class), itemCashService(),
-				new ItemPriceRangeCalculator(), mock(ExchangeRequestRepository.class));
+		ItemQueryService service = queryService(mock(ItemRepository.class), itemStatsRepository,
+				itemLikeRepository, groupRepository, groupMemberRepository, groupItemRepository, imageRepository);
 		Group group = group("그룹");
 		when(groupRepository.existsByIdAndDeletedAtIsNull(101L)).thenReturn(true);
 		when(groupMemberRepository.findByGroup_IdAndUser_Id(101L, 42L))
@@ -291,32 +280,16 @@ class ItemServiceTest {
 	void returnsItemDetailWithRelatedDataAndCurrentUserLikeStatus() {
 		ItemRepository itemRepository = mock(ItemRepository.class);
 		ItemStatsRepository itemStatsRepository = mock(ItemStatsRepository.class);
-		ItemViewRepository itemViewRepository = mock(ItemViewRepository.class);
 		ItemLikeRepository itemLikeRepository = mock(ItemLikeRepository.class);
 		GroupItemRepository groupItemRepository = mock(GroupItemRepository.class);
 		ImageRepository imageRepository = mock(ImageRepository.class);
-		UserRepository userRepository = mock(UserRepository.class);
-		ItemService service = new ItemService(
-				itemRepository,
-				itemStatsRepository,
-				itemViewRepository,
-				itemLikeRepository,
-				mock(GroupRepository.class),
-				mock(GroupMemberRepository.class),
-				groupItemRepository,
-				imageRepository,
-				mock(S3ImageObjectService.class),
-				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
-				mock(ExchangeRequestRepository.class)
-		);
+		ItemQueryService service = queryService(itemRepository, itemStatsRepository, itemLikeRepository,
+				mock(GroupRepository.class), mock(GroupMemberRepository.class), groupItemRepository, imageRepository);
 
 		User owner = mock(User.class);
 		when(owner.getId()).thenReturn(10L);
 		when(owner.getNickname()).thenReturn("사용자1");
 		when(owner.getProfileImageUrl()).thenReturn("https://example.com/profile.jpg");
-		User viewer = mock(User.class);
-		when(viewer.getId()).thenReturn(42L);
 		Item item = mock(Item.class);
 		when(item.getId()).thenReturn(123L);
 		when(item.getUser()).thenReturn(owner);
@@ -344,9 +317,7 @@ class ItemServiceTest {
 		when(stats.getLikeCount()).thenReturn(33L);
 		when(stats.getViewCount()).thenReturn(128L);
 		when(itemRepository.findByIdAndDeletedAtIsNull(123L)).thenReturn(Optional.of(item));
-		when(itemStatsRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(stats));
-		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(viewer));
-		when(itemViewRepository.findByItem_IdAndUser_Id(123L, 42L)).thenReturn(Optional.empty());
+		when(itemStatsRepository.findById(123L)).thenReturn(Optional.of(stats));
 		when(groupItemRepository.findActiveGroupItemsByItemId(123L)).thenReturn(List.of(groupItem));
 		when(imageRepository.findAllByItem_IdOrderByIdAsc(123L))
 				.thenReturn(List.of(firstImage, secondImage));
@@ -370,13 +341,11 @@ class ItemServiceTest {
 				128L,
 				0L,
 				false,
-				OffsetDateTime.parse("2026-09-04T13:30:00+09:00"),
-				OffsetDateTime.parse("2026-09-04T13:30:00+09:00"),
+				LocalDateTime.parse("2026-09-04T13:30:00"),
+				LocalDateTime.parse("2026-09-04T13:30:00"),
 				null,
 				null
 		));
-		verify(itemViewRepository).save(any());
-		verify(stats).increaseViewCount();
 	}
 
 	@Test
@@ -384,23 +353,18 @@ class ItemServiceTest {
 		ItemRepository itemRepository = mock(ItemRepository.class);
 		ItemStatsRepository itemStatsRepository = mock(ItemStatsRepository.class);
 		ItemViewRepository itemViewRepository = mock(ItemViewRepository.class);
-		ItemLikeRepository itemLikeRepository = mock(ItemLikeRepository.class);
-		GroupItemRepository groupItemRepository = mock(GroupItemRepository.class);
-		ImageRepository imageRepository = mock(ImageRepository.class);
 		UserRepository userRepository = mock(UserRepository.class);
 		ItemService service = new ItemService(
 				itemRepository,
 				itemStatsRepository,
 				itemViewRepository,
-				itemLikeRepository,
 				mock(GroupRepository.class),
 				mock(GroupMemberRepository.class),
-				groupItemRepository,
-				imageRepository,
+				mock(GroupItemRepository.class),
+				mock(ImageRepository.class),
 				mock(S3ImageObjectService.class),
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
-				mock(ExchangeRequestRepository.class)
+				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator()
 		);
 
 		User viewer = user(42L);
@@ -413,12 +377,8 @@ class ItemServiceTest {
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(viewer));
 		when(itemViewRepository.findByItem_IdAndUser_Id(123L, 42L))
 				.thenReturn(Optional.of(recentView), Optional.of(expiredView));
-		when(groupItemRepository.findActiveGroupItemsByItemId(123L)).thenReturn(List.of());
-		when(imageRepository.findAllByItem_IdOrderByIdAsc(123L)).thenReturn(List.of());
-		when(itemLikeRepository.existsByItem_IdAndUser_Id(123L, 42L)).thenReturn(false);
-
-		service.findDetail(42L, 123L);
-		service.findDetail(42L, 123L);
+		service.recordView(42L, 123L);
+		service.recordView(42L, 123L);
 
 		verify(stats).increaseViewCount();
 	}
@@ -486,14 +446,34 @@ class ItemServiceTest {
 				itemRepository,
 				mock(ItemStatsRepository.class),
 				mock(ItemViewRepository.class),
-				mock(ItemLikeRepository.class),
 				groupRepository,
 				groupMemberRepository,
 				mock(GroupItemRepository.class),
 				imageRepository,
 				mock(S3ImageObjectService.class),
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
+				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator()
+		);
+	}
+
+	private static ItemQueryService queryService(
+			ItemRepository itemRepository,
+			ItemStatsRepository itemStatsRepository,
+			ItemLikeRepository itemLikeRepository,
+			GroupRepository groupRepository,
+			GroupMemberRepository groupMemberRepository,
+			GroupItemRepository groupItemRepository,
+			ImageRepository imageRepository
+	) {
+		return new ItemQueryService(
+				itemRepository,
+				itemStatsRepository,
+				itemLikeRepository,
+				groupRepository,
+				groupMemberRepository,
+				groupItemRepository,
+				imageRepository,
+				mock(S3ImageObjectService.class),
 				mock(ExchangeRequestRepository.class)
 		);
 	}

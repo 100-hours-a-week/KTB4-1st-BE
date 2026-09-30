@@ -11,23 +11,28 @@ public class ApiException extends RuntimeException {
 	private final ApiErrorCode errorCode;
 	private final List<ErrorDetail> errorDetails;
 
-	public ApiException(ApiErrorCode code) {
+	public ApiException(
+			ApiErrorCode code) {
 		this(code, code.message());
 	}
 
-	public ApiException(ApiErrorCode code, String message) {
+	public ApiException(
+			ApiErrorCode code,
+			String message) {
 		this(code, message, List.of());
 	}
 
-	public ApiException(ApiErrorCode code, String message, Throwable cause) {
+	public ApiException(
+			ApiErrorCode code,
+			String message,
+			Throwable cause) {
 		this(code, message, List.of(), cause);
 	}
 
 	public ApiException(
 			ApiErrorCode code,
 			String message,
-			List<ErrorDetail> details
-	) {
+			List<ErrorDetail> details) {
 		this(code, message, details, null);
 	}
 
@@ -42,11 +47,16 @@ public class ApiException extends RuntimeException {
 		this.errorDetails = details == null ? List.of() : List.copyOf(details);
 	}
 
-	public ApiException(ApiErrorCode code, List<ErrorDetail> details) {
+	public ApiException(
+			ApiErrorCode code,
+			List<ErrorDetail> details) {
 		this(code, code.message(), details);
 	}
 
-	public ApiException(ApiErrorCode code, List<ErrorDetail> details, Throwable cause) {
+	public ApiException(
+			ApiErrorCode code,
+			List<ErrorDetail> details,
+			Throwable cause) {
 		this(code, code.message(), details, cause);
 	}
 

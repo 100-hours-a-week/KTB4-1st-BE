@@ -2,7 +2,7 @@ package com.example.KTB_Agile_backend.exchange.dto.response;
 
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public record ExchangeRequestCreatedResponse(
@@ -12,9 +12,6 @@ public record ExchangeRequestCreatedResponse(
 		List<OfferedItemResponse> offeredItems,
 		ExchangeRequestStatus requestedStatus,
 		Long chatRoomId,
-		OffsetDateTime createdAt
+		LocalDateTime createdAt
 ) {
-
-	public record OfferedItemResponse(Long itemId, Integer quantity) {
-	}
 }

@@ -1,6 +1,6 @@
 package com.example.KTB_Agile_backend.auth.token;
 
-import com.example.KTB_Agile_backend.auth.service.Hashing;
+import com.example.KTB_Agile_backend.common.util.Hashing;
 import com.example.KTB_Agile_backend.auth.service.RefreshTokenService;
 import com.example.KTB_Agile_backend.user.entity.RefreshToken;
 import com.example.KTB_Agile_backend.user.entity.User;

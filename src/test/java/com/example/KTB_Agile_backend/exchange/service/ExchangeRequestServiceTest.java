@@ -1,6 +1,7 @@
 package com.example.KTB_Agile_backend.exchange.service;
 
 import com.example.KTB_Agile_backend.chat.repository.ChatMemberRepository;
+import com.example.KTB_Agile_backend.chat.entity.ChatRoomStatus;
 import com.example.KTB_Agile_backend.chat.repository.ChatRoomRepository;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.exchange.dto.request.ExchangeRequestCreateRequest;
@@ -24,11 +25,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
-@Import(ExchangeRequestService.class)
+@Import({ExchangeRequestService.class, ExchangeRequestQueryService.class})
 class ExchangeRequestServiceTest {
 
 	@Autowired
 	private ExchangeRequestService service;
+
+	@Autowired
+	private ExchangeRequestQueryService queryService;
 
 	@Autowired
 	private ExchangeRequestRepository exchangeRequestRepository;
@@ -153,6 +157,42 @@ class ExchangeRequestServiceTest {
 	}
 
 	@Test
+	void cancellationRequiresRequesterAndPendingStatusAndClosesChatWithoutDeductingStock() {
+		User owner = persist(new User("owner"));
+		User requester = persist(new User("requester"));
+		User other = persist(new User("other"));
+		Item target = persist(item(owner, 5, ItemState.AVAILABLE));
+		Item offered = persist(item(requester, 2, ItemState.AVAILABLE));
+		var pending = service.create(requester.getId(), target.getId(), request(1, offered, 1));
+
+		for (Long userId : List.of(owner.getId(), other.getId())) {
+			assertThatThrownBy(() -> service.cancel(pending.exchangeRequestId(), userId))
+					.isInstanceOf(ApiException.class)
+					.satisfies(exception -> assertThat(((ApiException) exception).code().value()).isEqualTo("FORBIDDEN"));
+		}
+		service.cancel(pending.exchangeRequestId(), requester.getId());
+		entityManager.clear();
+		ExchangeRequest canceled = exchangeRequestRepository.findById(pending.exchangeRequestId()).orElseThrow();
+		assertThat(canceled.getRequestedStatus()).isEqualTo(ExchangeRequestStatus.CANCELED);
+		assertThat(canceled.getOfferedItems()).hasSize(1);
+		assertThat(chatRoomRepository.findById(pending.chatRoomId()).orElseThrow().getChatRoomStatus())
+				.isEqualTo(ChatRoomStatus.CLOSED);
+		assertThat(itemRepository.findById(target.getId()).orElseThrow().getQuantity()).isEqualTo(5);
+		assertThat(itemRepository.findById(offered.getId()).orElseThrow().getQuantity()).isEqualTo(2);
+
+		for (ExchangeRequestStatus status : List.of(ExchangeRequestStatus.CANCELED,
+				ExchangeRequestStatus.COMPLETED, ExchangeRequestStatus.REJECTED)) {
+			canceled.changeStatus(status);
+			assertThatThrownBy(() -> service.cancel(pending.exchangeRequestId(), requester.getId()))
+					.isInstanceOf(ApiException.class)
+					.satisfies(exception -> assertThat(((ApiException) exception).code().value()).isEqualTo("CONFLICT"));
+		}
+		assertThatThrownBy(() -> service.cancel(Long.MAX_VALUE, requester.getId()))
+				.isInstanceOf(ApiException.class)
+				.satisfies(exception -> assertThat(((ApiException) exception).code().value()).isEqualTo("NOT_FOUND"));
+	}
+
+	@Test
 	void requesterCanLoadPendingRequestForEditing() {
 		User owner = persist(new User("owner"));
 		User requester = persist(new User("requester"));
@@ -160,7 +200,7 @@ class ExchangeRequestServiceTest {
 		Item offered = persist(item(requester, 2, ItemState.AVAILABLE));
 		var pending = service.create(requester.getId(), target.getId(), request(1, offered, 2));
 
-		var response = service.findForEdit(pending.exchangeRequestId(), requester.getId());
+		var response = queryService.findForEdit(pending.exchangeRequestId(), requester.getId());
 
 		assertThat(response.exchangeRequestId()).isEqualTo(pending.exchangeRequestId());
 		assertThat(response.itemId()).isEqualTo(target.getId());
@@ -168,7 +208,7 @@ class ExchangeRequestServiceTest {
 		assertThat(response.offeredItems()).extracting("itemId").containsExactly(offered.getId());
 		assertThat(response.offeredItems()).extracting("quantity").containsExactly(2);
 		assertThat(response.requestedStatus()).isEqualTo(ExchangeRequestStatus.PENDING);
-		assertThatThrownBy(() -> service.findForEdit(pending.exchangeRequestId(), owner.getId()))
+		assertThatThrownBy(() -> queryService.findForEdit(pending.exchangeRequestId(), owner.getId()))
 				.isInstanceOf(ApiException.class)
 				.satisfies(exception -> assertThat(((ApiException) exception).code().value())
 						.isEqualTo("EXCHANGE_REQUEST_UPDATE_FORBIDDEN"));

@@ -2,7 +2,7 @@ package com.example.KTB_Agile_backend.item.dto.response;
 
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public record MyItemPageResponse(
@@ -26,7 +26,7 @@ public record MyItemPageResponse(
 			Long likeCount,
 			Long exchangeRequestCount,
 			Boolean isLiked,
-			OffsetDateTime createdAt
+			LocalDateTime createdAt
 	) {
 
 		public MyItem {

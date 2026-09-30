@@ -169,7 +169,7 @@ class UserPreferenceServiceTest {
 	void returnsExistingAnswers() {
 		UserRepository userRepository = mock(UserRepository.class);
 		UserPreferenceRepository preferenceRepository = mock(UserPreferenceRepository.class);
-		UserPreferenceService service = new UserPreferenceService(userRepository, preferenceRepository);
+		UserPreferenceQueryService service = new UserPreferenceQueryService(userRepository, preferenceRepository);
 		User user = new User("nickname");
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(user));
 		when(preferenceRepository.findByUser_Id(42L)).thenReturn(Optional.of(new UserPreference(

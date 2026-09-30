@@ -64,10 +64,6 @@ public class ExchangeRequest extends UpdatableEntity {
 		this.group = group;
 	}
 
-	public ExchangeRequest(User requester, Item item, Integer requestedQuantity) {
-		this(requester, item, requestedQuantity, null);
-	}
-
 	public void addOfferedItem(Item item, Integer quantity) {
 		offeredItems.add(new OfferedItem(this, item, quantity));
 	}

@@ -25,7 +25,6 @@ public class GroupQueryService {
 	private static final int CURSOR_PAGE_SIZE = 10;
 	private static final int MY_GROUP_PAGE_SIZE = 5;
 	private static final int RECOMMENDATION_PAGE_SIZE = 10;
-	private static final int RECOMMENDATION_CURSOR_PARTS = 2;
 
 	private final GroupRepository groupRepository;
 
@@ -57,7 +56,7 @@ public class GroupQueryService {
 
 	@Transactional(readOnly = true)
 	public GroupPageResponse recommendations(Long userId, String cursor) {
-		RecommendationCursor recommendationCursor = decodeRecommendationCursor(cursor);
+		RecommendationCursor recommendationCursor = RecommendationCursor.decode(cursor);
 		Pageable pageable = PageRequest.of(0, RECOMMENDATION_PAGE_SIZE + 1);
 		List<GroupSummary> groups = recommendationCursor == null
 				? groupRepository.findRecommendations(userId, GroupMemberStatus.ACTIVE, pageable)
@@ -70,41 +69,36 @@ public class GroupQueryService {
 				);
 
 		CursorPage<GroupSummary> page = CursorPage.from(
-				groups, RECOMMENDATION_PAGE_SIZE, GroupQueryService::encodeRecommendationCursor);
+				groups, RECOMMENDATION_PAGE_SIZE, RecommendationCursor::encode);
 		return new GroupPageResponse(page.items(), page.nextCursor(), page.hasNext());
 	}
 
-	private static RecommendationCursor decodeRecommendationCursor(String cursor) {
-		if (cursor == null || cursor.isBlank()) {
-			return null;
-		}
-
-		try {
-			String[] values = CursorCodec.decodeValue(cursor).split(":", -1);
-			if (values.length != RECOMMENDATION_CURSOR_PARTS) {
-				throw new IllegalArgumentException();
-			}
-
-			long memberCount = Long.parseLong(values[0]);
-			long groupId = Long.parseLong(values[1]);
-			if (memberCount < 0 || groupId <= 0) {
-				throw new IllegalArgumentException();
-			}
-			return new RecommendationCursor(memberCount, groupId);
-		} catch (IllegalArgumentException exception) {
-			throw new ApiException(
-					ErrorCode.INVALID_CURSOR,
-					List.of(),
-					exception
-			);
-		}
-	}
-
-	private static String encodeRecommendationCursor(GroupSummary group) {
-		String value = group.memberCount() + ":" + group.groupId();
-		return CursorCodec.encodeValue(value);
-	}
-
 	private record RecommendationCursor(long memberCount, long groupId) {
+		private static final int PART_COUNT = 2;
+
+		private static RecommendationCursor decode(String cursor) {
+			if (cursor == null || cursor.isBlank()) {
+				return null;
+			}
+			try {
+				String[] values = CursorCodec.decodeValue(cursor).split(":", -1);
+				if (values.length != PART_COUNT) {
+					throw new IllegalArgumentException();
+				}
+
+				long memberCount = Long.parseLong(values[0]);
+				long groupId = Long.parseLong(values[1]);
+				if (memberCount < 0 || groupId <= 0) {
+					throw new IllegalArgumentException();
+				}
+				return new RecommendationCursor(memberCount, groupId);
+			} catch (IllegalArgumentException exception) {
+				throw new ApiException(ErrorCode.INVALID_CURSOR, List.of(), exception);
+			}
+		}
+
+		private static String encode(GroupSummary group) {
+			return CursorCodec.encodeValue(group.memberCount() + ":" + group.groupId());
+		}
 	}
 }

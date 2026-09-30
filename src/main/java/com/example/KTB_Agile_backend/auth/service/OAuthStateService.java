@@ -4,6 +4,7 @@ import com.example.KTB_Agile_backend.auth.state.OAuthStateStore;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorDetail;
 import com.example.KTB_Agile_backend.auth.exception.AuthErrorCode;
+import com.example.KTB_Agile_backend.common.util.Hashing;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -82,9 +83,6 @@ public class OAuthStateService {
 	}
 
 	private static ApiException authenticationFailed() {
-		return new ApiException(
-			AuthErrorCode.AUTH_OAUTH_STATE_INVALID,
-				AUTHENTICATION_DETAILS
-		);
+		return new ApiException(AuthErrorCode.AUTH_OAUTH_STATE_INVALID, AUTHENTICATION_DETAILS);
 	}
 }

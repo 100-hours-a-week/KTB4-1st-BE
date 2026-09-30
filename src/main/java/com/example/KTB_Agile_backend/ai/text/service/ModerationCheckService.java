@@ -1,7 +1,7 @@
 package com.example.KTB_Agile_backend.ai.text.service;
 
-import com.example.KTB_Agile_backend.auth.service.Hashing;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
+import com.example.KTB_Agile_backend.common.util.Hashing;
 import com.example.KTB_Agile_backend.ai.exception.AiErrorCode;
 import com.example.KTB_Agile_backend.ai.text.dto.request.ModerationCheckRequest;
 import com.example.KTB_Agile_backend.ai.text.dto.response.ModerationCheckResponse;
@@ -110,8 +110,7 @@ public class ModerationCheckService {
 	}
 
 	private static ApiException aiFailure(Throwable cause) {
-		return new ApiException(AiErrorCode.AI_TEXT_MODERATION_FAILED,
-				List.of(), cause);
+		return new ApiException(AiErrorCode.AI_TEXT_MODERATION_FAILED, List.of(), cause);
 	}
 
 	public record AiModerationResponse(Boolean isAppropriate, String rejectionReason, String keyword) {

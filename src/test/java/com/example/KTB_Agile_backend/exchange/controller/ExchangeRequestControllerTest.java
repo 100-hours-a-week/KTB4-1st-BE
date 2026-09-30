@@ -1,11 +1,15 @@
 package com.example.KTB_Agile_backend.exchange.controller;
 
 import com.example.KTB_Agile_backend.common.exception.GlobalExceptionHandler;
+import com.example.KTB_Agile_backend.common.exception.ApiException;
+import com.example.KTB_Agile_backend.exchange.exception.ExchangeErrorCode;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestCreatedResponse;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestEditResponse;
+import com.example.KTB_Agile_backend.exchange.dto.response.OfferedItemResponse;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestStatusResponse;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
 import com.example.KTB_Agile_backend.exchange.service.ExchangeRequestService;
+import com.example.KTB_Agile_backend.exchange.service.ExchangeRequestQueryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -13,32 +17,37 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class ExchangeRequestControllerTest {
 
 	private ExchangeRequestService service;
+	private ExchangeRequestQueryService queryService;
 	private MockMvc mockMvc;
 
 	@BeforeEach
 	void setUp() {
 		service = mock(ExchangeRequestService.class);
+		queryService = mock(ExchangeRequestQueryService.class);
 		mockMvc = MockMvcBuilders
-				.standaloneSetup(new ExchangeRequestController(service))
+				.standaloneSetup(new ExchangeRequestController(service, queryService))
 				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
 	}
@@ -46,8 +55,8 @@ class ExchangeRequestControllerTest {
 	@Test
 	void createsRequestAndReturnsChatRoomId() throws Exception {
 		when(service.create(eq(42L), eq(123L), any())).thenReturn(new ExchangeRequestCreatedResponse(
-				301L, 123L, 1, List.of(new ExchangeRequestCreatedResponse.OfferedItemResponse(213L, 2)),
-				ExchangeRequestStatus.PENDING, 401L, OffsetDateTime.parse("2026-09-05T11:00:00+09:00")));
+				301L, 123L, 1, List.of(new OfferedItemResponse(213L, 2)),
+				ExchangeRequestStatus.PENDING, 401L, LocalDateTime.parse("2026-09-05T11:00:00")));
 
 		mockMvc.perform(post("/items/123/exchange-requests")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
@@ -67,9 +76,9 @@ class ExchangeRequestControllerTest {
 
 	@Test
 	void returnsPendingRequestValuesForEditing() throws Exception {
-		when(service.findForEdit(301L, 42L)).thenReturn(new ExchangeRequestEditResponse(
+		when(queryService.findForEdit(301L, 42L)).thenReturn(new ExchangeRequestEditResponse(
 				301L, 123L, 2,
-				List.of(new ExchangeRequestEditResponse.OfferedItemResponse(213L, 3)),
+				List.of(new OfferedItemResponse(213L, 3)),
 				ExchangeRequestStatus.PENDING));
 
 		mockMvc.perform(get("/exchange-requests/301")
@@ -82,7 +91,7 @@ class ExchangeRequestControllerTest {
 				.andExpect(jsonPath("$.data.offeredItems[0].quantity").value(3))
 				.andExpect(jsonPath("$.data.requestedStatus").value("PENDING"));
 
-		verify(service).findForEdit(301L, 42L);
+		verify(queryService).findForEdit(301L, 42L);
 	}
 
 	@Test
@@ -96,6 +105,52 @@ class ExchangeRequestControllerTest {
 				.andExpect(status().isNoContent());
 
 		verify(service).update(eq(301L), eq(42L), any());
+	}
+
+	@Test
+	void cancelsRequestWithoutBodyAndReturnsNoContent() throws Exception {
+		for (String path : List.of("/exchange-requests/301", "/api/exchange-requests/301")) {
+			mockMvc.perform(delete(path)
+						.principal(new UsernamePasswordAuthenticationToken("42", null)))
+					.andExpect(status().isNoContent())
+					.andExpect(content().string(""));
+		}
+		verify(service, org.mockito.Mockito.times(2)).cancel(301L, 42L);
+	}
+
+	@Test
+	void rejectsInvalidCancellationIds() throws Exception {
+		for (String id : List.of("abc", "0", "-1", "9223372036854775808")) {
+			mockMvc.perform(delete("/api/exchange-requests/" + id)
+						.principal(new UsernamePasswordAuthenticationToken("42", null)))
+					.andExpect(status().isBadRequest())
+					.andExpect(jsonPath("$.data").isEmpty())
+					.andExpect(jsonPath("$.error.code").value("BAD_REQUEST"))
+					.andExpect(jsonPath("$.error.message").value("교환 요청 ID가 올바르지 않습니다."))
+					.andExpect(jsonPath("$.error.details").isEmpty());
+		}
+	}
+
+	@Test
+	void returnsCancellationErrors() throws Exception {
+		for (ExchangeErrorCode code : List.of(ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_FORBIDDEN,
+				ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_NOT_FOUND,
+				ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_CONFLICT)) {
+			doThrow(new ApiException(code)).when(service).cancel(301L, 42L);
+			mockMvc.perform(delete("/api/exchange-requests/301")
+						.principal(new UsernamePasswordAuthenticationToken("42", null)))
+					.andExpect(status().is(code.status().value()))
+					.andExpect(jsonPath("$.data").isEmpty())
+					.andExpect(jsonPath("$.error.code").value(code.value()))
+					.andExpect(jsonPath("$.error.message").value(code.message()))
+					.andExpect(jsonPath("$.error.details").isEmpty());
+		}
+		doThrow(new IllegalStateException("database failure")).when(service).cancel(301L, 42L);
+		mockMvc.perform(delete("/api/exchange-requests/301").servletPath("/api/exchange-requests/301")
+					.principal(new UsernamePasswordAuthenticationToken("42", null)))
+				.andExpect(status().isInternalServerError())
+				.andExpect(jsonPath("$.error.code").value("INTERNAL_SERVER_ERROR"))
+				.andExpect(jsonPath("$.error.message").value("서버 오류가 발생했습니다."));
 	}
 
 	@Test
@@ -140,7 +195,7 @@ class ExchangeRequestControllerTest {
 	void updatesRequestStatus() throws Exception {
 		when(service.updateStatus(301L, 42L, ExchangeRequestStatus.COMPLETED)).thenReturn(
 				new ExchangeRequestStatusResponse(301L, 123L, ExchangeRequestStatus.COMPLETED,
-						OffsetDateTime.parse("2026-09-05T16:00:00+09:00")));
+						LocalDateTime.parse("2026-09-05T16:00:00")));
 
 		mockMvc.perform(patch("/exchange-requests/301/status")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
@@ -154,7 +209,7 @@ class ExchangeRequestControllerTest {
 
 		when(service.updateStatus(301L, 42L, ExchangeRequestStatus.CANCELED)).thenReturn(
 				new ExchangeRequestStatusResponse(301L, 123L, ExchangeRequestStatus.CANCELED,
-						OffsetDateTime.parse("2026-09-05T16:00:00+09:00")));
+						LocalDateTime.parse("2026-09-05T16:00:00")));
 		mockMvc.perform(patch("/exchange-requests/301/status")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
 					.contentType(MediaType.APPLICATION_JSON)
