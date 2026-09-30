@@ -50,7 +50,7 @@ class ExchangeRequestCancellationSecurityTest {
 							.header("Authorization", "Bearer " + token))
 						.andExpect(status().isUnauthorized())
 						.andExpect(jsonPath("$.data").isEmpty())
-						.andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"))
+						.andExpect(jsonPath("$.error.code").value("AUTHENTICATION_REQUIRED"))
 						.andExpect(jsonPath("$.error.message")
 								.value("로그인이 필요합니다."))
 						.andExpect(jsonPath("$.error.details").isEmpty());
