@@ -103,7 +103,9 @@ public class KakaoOAuthProviderClient implements OAuthProviderClient {
 				"kakao-" + providerUserId
 		);
 		String profileImageUrl = firstNonBlank(
-				profile == null ? null : profile.profileImageUrl()
+				profile == null || Boolean.TRUE.equals(profile.defaultImage())
+						? null
+						: profile.profileImageUrl()
 		);
 		return new OAuthUserInfo(PROVIDER_NAME, providerUserId, nickname, profileImageUrl);
 	}
