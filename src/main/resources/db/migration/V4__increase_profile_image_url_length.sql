@@ -1,2 +1,2 @@
 ALTER TABLE users
-    MODIFY COLUMN profile_image_url VARCHAR(255) NULL;
+    MODIFY COLUMN profile_image_url TEXT NULL;
