@@ -12,7 +12,8 @@ public record KakaoUserResponse(
 
 	public record Profile(
 			String nickname,
-			@JsonProperty("profile_image_url") String profileImageUrl
+			@JsonProperty("profile_image_url") String profileImageUrl,
+			@JsonProperty("is_default_image") Boolean defaultImage
 	) {
 	}
 }
