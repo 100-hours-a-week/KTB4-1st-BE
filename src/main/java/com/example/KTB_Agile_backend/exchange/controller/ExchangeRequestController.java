@@ -16,6 +16,7 @@ import tools.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -69,6 +70,16 @@ public class ExchangeRequestController {
 		long requestId = parseId(exchangeRequestId, ExchangeErrorCode.EXCHANGE_REQUEST_UPDATE_INVALID);
 		ExchangeRequestCreateRequest request = parseRequest(body, ExchangeErrorCode.EXCHANGE_REQUEST_UPDATE_INVALID);
 		exchangeRequestService.update(requestId, Long.valueOf(authentication.getName()), request);
+		return ResponseEntity.noContent().build();
+	}
+
+	@DeleteMapping({"/exchange-requests/{exchangeRequestId}", "/api/exchange-requests/{exchangeRequestId}"})
+	public ResponseEntity<Void> cancel(
+			Authentication authentication,
+			@PathVariable String exchangeRequestId
+	) {
+		long requestId = parseId(exchangeRequestId, ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_INVALID);
+		exchangeRequestService.cancel(requestId, Long.valueOf(authentication.getName()));
 		return ResponseEntity.noContent().build();
 	}
 

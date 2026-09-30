@@ -1,6 +1,8 @@
 package com.example.KTB_Agile_backend.exchange.controller;
 
 import com.example.KTB_Agile_backend.common.exception.GlobalExceptionHandler;
+import com.example.KTB_Agile_backend.common.exception.ApiException;
+import com.example.KTB_Agile_backend.exchange.exception.ExchangeErrorCode;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestCreatedResponse;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestEditResponse;
 import com.example.KTB_Agile_backend.exchange.dto.response.OfferedItemResponse;
@@ -21,13 +23,16 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -100,6 +105,52 @@ class ExchangeRequestControllerTest {
 				.andExpect(status().isNoContent());
 
 		verify(service).update(eq(301L), eq(42L), any());
+	}
+
+	@Test
+	void cancelsRequestWithoutBodyAndReturnsNoContent() throws Exception {
+		for (String path : List.of("/exchange-requests/301", "/api/exchange-requests/301")) {
+			mockMvc.perform(delete(path)
+						.principal(new UsernamePasswordAuthenticationToken("42", null)))
+					.andExpect(status().isNoContent())
+					.andExpect(content().string(""));
+		}
+		verify(service, org.mockito.Mockito.times(2)).cancel(301L, 42L);
+	}
+
+	@Test
+	void rejectsInvalidCancellationIds() throws Exception {
+		for (String id : List.of("abc", "0", "-1", "9223372036854775808")) {
+			mockMvc.perform(delete("/api/exchange-requests/" + id)
+						.principal(new UsernamePasswordAuthenticationToken("42", null)))
+					.andExpect(status().isBadRequest())
+					.andExpect(jsonPath("$.data").isEmpty())
+					.andExpect(jsonPath("$.error.code").value("BAD_REQUEST"))
+					.andExpect(jsonPath("$.error.message").value("교환 요청 ID가 올바르지 않습니다."))
+					.andExpect(jsonPath("$.error.details").isEmpty());
+		}
+	}
+
+	@Test
+	void returnsCancellationErrors() throws Exception {
+		for (ExchangeErrorCode code : List.of(ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_FORBIDDEN,
+				ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_NOT_FOUND,
+				ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_CONFLICT)) {
+			doThrow(new ApiException(code)).when(service).cancel(301L, 42L);
+			mockMvc.perform(delete("/api/exchange-requests/301")
+						.principal(new UsernamePasswordAuthenticationToken("42", null)))
+					.andExpect(status().is(code.status().value()))
+					.andExpect(jsonPath("$.data").isEmpty())
+					.andExpect(jsonPath("$.error.code").value(code.value()))
+					.andExpect(jsonPath("$.error.message").value(code.message()))
+					.andExpect(jsonPath("$.error.details").isEmpty());
+		}
+		doThrow(new IllegalStateException("database failure")).when(service).cancel(301L, 42L);
+		mockMvc.perform(delete("/api/exchange-requests/301").servletPath("/api/exchange-requests/301")
+					.principal(new UsernamePasswordAuthenticationToken("42", null)))
+				.andExpect(status().isInternalServerError())
+				.andExpect(jsonPath("$.error.code").value("INTERNAL_SERVER_ERROR"))
+				.andExpect(jsonPath("$.error.message").value("서버 오류가 발생했습니다."));
 	}
 
 	@Test
