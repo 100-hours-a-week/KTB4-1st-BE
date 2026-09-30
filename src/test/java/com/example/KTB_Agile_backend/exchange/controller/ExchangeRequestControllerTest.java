@@ -109,19 +109,20 @@ class ExchangeRequestControllerTest {
 
 	@Test
 	void cancelsRequestWithoutBodyAndReturnsNoContent() throws Exception {
-		for (String path : List.of("/exchange-requests/301", "/api/exchange-requests/301")) {
-			mockMvc.perform(delete(path)
-						.principal(new UsernamePasswordAuthenticationToken("42", null)))
-					.andExpect(status().isNoContent())
-					.andExpect(content().string(""));
-		}
-		verify(service, org.mockito.Mockito.times(2)).cancel(301L, 42L);
+		mockMvc.perform(delete("/exchange-requests/301")
+					.principal(new UsernamePasswordAuthenticationToken("42", null)))
+			.andExpect(status().isNoContent())
+			.andExpect(content().string(""));
+		mockMvc.perform(delete("/api/exchange-requests/301"))
+			.andExpect(status().isNotFound());
+
+		verify(service).cancel(301L, 42L);
 	}
 
 	@Test
 	void rejectsInvalidCancellationIds() throws Exception {
 		for (String id : List.of("abc", "0", "-1", "9223372036854775808")) {
-			mockMvc.perform(delete("/api/exchange-requests/" + id)
+			mockMvc.perform(delete("/exchange-requests/" + id)
 						.principal(new UsernamePasswordAuthenticationToken("42", null)))
 					.andExpect(status().isBadRequest())
 					.andExpect(jsonPath("$.data").isEmpty())
@@ -137,7 +138,7 @@ class ExchangeRequestControllerTest {
 				ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_NOT_FOUND,
 				ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_CONFLICT)) {
 			doThrow(new ApiException(code)).when(service).cancel(301L, 42L);
-			mockMvc.perform(delete("/api/exchange-requests/301")
+			mockMvc.perform(delete("/exchange-requests/301")
 						.principal(new UsernamePasswordAuthenticationToken("42", null)))
 					.andExpect(status().is(code.status().value()))
 					.andExpect(jsonPath("$.data").isEmpty())
@@ -146,7 +147,7 @@ class ExchangeRequestControllerTest {
 					.andExpect(jsonPath("$.error.details").isEmpty());
 		}
 		doThrow(new IllegalStateException("database failure")).when(service).cancel(301L, 42L);
-		mockMvc.perform(delete("/api/exchange-requests/301").servletPath("/api/exchange-requests/301")
+		mockMvc.perform(delete("/exchange-requests/301").servletPath("/exchange-requests/301")
 					.principal(new UsernamePasswordAuthenticationToken("42", null)))
 				.andExpect(status().isInternalServerError())
 				.andExpect(jsonPath("$.error.code").value("INTERNAL_SERVER_ERROR"))

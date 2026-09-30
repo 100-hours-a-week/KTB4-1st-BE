@@ -26,7 +26,7 @@ public class User extends SoftDeletableEntity {
 	@Column(name = "user_id", nullable = false)
 	private Long id;
 
-	@Column(name = "profile_image_url", length = 100)
+	@Column(name = "profile_image_url", columnDefinition = "TEXT")
 	private String profileImageUrl;
 
 	@Column(nullable = false, length = 200)
@@ -46,7 +46,7 @@ public class User extends SoftDeletableEntity {
 
 	public User(String nickname, String profileImageUrl) {
 		this(nickname);
-		this.profileImageUrl = requireMaxLength(profileImageUrl, "profileImageUrl", 100);
+		this.profileImageUrl = profileImageUrl;
 	}
 
 	public void withdraw(LocalDateTime withdrawnAt) {
