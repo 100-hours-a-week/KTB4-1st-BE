@@ -9,6 +9,7 @@ COPY src src
 
 # test는 CI에서 통과했으므로 제외
 RUN --mount=type=cache,target=/root/.gradle \
+    --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN \
     chmod +x ./gradlew && ./gradlew bootJar -x test --no-daemon --build-cache
 
 WORKDIR /workspace/build/libs
