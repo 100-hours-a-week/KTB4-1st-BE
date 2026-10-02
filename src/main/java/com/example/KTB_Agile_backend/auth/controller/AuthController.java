@@ -30,7 +30,8 @@ public class AuthController {
 
 	private static final String OAUTH_STATE_COOKIE = "oauth_state";
 	private static final String REFRESH_TOKEN_COOKIE = "refresh_token";
-	private static final String COOKIE_PATH = "/auth";
+	private static final String OAUTH_STATE_COOKIE_PATH = "/auth";
+	private static final String REFRESH_TOKEN_COOKIE_PATH = "/bff/auth";
 
 	private final AuthService authService;
 	private final Duration oauthStateTtl;
@@ -119,7 +120,7 @@ public class AuthController {
 				.httpOnly(true)
 				.secure(secureCookies)
 				.sameSite("Lax")
-				.path(COOKIE_PATH)
+				.path(OAUTH_STATE_COOKIE_PATH)
 				.maxAge(oauthStateTtl)
 				.build();
 	}
@@ -129,7 +130,7 @@ public class AuthController {
 				.httpOnly(true)
 				.secure(secureCookies)
 				.sameSite("Lax")
-				.path(COOKIE_PATH)
+				.path(REFRESH_TOKEN_COOKIE_PATH)
 				.maxAge(refreshTokenTtl)
 				.build();
 	}
@@ -139,7 +140,7 @@ public class AuthController {
 				.httpOnly(true)
 				.secure(secureCookies)
 				.sameSite("Lax")
-				.path(COOKIE_PATH)
+				.path(REFRESH_TOKEN_COOKIE_PATH)
 				.maxAge(Duration.ZERO)
 				.build();
 	}
