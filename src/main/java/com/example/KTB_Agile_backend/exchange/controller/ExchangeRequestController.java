@@ -96,6 +96,7 @@ public class ExchangeRequestController {
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 
+
 	private static ExchangeRequestCreateRequest parseCreateRequest(JsonNode body) {
 		ExchangeRequestCreateRequest request = parseRequest(body, ExchangeErrorCode.EXCHANGE_REQUEST_CREATE_INVALID);
 		JsonNode groupId = body.get("groupId");
