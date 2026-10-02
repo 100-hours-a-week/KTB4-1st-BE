@@ -12,7 +12,7 @@ import java.util.Optional;
 public class CaffeineItemPriceCache implements ItemPriceCache {
 
 	private final Cache<String, CachedPrice> cache = Caffeine.newBuilder()
-			.expireAfter(new Expiry<>() {
+			.expireAfter(new Expiry<String, CachedPrice>() {
 				@Override
 				public long expireAfterCreate(String key, CachedPrice value, long currentTime) {
 					return value.ttlNanos();
