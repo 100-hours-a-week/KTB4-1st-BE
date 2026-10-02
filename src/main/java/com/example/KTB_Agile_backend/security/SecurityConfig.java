@@ -6,7 +6,6 @@ import com.example.KTB_Agile_backend.common.response.ErrorResponse;
 import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -42,8 +41,7 @@ import java.util.List;
 public class SecurityConfig {
 
 	private static final int MIN_JWT_SECRET_BYTES = 32;
-	private static final String PROMETHEUS_AUTH_ENABLED = "monitoring.prometheus.auth.enabled";
-	private static final String DEV_PROFILE = "dev";
+	private static final String PROD_PROFILE = "prod";
 
 	@Bean
 	JwtDecoder jwtDecoder(@Value("${auth.jwt.secret}") String jwtSecret) {
@@ -75,8 +73,7 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	@Profile(DEV_PROFILE)
-	@ConditionalOnProperty(name = PROMETHEUS_AUTH_ENABLED, havingValue = "true")
+	@Profile(PROD_PROFILE)
 	@Order(1)
 	SecurityFilterChain prometheusSecurityFilterChain(HttpSecurity http) throws Exception {
 		http
@@ -89,31 +86,16 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	@Profile(DEV_PROFILE)
-	@ConditionalOnProperty(name = PROMETHEUS_AUTH_ENABLED, havingValue = "false", matchIfMissing = true)
-	@Order(1)
-	SecurityFilterChain prometheusDevSecurityFilterChain(HttpSecurity http) throws Exception {
-		http
-				.securityMatcher("/actuator/prometheus")
-				.authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-				.csrf(AbstractHttpConfigurer::disable)
-				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-		return http.build();
-	}
-
-	@Bean
-	@Profile(DEV_PROFILE)
-	@ConditionalOnProperty(name = PROMETHEUS_AUTH_ENABLED, havingValue = "true")
+	@Profile(PROD_PROFILE)
 	PasswordEncoder prometheusPasswordEncoder() {
 		return PasswordEncoderFactories.createDelegatingPasswordEncoder();
 	}
 
 	@Bean
-	@Profile(DEV_PROFILE)
-	@ConditionalOnProperty(name = PROMETHEUS_AUTH_ENABLED, havingValue = "true")
+	@Profile(PROD_PROFILE)
 	UserDetailsService prometheusUserDetailsService(
-			@Value("${PROMETHEUS_AUTH_USERNAME}") String username,
-			@Value("${PROMETHEUS_AUTH_PASSWORD}") String password,
+			@Value("${monitoring.prometheus.auth.username}") String username,
+			@Value("${monitoring.prometheus.auth.password}") String password,
 			PasswordEncoder prometheusPasswordEncoder
 	) {
 		if (username.isBlank() || password.isBlank()) {
