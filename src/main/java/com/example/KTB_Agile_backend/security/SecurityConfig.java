@@ -43,6 +43,7 @@ public class SecurityConfig {
 
 	private static final int MIN_JWT_SECRET_BYTES = 32;
 	private static final String PROMETHEUS_AUTH_ENABLED = "monitoring.prometheus.auth.enabled";
+	private static final String DEV_PROFILE = "dev";
 
 	@Bean
 	JwtDecoder jwtDecoder(@Value("${auth.jwt.secret}") String jwtSecret) {
@@ -74,7 +75,7 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	@Profile("dev")
+	@Profile(DEV_PROFILE)
 	@ConditionalOnProperty(name = PROMETHEUS_AUTH_ENABLED, havingValue = "true")
 	@Order(1)
 	SecurityFilterChain prometheusSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -88,7 +89,7 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	@Profile("dev")
+	@Profile(DEV_PROFILE)
 	@ConditionalOnProperty(name = PROMETHEUS_AUTH_ENABLED, havingValue = "false", matchIfMissing = true)
 	@Order(1)
 	SecurityFilterChain prometheusDevSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -101,14 +102,14 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	@Profile("dev")
+	@Profile(DEV_PROFILE)
 	@ConditionalOnProperty(name = PROMETHEUS_AUTH_ENABLED, havingValue = "true")
 	PasswordEncoder prometheusPasswordEncoder() {
 		return PasswordEncoderFactories.createDelegatingPasswordEncoder();
 	}
 
 	@Bean
-	@Profile("dev")
+	@Profile(DEV_PROFILE)
 	@ConditionalOnProperty(name = PROMETHEUS_AUTH_ENABLED, havingValue = "true")
 	UserDetailsService prometheusUserDetailsService(
 			@Value("${PROMETHEUS_AUTH_USERNAME}") String username,
