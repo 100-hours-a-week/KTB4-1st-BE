@@ -19,18 +19,16 @@ public class CaffeineItemPriceCache implements ItemPriceCache {
 				}
 
 				@Override
-				public long expireAfterUpdate(
-						String key, CachedPrice value, long currentTime, long currentDuration) {
+				public long expireAfterUpdate(String key, CachedPrice value, long currentTime, long currentDuration) {
 					return value.ttlNanos();
 				}
 
 				@Override
-				public long expireAfterRead(
-						String key, CachedPrice value, long currentTime, long currentDuration) {
+				public long expireAfterRead(String key, CachedPrice value, long currentTime, long currentDuration) {
 					return currentDuration;
 				}
 			})
-			// ponytail: 10,000-entry ceiling; raise it if measured evictions cause repeat AI estimates.
+			//10,000-entry ceiling; raise it if measured evictions cause repeat AI estimates.
 			.maximumSize(10_000)
 			.build();
 
