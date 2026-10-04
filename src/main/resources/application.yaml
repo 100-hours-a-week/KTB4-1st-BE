@@ -11,6 +11,20 @@ spring:
       hibernate:
         format_sql: true
 
+sentry:
+  dsn: https://229674fc538ca9111da07811ffe4537c@o4512173324500992.ingest.us.sentry.io/4512174894481408
+  # Add request headers and IP data to events.
+  send-default-pii: true
+  # Enable sending logs to Sentry.
+  logs:
+    enabled: true
+  # Captures all transactions; adjust this value in production.
+  traces-sample-rate: 1.0
+  # Profiles all profile sessions; adjust this value in production.
+  profile-session-sample-rate: 1.0
+  # Automatically start and stop profiling with each transaction.
+  profile-lifecycle: TRACE
+
 management:
   endpoints:
     web:

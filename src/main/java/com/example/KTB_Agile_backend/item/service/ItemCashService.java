@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -43,7 +42,6 @@ public class ItemCashService {
 		this.restClient = RestClient.builder().requestFactory(requestFactory).build();
 	}
 
-	@Transactional
 	public ItemPriceRangeCalculator.PriceRange resolvePrice(
 			String title,
 			String content,

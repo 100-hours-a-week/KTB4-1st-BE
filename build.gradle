@@ -1,9 +1,27 @@
+buildscript {
+	repositories {
+		mavenCentral()
+	}
+}
+
 plugins {
 	id 'java'
 	id 'org.springframework.boot' version '4.1.1'
 	id 'io.spring.dependency-management' version '1.1.7'
+	id 'io.sentry.jvm.gradle' version '6.23.0'
 	id 'com.github.spotbugs' version '6.5.11'
 	id 'pmd'
+}
+
+sentry {
+	// Generates a JVM (Java, Kotlin, etc.) source bundle and uploads your source code to Sentry.
+	// This enables source context, allowing you to see your source
+	// code as part of your stack traces in Sentry.
+	includeSourceContext = true
+
+	org = 'ktb4-wg'
+	projectName = 'java-spring-boot'
+	authToken = System.getenv('SENTRY_AUTH_TOKEN')
 }
 
 spotbugs {
@@ -47,6 +65,7 @@ repositories {
 dependencies {
 	implementation platform('software.amazon.awssdk:bom:2.54.17')
 	implementation 'software.amazon.awssdk:s3'
+	implementation 'com.github.ben-manes.caffeine:caffeine'
 	implementation 'org.springframework.boot:spring-boot-h2console'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -56,8 +75,10 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+	implementation 'io.sentry:sentry-async-profiler:8.58.0'
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'com.h2database:h2'
+	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 	runtimeOnly 'org.flywaydb:flyway-mysql'
 	runtimeOnly 'com.mysql:mysql-connector-j'
 	annotationProcessor 'org.projectlombok:lombok'
