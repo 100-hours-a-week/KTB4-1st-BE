@@ -13,6 +13,23 @@ spring:
       hibernate:
         show_sql: false
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  metrics:
+    distribution:
+      percentiles-histogram:
+        "http.server.requests": true
+        "item.price.ai.request": true
+
+monitoring:
+  prometheus:
+    auth:
+      username: ${PROMETHEUS_AUTH_USERNAME}
+      password: ${PROMETHEUS_AUTH_PASSWORD}
+
 cloud:
   aws:
     s3:

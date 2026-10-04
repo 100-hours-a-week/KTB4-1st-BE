@@ -58,6 +58,8 @@ jobs:
           # dev 빌드에서 적재된 GHA 원격 캐시를 재활용하여 배포 빌드 시간을 단축
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
+          secrets: |
+            sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
 
       - name: Set Lowercase Package Name
         id: pkg
