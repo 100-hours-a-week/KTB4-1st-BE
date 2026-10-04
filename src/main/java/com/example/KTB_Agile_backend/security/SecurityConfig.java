@@ -8,25 +8,18 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
-import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.factory.PasswordEncoderFactories;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -41,7 +34,6 @@ import java.util.List;
 public class SecurityConfig {
 
 	private static final int MIN_JWT_SECRET_BYTES = 32;
-	private static final String PROD_PROFILE = "prod";
 
 	@Bean
 	JwtDecoder jwtDecoder(@Value("${auth.jwt.secret}") String jwtSecret) {
@@ -70,41 +62,6 @@ public class SecurityConfig {
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", configuration);
 		return source;
-	}
-
-	@Bean
-	@Profile(PROD_PROFILE)
-	@Order(1)
-	SecurityFilterChain prometheusSecurityFilterChain(HttpSecurity http) throws Exception {
-		http
-				.securityMatcher("/actuator/prometheus")
-				.authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-				.httpBasic(Customizer.withDefaults())
-				.csrf(AbstractHttpConfigurer::disable)
-				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-		return http.build();
-	}
-
-	@Bean
-	@Profile(PROD_PROFILE)
-	PasswordEncoder prometheusPasswordEncoder() {
-		return PasswordEncoderFactories.createDelegatingPasswordEncoder();
-	}
-
-	@Bean
-	@Profile(PROD_PROFILE)
-	UserDetailsService prometheusUserDetailsService(
-			@Value("${monitoring.prometheus.auth.username}") String username,
-			@Value("${monitoring.prometheus.auth.password}") String password,
-			PasswordEncoder prometheusPasswordEncoder
-	) {
-		if (username.isBlank() || password.isBlank()) {
-			throw new IllegalArgumentException("Prometheus authentication credentials must not be blank");
-		}
-		return new InMemoryUserDetailsManager(User.withUsername(username)
-				.password(prometheusPasswordEncoder.encode(password))
-				.roles("PROMETHEUS")
-				.build());
 	}
 
 	@Bean
