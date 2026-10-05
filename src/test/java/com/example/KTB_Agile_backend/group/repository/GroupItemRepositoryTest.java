@@ -2,7 +2,7 @@ package com.example.KTB_Agile_backend.group.repository;
 
 import com.example.KTB_Agile_backend.group.entity.Group;
 import com.example.KTB_Agile_backend.group.entity.GroupItem;
-import com.example.KTB_Agile_backend.item.dto.response.ItemSummaryProjection;
+import com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.user.entity.User;
 import jakarta.persistence.EntityManager;

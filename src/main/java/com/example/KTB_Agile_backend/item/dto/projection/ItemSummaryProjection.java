@@ -1,4 +1,4 @@
-package com.example.KTB_Agile_backend.item.dto.response;
+package com.example.KTB_Agile_backend.item.dto.projection;
 
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 

@@ -1,7 +1,7 @@
 package com.example.KTB_Agile_backend.group.repository;
 
 import com.example.KTB_Agile_backend.group.entity.GroupItem;
-import com.example.KTB_Agile_backend.item.dto.response.ItemSummaryProjection;
+import com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -13,7 +13,7 @@ import java.util.List;
 public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 
 	@Query("""
-				select new com.example.KTB_Agile_backend.item.dto.response.ItemSummaryProjection(
+				select new com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection(
 					item.id,
 					item.title,
 					item.content,
@@ -37,7 +37,7 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 	);
 
 	@Query("""
-				select new com.example.KTB_Agile_backend.item.dto.response.ItemSummaryProjection(
+				select new com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection(
 					item.id,
 					item.title,
 					item.content,
