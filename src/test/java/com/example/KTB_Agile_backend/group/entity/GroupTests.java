@@ -31,7 +31,7 @@ class GroupTests {
 		group.delete();
 
 		assertThat(group.getDeletedAt()).isNotNull();
-		assertThat(group.getActiveGroupName()).isNull();
+		assertThat(group.getGroupName()).isEqualTo("그룹");
 	}
 
 	@Test
