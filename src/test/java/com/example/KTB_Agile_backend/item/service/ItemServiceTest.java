@@ -10,7 +10,6 @@ import com.example.KTB_Agile_backend.group.repository.GroupMemberRepository;
 import com.example.KTB_Agile_backend.group.repository.GroupRepository;
 import com.example.KTB_Agile_backend.image.entity.Image;
 import com.example.KTB_Agile_backend.image.repository.ImageRepository;
-import com.example.KTB_Agile_backend.image.service.ImageUrlResolver;
 import com.example.KTB_Agile_backend.image.service.S3ImageObjectService;
 import com.example.KTB_Agile_backend.item.dto.request.CreateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.request.UpdateItemRequest;
@@ -483,7 +482,7 @@ class ItemServiceTest {
 				groupMemberRepository,
 				groupItemRepository,
 				imageRepository,
-				mock(ImageUrlResolver.class),
+				Image::getImageUrl,
 				mock(ExchangeRequestRepository.class)
 		);
 	}
