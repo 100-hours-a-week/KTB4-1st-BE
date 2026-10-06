@@ -1,6 +1,7 @@
 package com.example.KTB_Agile_backend.item.entity;
 
 import com.example.KTB_Agile_backend.common.entity.SoftDeletableEntity;
+import com.example.KTB_Agile_backend.image.entity.Image;
 import com.example.KTB_Agile_backend.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -37,6 +38,10 @@ public class Item extends SoftDeletableEntity {
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "user_id", nullable = false)
 	private User user;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "thumbnail_image_id")
+	private Image thumbnailImage;
 
 	@Column(nullable = false)
 	private Integer quantity = 1;
@@ -130,6 +135,10 @@ public class Item extends SoftDeletableEntity {
 		this.unitPrice = requireNonNull(unitPrice, "unitPrice must not be null");
 		this.minUnitPrice = requireNonNull(minUnitPrice, "minUnitPrice must not be null");
 		this.maxUnitPrice = requireNonNull(maxUnitPrice, "maxUnitPrice must not be null");
+	}
+
+	public void setThumbnailImage(Image thumbnailImage) {
+		this.thumbnailImage = requireNonNull(thumbnailImage, "thumbnailImage must not be null");
 	}
 
 	public void delete() {
