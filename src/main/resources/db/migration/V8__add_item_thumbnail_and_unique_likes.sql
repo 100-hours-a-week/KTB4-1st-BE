@@ -14,3 +14,6 @@ ALTER TABLE items
     ADD INDEX idx_items_thumbnail_image (thumbnail_image_id),
     ADD CONSTRAINT fk_items_thumbnail_image
         FOREIGN KEY (thumbnail_image_id) REFERENCES images (image_id);
+
+ALTER TABLE item_likes
+    ADD CONSTRAINT uk_item_likes_item_user UNIQUE (item_id, user_id);
