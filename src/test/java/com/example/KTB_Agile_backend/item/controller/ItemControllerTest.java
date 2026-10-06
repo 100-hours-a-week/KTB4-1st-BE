@@ -8,6 +8,7 @@ import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.service.ItemService;
 import com.example.KTB_Agile_backend.item.service.ItemQueryService;
+import com.example.KTB_Agile_backend.item.service.ItemLikeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -32,15 +33,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ItemControllerTest {
 
 	private ItemService itemService;
+	private ItemLikeService itemLikeService;
 	private ItemQueryService itemQueryService;
 	private MockMvc mockMvc;
 
 	@BeforeEach
 	void setUp() {
 		itemService = mock(ItemService.class);
+		itemLikeService = mock(ItemLikeService.class);
 		itemQueryService = mock(ItemQueryService.class);
 		mockMvc = MockMvcBuilders
-				.standaloneSetup(new ItemController(itemService, itemQueryService))
+				.standaloneSetup(new ItemController(itemService, itemLikeService, itemQueryService))
 				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
 	}
