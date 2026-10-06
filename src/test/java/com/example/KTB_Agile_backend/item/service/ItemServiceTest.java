@@ -14,6 +14,7 @@ import com.example.KTB_Agile_backend.image.service.S3ImageObjectService;
 import com.example.KTB_Agile_backend.item.dto.request.CreateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.request.UpdateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
+import com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.entity.ItemStats;
@@ -243,7 +244,6 @@ class ItemServiceTest {
 		ItemStatsRepository itemStatsRepository = mock(ItemStatsRepository.class);
 		ItemLikeRepository itemLikeRepository = mock(ItemLikeRepository.class);
 		ImageRepository imageRepository = mock(ImageRepository.class);
-		User owner = user(10L);
 		User memberUser = user(42L);
 		ItemQueryService service = queryService(mock(ItemRepository.class), itemStatsRepository,
 				itemLikeRepository, groupRepository, groupMemberRepository, groupItemRepository, imageRepository);
@@ -251,14 +251,14 @@ class ItemServiceTest {
 		when(groupRepository.existsByIdAndDeletedAtIsNull(101L)).thenReturn(true);
 		when(groupMemberRepository.findByGroup_IdAndUser_Id(101L, 42L))
 				.thenReturn(Optional.of(new GroupMember(group, memberUser)));
-		List<Item> firstItems = new ArrayList<>();
+		List<ItemSummaryProjection> firstItems = new ArrayList<>();
 		for (long id = 21; id >= 1; id--) {
-			firstItems.add(item(id, owner));
+			firstItems.add(summary(id));
 		}
-		Item lastItem = item(1L, owner);
-		when(groupItemRepository.findActiveItemsByGroupId(eq(101L), any(Pageable.class)))
+		ItemSummaryProjection lastItem = summary(1L);
+		when(groupItemRepository.findActiveItemSummariesByGroupId(eq(101L), any(Pageable.class)))
 				.thenReturn(firstItems);
-		when(groupItemRepository.findActiveItemsByGroupIdAfter(eq(101L), eq(2L), any(Pageable.class)))
+		when(groupItemRepository.findActiveItemSummariesByGroupIdAfter(eq(101L), eq(2L), any(Pageable.class)))
 				.thenReturn(List.of(lastItem));
 		when(itemStatsRepository.findAllById(any())).thenReturn(List.of());
 		when(itemLikeRepository.findAllByItemIdsAndUserId(any(), eq(42L))).thenReturn(List.of());
@@ -423,6 +423,12 @@ class ItemServiceTest {
 		lenient().when(item.getQuantity()).thenReturn(1);
 		lenient().when(item.getItemState()).thenReturn(ItemState.AVAILABLE);
 		return item;
+	}
+
+	private static ItemSummaryProjection summary(long id) {
+		return new ItemSummaryProjection(
+				id, "물품 " + id, "내용", 1, 10L, "판매자", ItemState.AVAILABLE,
+				LocalDateTime.of(2026, 1, 1, 0, 0));
 	}
 
 	private static ItemService service(

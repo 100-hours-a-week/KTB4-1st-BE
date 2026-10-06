@@ -1,7 +1,7 @@
 package com.example.KTB_Agile_backend.group.repository;
 
 import com.example.KTB_Agile_backend.group.entity.GroupItem;
-import com.example.KTB_Agile_backend.item.entity.Item;
+import com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -13,28 +13,50 @@ import java.util.List;
 public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 
 	@Query("""
-			select groupItem.item
-			from GroupItem groupItem
-			where groupItem.group.id = :groupId
-				and groupItem.deletedAt is null
-				and groupItem.item.deletedAt is null
-			order by groupItem.item.id desc
-			""")
-	List<Item> findActiveItemsByGroupId(
+				select new com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection(
+					item.id,
+					item.title,
+					item.content,
+					item.quantity,
+					owner.id,
+					owner.nickname,
+					item.itemState,
+					item.createdAt
+				)
+				from GroupItem groupItem
+				join groupItem.item item
+				join item.user owner
+				where groupItem.group.id = :groupId
+					and groupItem.deletedAt is null
+					and item.deletedAt is null
+				order by item.id desc
+				""")
+	List<ItemSummaryProjection> findActiveItemSummariesByGroupId(
 			@Param("groupId") Long groupId,
 			Pageable pageable
 	);
 
 	@Query("""
-			select groupItem.item
-			from GroupItem groupItem
-			where groupItem.group.id = :groupId
-				and groupItem.deletedAt is null
-				and groupItem.item.deletedAt is null
-				and groupItem.item.id < :cursorId
-			order by groupItem.item.id desc
-			""")
-	List<Item> findActiveItemsByGroupIdAfter(
+				select new com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection(
+					item.id,
+					item.title,
+					item.content,
+					item.quantity,
+					owner.id,
+					owner.nickname,
+					item.itemState,
+					item.createdAt
+				)
+				from GroupItem groupItem
+				join groupItem.item item
+				join item.user owner
+				where groupItem.group.id = :groupId
+					and groupItem.deletedAt is null
+					and item.deletedAt is null
+					and item.id < :cursorId
+				order by item.id desc
+				""")
+	List<ItemSummaryProjection> findActiveItemSummariesByGroupIdAfter(
 			@Param("groupId") Long groupId,
 			@Param("cursorId") Long cursorId,
 			Pageable pageable
