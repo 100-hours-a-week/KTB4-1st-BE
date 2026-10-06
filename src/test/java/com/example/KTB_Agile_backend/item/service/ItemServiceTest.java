@@ -262,7 +262,7 @@ class ItemServiceTest {
 				.thenReturn(List.of(lastItem));
 		when(itemStatsRepository.findAllById(any())).thenReturn(List.of());
 		when(itemLikeRepository.findAllByItemIdsAndUserId(any(), eq(42L))).thenReturn(List.of());
-		when(imageRepository.findAllByItemIdsOrderByItemIdAndId(any())).thenReturn(List.of());
+		when(imageRepository.findFirstImagesByItemIds(any())).thenReturn(List.of());
 
 		var firstResponse = service.findByGroup(42L, 101L, null);
 		var lastResponse = service.findByGroup(42L, 101L, "Mg");

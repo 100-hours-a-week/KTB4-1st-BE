@@ -232,7 +232,7 @@ public class ItemQueryService {
 			return Map.of();
 		}
 		Map<Long, String> thumbnails = new LinkedHashMap<>();
-		imageRepository.findAllByItemIdsOrderByItemIdAndId(itemIds).forEach(image ->
+		imageRepository.findFirstImagesByItemIds(itemIds).forEach(image ->
 				thumbnails.putIfAbsent(image.getItem().getId(), imageUrl(image))
 		);
 		return thumbnails;

@@ -77,7 +77,7 @@ public class ChatRoomQueryService {
 
 	private Map<Long, String> findThumbnails(List<Long> itemIds) {
 		Map<Long, String> thumbnails = new HashMap<>();
-		for (Image image : imageRepository.findAllByItemIdsOrderByItemIdAndId(itemIds)) {
+		for (Image image : imageRepository.findFirstImagesByItemIds(itemIds)) {
 			thumbnails.putIfAbsent(image.getItem().getId(), image.getObjectKey() == null
 					? image.getImageUrl()
 					: s3ImageObjectService.presignedReadUrl(image.getObjectKey()));
