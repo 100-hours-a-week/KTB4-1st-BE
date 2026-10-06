@@ -40,7 +40,7 @@ class GroupServiceTest {
 		User user = new User("사용자");
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(user));
 		when(groupMemberRepository.countByUser_IdAndStatus(42L, GroupMemberStatus.ACTIVE)).thenReturn(4L);
-		when(groupRepository.saveAndFlush(any(Group.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		when(groupRepository.save(any(Group.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		service.create(42L, new CreateGroupRequest(
 				" 우리 그룹 ",
@@ -51,7 +51,7 @@ class GroupServiceTest {
 		));
 
 		ArgumentCaptor<Group> groupCaptor = ArgumentCaptor.forClass(Group.class);
-		verify(groupRepository).saveAndFlush(groupCaptor.capture());
+		verify(groupRepository).save(groupCaptor.capture());
 		assertThat(groupCaptor.getValue().getGroupName()).isEqualTo("우리 그룹");
 		assertThat(groupCaptor.getValue().getGroupContent()).isEmpty();
 
@@ -76,7 +76,7 @@ class GroupServiceTest {
 		));
 
 		assertThat(exception.status()).isEqualTo(HttpStatus.CONFLICT);
-		verify(groupRepository, never()).saveAndFlush(any());
+		verify(groupRepository, never()).save(any());
 		verify(groupMemberRepository, never()).save(any());
 	}
 
@@ -88,7 +88,7 @@ class GroupServiceTest {
 		GroupService service = new GroupService(groupRepository, groupMemberRepository, userRepository);
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(new User("사용자")));
 		when(groupMemberRepository.countByUser_IdAndStatus(42L, GroupMemberStatus.ACTIVE)).thenReturn(0L);
-		when(groupRepository.saveAndFlush(any(Group.class)))
+		when(groupRepository.save(any(Group.class)))
 				.thenThrow(new DataIntegrityViolationException("duplicate active group name"));
 
 		ApiException exception = assertThrows(ApiException.class, () -> service.create(

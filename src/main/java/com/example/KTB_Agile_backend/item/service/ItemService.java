@@ -93,13 +93,13 @@ public class ItemService {
 				request.valueGapToleranceScore()
 		);
 		item.setUnitPrices(priceRange.unitPrice(), priceRange.minUnitPrice(), priceRange.maxUnitPrice());
-		itemRepository.saveAndFlush(item);
+		itemRepository.save(item);
 		itemStatsRepository.save(new ItemStats(item));
 		groupItemRepository.saveAll(groups.stream()
 				.map(group -> new GroupItem(group, item))
 				.toList());
 		images.forEach(image -> image.attachTo(item));
-		imageRepository.saveAllAndFlush(images);
+		imageRepository.saveAll(images);
 		s3ImageObjectService.markRegistered(request.objectKeys());
 
 		return new ItemCreateResponse(item.getId());
@@ -220,7 +220,7 @@ public class ItemService {
 				.filter(groupItem -> !requestedGroupIds.contains(groupItem.getGroup().getId()))
 				.forEach(GroupItem::delete);
 
-		List<GroupItem> groupItemsToSave = new ArrayList<>(currentGroupItems);
+		List<GroupItem> groupItemsToSave = new ArrayList<>();
 		for (Group group : groups) {
 			GroupItem groupItem = currentByGroupId.get(group.getId());
 			if (groupItem == null) {
@@ -242,7 +242,6 @@ public class ItemService {
 		images.stream()
 				.filter(image -> image.getItem() == null)
 				.forEach(image -> image.attachTo(item));
-		imageRepository.saveAll(images);
 	}
 
 }

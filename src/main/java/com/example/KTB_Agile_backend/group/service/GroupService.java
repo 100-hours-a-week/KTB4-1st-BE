@@ -40,7 +40,7 @@ public class GroupService {
 
 		Group group;
 		try {
-			group = groupRepository.saveAndFlush(Group.create(
+			group = groupRepository.save(Group.create(
 					request.groupName(),
 					request.roadAddress(),
 					request.longitude(),

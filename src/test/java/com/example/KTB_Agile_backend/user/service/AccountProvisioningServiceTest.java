@@ -50,7 +50,7 @@ class AccountProvisioningServiceTest {
 		assertSame(user, result.user());
 		assertFalse(result.newUser());
 		verify(userRepository, never()).save(any());
-		verify(socialAccountRepository, never()).saveAndFlush(any());
+		verify(socialAccountRepository, never()).save(any());
 	}
 
 	@Test
@@ -91,7 +91,7 @@ class AccountProvisioningServiceTest {
 
 		assertTrue(result.newUser());
 		verify(userRepository).save(any(User.class));
-		verify(socialAccountRepository).saveAndFlush(any(SocialAccount.class));
+		verify(socialAccountRepository).save(any(SocialAccount.class));
 	}
 
 	@Test
@@ -105,7 +105,7 @@ class AccountProvisioningServiceTest {
 		when(socialAccountRepository.findByProviderAndProviderUserId("KAKAO", "provider-user-1"))
 				.thenReturn(Optional.empty());
 		when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
-		when(socialAccountRepository.saveAndFlush(any(SocialAccount.class)))
+		when(socialAccountRepository.save(any(SocialAccount.class)))
 				.thenThrow(new DataIntegrityViolationException("duplicate social account"));
 
 		ApiException exception = assertThrows(ApiException.class, () -> service.findOrCreate(

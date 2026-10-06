@@ -87,7 +87,7 @@ class ItemServiceTest {
 				eq(List.of(101L, 205L)), eq(42L), any()))
 				.thenReturn(2L);
 		when(imageRepository.existsByObjectKeyIn(List.of("images/42/1001.jpg"))).thenReturn(false);
-		when(itemRepository.saveAndFlush(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		var response = service.create(42L, request(List.of(101L, 205L), List.of("images/42/1001.jpg")));
 
@@ -98,7 +98,7 @@ class ItemServiceTest {
 		verify(groupItemRepository).saveAll(groupItemsCaptor.capture());
 		assertThat(((Iterable<?>) groupItemsCaptor.getValue())).hasSize(2);
 		ArgumentCaptor<Iterable<Image>> imagesCaptor = ArgumentCaptor.forClass(Iterable.class);
-		verify(imageRepository).saveAllAndFlush(imagesCaptor.capture());
+		verify(imageRepository).saveAll(imagesCaptor.capture());
 		assertThat(imagesCaptor.getValue()).hasSize(1);
 		verify(s3ImageObjectService).markRegistered(List.of("images/42/1001.jpg"));
 	}
@@ -159,7 +159,7 @@ class ItemServiceTest {
 				image.getItem()
 		)).containsExactly("새 제목", "새 내용", 2, ItemState.UNAVAILABLE, item);
 		verify(groupItemRepository).saveAll(any());
-		verify(imageRepository).saveAll(List.of(image));
+		verify(imageRepository, never()).saveAll(any());
 	}
 
 	@Test
@@ -179,7 +179,7 @@ class ItemServiceTest {
 				() -> service.create(42L, request(List.of(101L, 205L), List.of("images/42/1001.jpg"))));
 
 		assertThat(exception.status()).isEqualTo(HttpStatus.NOT_FOUND);
-		verify(itemRepository, never()).saveAndFlush(any());
+		verify(itemRepository, never()).save(any());
 		verify(groupMemberRepository, never()).countByGroup_IdInAndUser_IdAndStatus(any(), any(), any());
 	}
 
