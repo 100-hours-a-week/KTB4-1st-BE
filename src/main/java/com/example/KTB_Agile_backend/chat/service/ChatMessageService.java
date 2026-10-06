@@ -36,7 +36,7 @@ public class ChatMessageService {
 			throw new AccessDeniedException("현재 채팅방에서 메시지를 보낼 수 없습니다.");
 		}
 
-		ChatMessage message = chatMessageRepository.saveAndFlush(
+		ChatMessage message = chatMessageRepository.save(
 				new ChatMessage(member.getChatRoom(), member.getUser(), content));
 		member.getChatRoom().updateLastMessageAt(message.getCreatedAt());
 
