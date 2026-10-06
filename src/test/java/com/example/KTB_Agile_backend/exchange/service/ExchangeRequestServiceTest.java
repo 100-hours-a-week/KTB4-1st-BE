@@ -136,6 +136,7 @@ class ExchangeRequestServiceTest {
 		var pending = service.create(requester.getId(), target.getId(), request(1, originalOffer, 1));
 
 		service.update(pending.exchangeRequestId(), requester.getId(), request(2, replacementOffer, 3));
+		entityManager.flush();
 		entityManager.clear();
 		ExchangeRequest updated = exchangeRequestRepository.findById(pending.exchangeRequestId()).orElseThrow();
 		assertThat(updated.getRequestedQuantity()).isEqualTo(2);
@@ -171,6 +172,7 @@ class ExchangeRequestServiceTest {
 					.satisfies(exception -> assertThat(((ApiException) exception).code().value()).isEqualTo("FORBIDDEN"));
 		}
 		service.cancel(pending.exchangeRequestId(), requester.getId());
+		entityManager.flush();
 		entityManager.clear();
 		ExchangeRequest canceled = exchangeRequestRepository.findById(pending.exchangeRequestId()).orElseThrow();
 		assertThat(canceled.getRequestedStatus()).isEqualTo(ExchangeRequestStatus.CANCELED);
