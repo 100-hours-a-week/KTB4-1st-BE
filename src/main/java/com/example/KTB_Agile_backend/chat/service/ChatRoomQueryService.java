@@ -14,7 +14,7 @@ import com.example.KTB_Agile_backend.common.pagination.CursorPage;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequest;
 import com.example.KTB_Agile_backend.image.entity.Image;
 import com.example.KTB_Agile_backend.image.repository.ImageRepository;
-import com.example.KTB_Agile_backend.image.service.S3ImageObjectService;
+import com.example.KTB_Agile_backend.image.service.ImageUrlResolver;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.user.entity.User;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +38,7 @@ public class ChatRoomQueryService {
 	private final ChatMemberRepository chatMemberRepository;
 	private final ChatMessageRepository chatMessageRepository;
 	private final ImageRepository imageRepository;
-	private final S3ImageObjectService s3ImageObjectService;
+	private final ImageUrlResolver imageUrlResolver;
 
 	@Transactional(readOnly = true)
 	public ChatRoomPageResponse findChatRooms(Long userId, String directionValue, String sizeValue, String cursorValue) {
@@ -77,10 +77,8 @@ public class ChatRoomQueryService {
 
 	private Map<Long, String> findThumbnails(List<Long> itemIds) {
 		Map<Long, String> thumbnails = new HashMap<>();
-		for (Image image : imageRepository.findFirstImagesByItemIds(itemIds)) {
-			thumbnails.putIfAbsent(image.getItem().getId(), image.getObjectKey() == null
-					? image.getImageUrl()
-					: s3ImageObjectService.presignedReadUrl(image.getObjectKey()));
+		for (Image image : imageRepository.findThumbnailImagesByItemIds(itemIds)) {
+			thumbnails.putIfAbsent(image.getItem().getId(), imageUrlResolver.resolve(image));
 		}
 		return thumbnails;
 	}

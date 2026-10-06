@@ -14,7 +14,7 @@ import com.example.KTB_Agile_backend.group.repository.GroupMemberRepository;
 import com.example.KTB_Agile_backend.group.repository.GroupRepository;
 import com.example.KTB_Agile_backend.image.entity.Image;
 import com.example.KTB_Agile_backend.image.repository.ImageRepository;
-import com.example.KTB_Agile_backend.image.service.S3ImageObjectService;
+import com.example.KTB_Agile_backend.image.service.ImageUrlResolver;
 import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemSummary;
@@ -57,7 +57,7 @@ public class ItemQueryService {
 	private final GroupMemberRepository groupMemberRepository;
 	private final GroupItemRepository groupItemRepository;
 	private final ImageRepository imageRepository;
-	private final S3ImageObjectService s3ImageObjectService;
+	private final ImageUrlResolver imageUrlResolver;
 	private final ExchangeRequestRepository exchangeRequestRepository;
 
 	@Transactional(readOnly = true)
@@ -65,6 +65,7 @@ public class ItemQueryService {
 		Item item = itemRepository.findByIdAndDeletedAtIsNull(itemId)
 				.orElseThrow(() -> new ApiException(ItemErrorCode.ITEM_NOT_FOUND));
 		ItemStats stats = itemStatsRepository.findById(itemId).orElse(null);
+		Image thumbnailImage = item.getThumbnailImage();
 
 		return new ItemDetailResponse(
 				item.getId(),
@@ -84,6 +85,7 @@ public class ItemQueryService {
 						item.getUser().getProfileImageUrl()
 				),
 				toImageInfos(imageRepository.findAllByItem_IdOrderByIdAsc(itemId)),
+				thumbnailImage == null ? null : thumbnailImage.getId(),
 				stats == null ? 0L : stats.getLikeCount(),
 				stats == null ? 0L : stats.getViewCount(),
 				0L,
@@ -232,7 +234,7 @@ public class ItemQueryService {
 			return Map.of();
 		}
 		Map<Long, String> thumbnails = new LinkedHashMap<>();
-		imageRepository.findFirstImagesByItemIds(itemIds).forEach(image ->
+		imageRepository.findThumbnailImagesByItemIds(itemIds).forEach(image ->
 				thumbnails.putIfAbsent(image.getItem().getId(), imageUrl(image))
 		);
 		return thumbnails;
@@ -256,9 +258,7 @@ public class ItemQueryService {
 	}
 
 	private String imageUrl(Image image) {
-		return image.getObjectKey() == null
-				? image.getImageUrl()
-				: s3ImageObjectService.presignedReadUrl(image.getObjectKey());
+		return imageUrlResolver.resolve(image);
 	}
 
 	private static ItemSummary toSummary(

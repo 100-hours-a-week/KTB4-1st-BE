@@ -23,16 +23,11 @@ public interface ImageRepository extends JpaRepository<Image, Long> {
 
 	@Query("""
 			select image
-			from Image image
-			where image.item.id in :itemIds
-			  and image.id = (
-				  select min(firstImage.id)
-				  from Image firstImage
-				  where firstImage.item.id = image.item.id
-			  )
-			order by image.item.id asc
+			from Item item
+			join item.thumbnailImage image
+			where item.id in :itemIds
 			""")
-	List<Image> findFirstImagesByItemIds(@Param("itemIds") Collection<Long> itemIds);
+	List<Image> findThumbnailImagesByItemIds(@Param("itemIds") Collection<Long> itemIds);
 
 	List<Image> findAllByItem_IdOrderByIdAsc(Long itemId);
 
