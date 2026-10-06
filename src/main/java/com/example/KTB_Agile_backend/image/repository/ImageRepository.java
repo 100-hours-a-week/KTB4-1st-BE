@@ -25,9 +25,14 @@ public interface ImageRepository extends JpaRepository<Image, Long> {
 			select image
 			from Image image
 			where image.item.id in :itemIds
-			order by image.item.id asc, image.id asc
+			  and image.id = (
+				  select min(firstImage.id)
+				  from Image firstImage
+				  where firstImage.item.id = image.item.id
+			  )
+			order by image.item.id asc
 			""")
-	List<Image> findAllByItemIdsOrderByItemIdAndId(@Param("itemIds") Collection<Long> itemIds);
+	List<Image> findFirstImagesByItemIds(@Param("itemIds") Collection<Long> itemIds);
 
 	List<Image> findAllByItem_IdOrderByIdAsc(Long itemId);
 
