@@ -14,7 +14,7 @@ import com.example.KTB_Agile_backend.group.repository.GroupMemberRepository;
 import com.example.KTB_Agile_backend.group.repository.GroupRepository;
 import com.example.KTB_Agile_backend.image.entity.Image;
 import com.example.KTB_Agile_backend.image.repository.ImageRepository;
-import com.example.KTB_Agile_backend.image.service.S3ImageObjectService;
+import com.example.KTB_Agile_backend.image.service.ImageUrlResolver;
 import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemSummary;
@@ -57,7 +57,7 @@ public class ItemQueryService {
 	private final GroupMemberRepository groupMemberRepository;
 	private final GroupItemRepository groupItemRepository;
 	private final ImageRepository imageRepository;
-	private final S3ImageObjectService s3ImageObjectService;
+	private final ImageUrlResolver imageUrlResolver;
 	private final ExchangeRequestRepository exchangeRequestRepository;
 
 	@Transactional(readOnly = true)
@@ -258,9 +258,7 @@ public class ItemQueryService {
 	}
 
 	private String imageUrl(Image image) {
-		return image.getObjectKey() == null
-				? image.getImageUrl()
-				: s3ImageObjectService.presignedReadUrl(image.getObjectKey());
+		return imageUrlResolver.resolve(image);
 	}
 
 	private static ItemSummary toSummary(
