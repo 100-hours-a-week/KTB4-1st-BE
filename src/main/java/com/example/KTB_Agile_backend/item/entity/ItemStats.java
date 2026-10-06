@@ -36,4 +36,12 @@ public class ItemStats extends BaseEntity {
 	public void increaseViewCount() {
 		this.viewCount++;
 	}
+
+	public void increaseLikeCount() {
+		this.likeCount++;
+	}
+
+	public void decreaseLikeCount() {
+		this.likeCount--;
+	}
 }
