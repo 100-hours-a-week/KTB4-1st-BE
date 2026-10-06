@@ -15,6 +15,7 @@ public record ItemDetailResponse(
 		ItemState itemState,
 		Owner owner,
 		List<ImageInfo> images,
+		Long thumbnailImageId,
 		Long likeCount,
 		Long viewCount,
 		Long exchangeRequestCount,

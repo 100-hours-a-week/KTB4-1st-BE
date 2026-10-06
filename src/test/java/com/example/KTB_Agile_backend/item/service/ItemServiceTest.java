@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -129,6 +130,7 @@ class ItemServiceTest {
 		Group group = mock(Group.class);
 		when(group.getId()).thenReturn(101L);
 		Image image = new Image(owner, "https://example.com/image.jpg");
+		ReflectionTestUtils.setField(image, "id", 1001L);
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(owner));
 		when(itemRepository.findByIdAndDeletedAtIsNull(123L)).thenReturn(Optional.of(item));
 		when(groupRepository.findAllByIdInAndDeletedAtIsNull(List.of(101L)))
@@ -262,7 +264,7 @@ class ItemServiceTest {
 				.thenReturn(List.of(lastItem));
 		when(itemStatsRepository.findAllById(any())).thenReturn(List.of());
 		when(itemLikeRepository.findAllByItemIdsAndUserId(any(), eq(42L))).thenReturn(List.of());
-		when(imageRepository.findFirstImagesByItemIds(any())).thenReturn(List.of());
+		when(imageRepository.findThumbnailImagesByItemIds(any())).thenReturn(List.of());
 
 		var firstResponse = service.findByGroup(42L, 101L, null);
 		var lastResponse = service.findByGroup(42L, 101L, "Mg");
@@ -337,6 +339,7 @@ class ItemServiceTest {
 						new ItemDetailResponse.ImageInfo(501L, "https://example.com/item1.jpg", 1),
 						new ItemDetailResponse.ImageInfo(502L, "https://example.com/item2.jpg", 2)
 				),
+				null,
 				33L,
 				128L,
 				0L,

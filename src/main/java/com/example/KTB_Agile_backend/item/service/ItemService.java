@@ -100,6 +100,7 @@ public class ItemService {
 				.toList());
 		images.forEach(image -> image.attachTo(item));
 		imageRepository.saveAll(images);
+		item.setThumbnailImage(images.get(0));
 		s3ImageObjectService.markRegistered(request.objectKeys());
 
 		return new ItemCreateResponse(item.getId());
@@ -133,6 +134,10 @@ public class ItemService {
 		item.setUnitPrices(item.getUnitPrice(), priceRange.minUnitPrice(), priceRange.maxUnitPrice());
 		replaceGroups(item, groups);
 		replaceImages(item, images);
+		item.setThumbnailImage(images.stream()
+				.filter(image -> image.getId().equals(request.imageIds().get(0)))
+				.findFirst()
+				.orElseThrow());
 	}
 
 	@Transactional

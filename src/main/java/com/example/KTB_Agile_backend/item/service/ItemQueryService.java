@@ -65,6 +65,7 @@ public class ItemQueryService {
 		Item item = itemRepository.findByIdAndDeletedAtIsNull(itemId)
 				.orElseThrow(() -> new ApiException(ItemErrorCode.ITEM_NOT_FOUND));
 		ItemStats stats = itemStatsRepository.findById(itemId).orElse(null);
+		Image thumbnailImage = item.getThumbnailImage();
 
 		return new ItemDetailResponse(
 				item.getId(),
@@ -84,6 +85,7 @@ public class ItemQueryService {
 						item.getUser().getProfileImageUrl()
 				),
 				toImageInfos(imageRepository.findAllByItem_IdOrderByIdAsc(itemId)),
+				thumbnailImage == null ? null : thumbnailImage.getId(),
 				stats == null ? 0L : stats.getLikeCount(),
 				stats == null ? 0L : stats.getViewCount(),
 				0L,
@@ -232,7 +234,7 @@ public class ItemQueryService {
 			return Map.of();
 		}
 		Map<Long, String> thumbnails = new LinkedHashMap<>();
-		imageRepository.findFirstImagesByItemIds(itemIds).forEach(image ->
+		imageRepository.findThumbnailImagesByItemIds(itemIds).forEach(image ->
 				thumbnails.putIfAbsent(image.getItem().getId(), imageUrl(image))
 		);
 		return thumbnails;
