@@ -2,9 +2,12 @@ package com.example.KTB_Agile_backend.group.repository;
 
 import com.example.KTB_Agile_backend.group.entity.Group;
 import com.example.KTB_Agile_backend.group.entity.GroupItem;
+import com.example.KTB_Agile_backend.group.entity.GroupMember;
+import com.example.KTB_Agile_backend.group.entity.GroupMemberStatus;
 import com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.user.entity.User;
+import com.example.KTB_Agile_backend.user.entity.UserStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import org.hibernate.SessionFactory;
@@ -42,6 +45,9 @@ class GroupItemRepositoryTest {
 		entityManager.persist(thirdSeller);
 		Group group = Group.create("그룹", "주소", BigDecimal.ZERO, BigDecimal.ZERO, "");
 		entityManager.persist(group);
+		entityManager.persist(new GroupMember(group, firstSeller));
+		entityManager.persist(new GroupMember(group, secondSeller));
+		entityManager.persist(new GroupMember(group, thirdSeller));
 
 		Item first = new Item(firstSeller, "첫 물품", "첫 설명");
 		Item second = new Item(secondSeller, "두 번째 물품", "두 번째 설명");
@@ -66,14 +72,14 @@ class GroupItemRepositoryTest {
 		statistics.setStatisticsEnabled(true);
 		statistics.clear();
 		List<ItemSummaryProjection> firstBatch = groupItemRepository.findActiveItemSummariesByGroupId(
-				group.getId(), PageRequest.of(0, 2));
+				group.getId(), UserStatus.ACTIVE, GroupMemberStatus.ACTIVE, PageRequest.of(0, 2));
 		assertThat(statistics.getPrepareStatementCount()).isEqualTo(1L);
 		assertThat(firstBatch).extracting(ItemSummaryProjection::ownerNickname)
 				.containsExactly("seller-three", "seller-two");
 
 		statistics.clear();
 		List<ItemSummaryProjection> nextBatch = groupItemRepository.findActiveItemSummariesByGroupIdAfter(
-				group.getId(), second.getId(), PageRequest.of(0, 2));
+				group.getId(), second.getId(), UserStatus.ACTIVE, GroupMemberStatus.ACTIVE, PageRequest.of(0, 2));
 		assertThat(statistics.getPrepareStatementCount()).isEqualTo(1L);
 
 		assertThat(firstBatch).extracting(ItemSummaryProjection::itemId)
@@ -89,7 +95,7 @@ class GroupItemRepositoryTest {
 
 		statistics.clear();
 		assertThat(groupItemRepository.findActiveItemSummariesByGroupId(
-				group.getId(), PageRequest.of(0, 10)))
+				group.getId(), UserStatus.ACTIVE, GroupMemberStatus.ACTIVE, PageRequest.of(0, 10)))
 				.extracting(ItemSummaryProjection::itemId)
 				.containsExactly(third.getId(), second.getId());
 		assertThat(statistics.getPrepareStatementCount()).isEqualTo(1L);

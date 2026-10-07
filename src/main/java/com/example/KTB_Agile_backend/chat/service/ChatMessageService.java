@@ -8,6 +8,9 @@ import com.example.KTB_Agile_backend.chat.repository.ChatMemberRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatMessageRepository;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
+import com.example.KTB_Agile_backend.group.entity.Group;
+import com.example.KTB_Agile_backend.group.entity.GroupMemberStatus;
+import com.example.KTB_Agile_backend.group.repository.GroupMemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -21,6 +24,7 @@ public class ChatMessageService {
 
 	private final ChatMemberRepository chatMemberRepository;
 	private final ChatMessageRepository chatMessageRepository;
+	private final GroupMemberRepository groupMemberRepository;
 
 	@Transactional
 	public ChatMessageResponse send(Long chatRoomId, Long senderId, String content) {
@@ -39,8 +43,13 @@ public class ChatMessageService {
 		ChatMessage message = chatMessageRepository.save(
 				new ChatMessage(member.getChatRoom(), member.getUser(), content));
 		member.getChatRoom().updateLastMessageAt(message.getCreatedAt());
+		Group group = member.getChatRoom().getExchangeRequest().getGroup();
+		GroupMemberStatus groupMemberStatus = group == null ? null
+				: groupMemberRepository.findByGroup_IdAndUser_Id(group.getId(), senderId)
+						.map(groupMember -> groupMember.getStatus())
+						.orElse(null);
 
-		return toResponse(message);
+		return toResponse(message, groupMemberStatus);
 	}
 
 	@Transactional
@@ -50,10 +59,11 @@ public class ChatMessageService {
 		member.markReadThrough(messageId);
 	}
 
-	private static ChatMessageResponse toResponse(ChatMessage message) {
+	private static ChatMessageResponse toResponse(ChatMessage message, GroupMemberStatus groupMemberStatus) {
 		return new ChatMessageResponse(
 				message.getId(), message.getChatRoom().getId(), message.getUser().getId(),
-				message.getContent(), message.getMessageType(), message.getCreatedAt()
+				message.getContent(), message.getMessageType(), message.getCreatedAt(),
+				message.getUser().getUserStatus(), groupMemberStatus
 		);
 	}
 }

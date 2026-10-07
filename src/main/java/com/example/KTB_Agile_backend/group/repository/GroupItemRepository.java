@@ -1,7 +1,9 @@
 package com.example.KTB_Agile_backend.group.repository;
 
 import com.example.KTB_Agile_backend.group.entity.GroupItem;
+import com.example.KTB_Agile_backend.group.entity.GroupMemberStatus;
 import com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection;
+import com.example.KTB_Agile_backend.user.entity.UserStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -26,13 +28,19 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 				from GroupItem groupItem
 				join groupItem.item item
 				join item.user owner
+				join GroupMember membership on membership.group = groupItem.group
+					and membership.user = owner
 				where groupItem.group.id = :groupId
 					and groupItem.deletedAt is null
 					and item.deletedAt is null
+					and owner.userStatus = :activeUserStatus
+					and membership.status = :activeMemberStatus
 				order by item.id desc
 				""")
 	List<ItemSummaryProjection> findActiveItemSummariesByGroupId(
 			@Param("groupId") Long groupId,
+			@Param("activeUserStatus") UserStatus activeUserStatus,
+			@Param("activeMemberStatus") GroupMemberStatus activeMemberStatus,
 			Pageable pageable
 	);
 
@@ -50,15 +58,21 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 				from GroupItem groupItem
 				join groupItem.item item
 				join item.user owner
+				join GroupMember membership on membership.group = groupItem.group
+					and membership.user = owner
 				where groupItem.group.id = :groupId
 					and groupItem.deletedAt is null
 					and item.deletedAt is null
+					and owner.userStatus = :activeUserStatus
+					and membership.status = :activeMemberStatus
 					and item.id < :cursorId
 				order by item.id desc
 				""")
 	List<ItemSummaryProjection> findActiveItemSummariesByGroupIdAfter(
 			@Param("groupId") Long groupId,
 			@Param("cursorId") Long cursorId,
+			@Param("activeUserStatus") UserStatus activeUserStatus,
+			@Param("activeMemberStatus") GroupMemberStatus activeMemberStatus,
 			Pageable pageable
 	);
 

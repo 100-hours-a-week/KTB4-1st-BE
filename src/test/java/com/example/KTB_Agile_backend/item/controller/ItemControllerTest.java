@@ -1,6 +1,7 @@
 package com.example.KTB_Agile_backend.item.controller;
 
 import com.example.KTB_Agile_backend.common.exception.GlobalExceptionHandler;
+import com.example.KTB_Agile_backend.group.entity.GroupMemberStatus;
 import com.example.KTB_Agile_backend.item.dto.request.UpdateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.response.ItemCreateResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
@@ -9,6 +10,7 @@ import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.service.ItemService;
 import com.example.KTB_Agile_backend.item.service.ItemQueryService;
 import com.example.KTB_Agile_backend.item.service.ItemLikeService;
+import com.example.KTB_Agile_backend.user.entity.UserStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -93,12 +95,13 @@ class ItemControllerTest {
 	void getsItemDetail() throws Exception {
 		when(itemQueryService.findDetail(42L, 123L)).thenReturn(new ItemDetailResponse(
 				123L,
-				List.of(new ItemDetailResponse.GroupInfo(101L, "카테뷰")),
+				List.of(new ItemDetailResponse.GroupInfo(101L, "카테뷰", GroupMemberStatus.ACTIVE)),
 				"게시글 제목1",
 				"게시글 내용입니다.",
 				1,
 				ItemState.AVAILABLE,
-				new ItemDetailResponse.Owner(10L, "사용자1", "https://example.com/profile.jpg"),
+				new ItemDetailResponse.Owner(
+						10L, "사용자1", "https://example.com/profile.jpg", UserStatus.ACTIVE),
 				List.of(new ItemDetailResponse.ImageInfo(
 						501L, "https://example.com/item1.jpg", 1)),
 				501L,
