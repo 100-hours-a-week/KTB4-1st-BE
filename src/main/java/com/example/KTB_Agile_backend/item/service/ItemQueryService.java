@@ -167,6 +167,47 @@ public class ItemQueryService {
 		);
 	}
 
+	@Transactional(readOnly = true)
+	public MyItemPageResponse findMyLikedItems(Long userId, String sizeValue, String cursor) {
+		int size = parseMyItemsSize(sizeValue);
+		Long cursorId;
+		try {
+			cursorId = CursorCodec.decodeId(cursor);
+		} catch (ApiException exception) {
+			throw new ApiException(ErrorCode.BAD_REQUEST, MY_ITEMS_BAD_REQUEST_MESSAGE, exception);
+		}
+		Pageable pageable = PageRequest.of(0, size + 1);
+		List<Item> items = cursorId == null
+				? itemLikeRepository.findLikedItemsByUserId(userId, pageable)
+				: itemLikeRepository.findLikedItemsByUserIdAfter(userId, cursorId, pageable);
+		CursorPage<Item> page = CursorPage.fromIds(items, size, Item::getId);
+		List<Long> itemIds = itemIds(page.items());
+		Map<Long, Long> likeCounts = findLikeCounts(itemIds);
+		Map<Long, String> thumbnails = findThumbnails(itemIds);
+		Map<Long, List<MyItemPageResponse.GroupInfo>> groups = findGroupInfos(page.items());
+		Map<Long, Long> exchangeRequestCounts = findExchangeRequestCounts(itemIds);
+
+		return new MyItemPageResponse(
+				page.items().stream()
+						.map(item -> new MyItemPageResponse.MyItem(
+								item.getId(),
+								groups.getOrDefault(item.getId(), List.of()),
+								item.getTitle(),
+								contentPreview(item.getContent()),
+								item.getQuantity(),
+								item.getItemState(),
+								thumbnails.get(item.getId()),
+								likeCounts.getOrDefault(item.getId(), 0L),
+								exchangeRequestCounts.getOrDefault(item.getId(), 0L),
+								true,
+								item.getCreatedAt()
+						))
+						.toList(),
+				page.nextCursor(),
+				page.hasNext()
+		);
+	}
+
 	private static int parseMyItemsSize(String sizeValue) {
 		try {
 			int size = Integer.parseInt(sizeValue);
