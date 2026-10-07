@@ -25,8 +25,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -49,15 +47,16 @@ public class ChatRoomQueryService {
 	public ChatRoomPageResponse findChatRooms(Long userId, String directionValue, String sizeValue, String cursorValue) {
 		String direction = parseDirection(directionValue);
 		int size = parseSize(sizeValue);
-		ChatRoomCursor cursor = ChatRoomCursor.decode(cursorValue);
+		CursorCodec.TimeIdCursor cursor = CursorCodec.decodeTimeId(cursorValue);
 		Pageable pageable = PageRequest.of(0, size + 1);
 		List<ChatMember> fetched = cursor == null
 				? chatMemberRepository.findChatRoomsByUserId(userId, direction, pageable)
 				: chatMemberRepository.findChatRoomsByUserIdAfter(
-						userId, direction, cursor.lastMessageAt(), cursor.chatRoomId(), pageable);
+						userId, direction, cursor.time(), cursor.id(), pageable);
 
 		CursorPage<ChatMember> page = CursorPage.from(
-				fetched, size, member -> ChatRoomCursor.encode(member.getChatRoom()));
+				fetched, size, member -> CursorCodec.encodeTimeId(
+						member.getChatRoom().getLastMessageAt(), member.getChatRoom().getId()));
 		if (page.items().isEmpty()) {
 			return new ChatRoomPageResponse(List.of(), null, false);
 		}
@@ -179,34 +178,5 @@ public class ChatRoomQueryService {
 	}
 
 	private record GroupMembershipKey(Long groupId, Long userId) {
-	}
-
-	private record ChatRoomCursor(LocalDateTime lastMessageAt, Long chatRoomId) {
-		private static final int PART_COUNT = 2;
-		private static final long MIN_CHAT_ROOM_ID = 1;
-
-		private static ChatRoomCursor decode(String cursor) {
-			if (cursor == null || cursor.isBlank()) {
-				return null;
-			}
-			try {
-				String[] parts = CursorCodec.decodeValue(cursor).split("\\|", -1);
-				if (parts.length != PART_COUNT) {
-					throw new IllegalArgumentException();
-				}
-				LocalDateTime lastMessageAt = LocalDateTime.parse(parts[0]);
-				long chatRoomId = Long.parseLong(parts[1]);
-				if (chatRoomId < MIN_CHAT_ROOM_ID) {
-					throw new IllegalArgumentException();
-				}
-				return new ChatRoomCursor(lastMessageAt, chatRoomId);
-			} catch (IllegalArgumentException | DateTimeParseException exception) {
-				throw new ApiException(ErrorCode.INVALID_CURSOR, List.of(), exception);
-			}
-		}
-
-		private static String encode(ChatRoom room) {
-			return CursorCodec.encodeValue(room.getLastMessageAt() + "|" + room.getId());
-		}
 	}
 }

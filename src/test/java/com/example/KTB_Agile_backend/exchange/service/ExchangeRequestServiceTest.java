@@ -8,6 +8,7 @@ import com.example.KTB_Agile_backend.exchange.dto.request.ExchangeRequestCreateR
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequest;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
 import com.example.KTB_Agile_backend.exchange.repository.ExchangeRequestRepository;
+import com.example.KTB_Agile_backend.image.service.ImageUrlResolver;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -27,6 +29,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DataJpaTest
 @Import({ExchangeRequestService.class, ExchangeRequestQueryService.class})
 class ExchangeRequestServiceTest {
+
+	@MockitoBean
+	private ImageUrlResolver imageUrlResolver;
 
 	@Autowired
 	private ExchangeRequestService service;
