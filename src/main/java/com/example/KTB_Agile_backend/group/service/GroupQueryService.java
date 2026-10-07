@@ -1,7 +1,5 @@
 package com.example.KTB_Agile_backend.group.service;
 
-import com.example.KTB_Agile_backend.common.exception.ApiException;
-import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.common.pagination.CursorCodec;
 import com.example.KTB_Agile_backend.common.pagination.CursorPage;
 import com.example.KTB_Agile_backend.group.dto.response.GroupPageResponse;
@@ -56,49 +54,21 @@ public class GroupQueryService {
 
 	@Transactional(readOnly = true)
 	public GroupPageResponse recommendations(Long userId, String cursor) {
-		RecommendationCursor recommendationCursor = RecommendationCursor.decode(cursor);
+		CursorCodec.CountIdCursor recommendationCursor = CursorCodec.decodeCountId(cursor);
 		Pageable pageable = PageRequest.of(0, RECOMMENDATION_PAGE_SIZE + 1);
 		List<GroupSummary> groups = recommendationCursor == null
 				? groupRepository.findRecommendations(userId, GroupMemberStatus.ACTIVE, pageable)
 				: groupRepository.findRecommendationsAfter(
 						userId,
 						GroupMemberStatus.ACTIVE,
-						recommendationCursor.memberCount(),
-						recommendationCursor.groupId(),
+						recommendationCursor.count(),
+						recommendationCursor.id(),
 						pageable
 				);
 
 		CursorPage<GroupSummary> page = CursorPage.from(
-				groups, RECOMMENDATION_PAGE_SIZE, RecommendationCursor::encode);
+				groups, RECOMMENDATION_PAGE_SIZE,
+				group -> CursorCodec.encodeCountId(group.memberCount(), group.groupId()));
 		return new GroupPageResponse(page.items(), page.nextCursor(), page.hasNext());
-	}
-
-	private record RecommendationCursor(long memberCount, long groupId) {
-		private static final int PART_COUNT = 2;
-
-		private static RecommendationCursor decode(String cursor) {
-			if (cursor == null || cursor.isBlank()) {
-				return null;
-			}
-			try {
-				String[] values = CursorCodec.decodeValue(cursor).split(":", -1);
-				if (values.length != PART_COUNT) {
-					throw new IllegalArgumentException();
-				}
-
-				long memberCount = Long.parseLong(values[0]);
-				long groupId = Long.parseLong(values[1]);
-				if (memberCount < 0 || groupId <= 0) {
-					throw new IllegalArgumentException();
-				}
-				return new RecommendationCursor(memberCount, groupId);
-			} catch (IllegalArgumentException exception) {
-				throw new ApiException(ErrorCode.INVALID_CURSOR, List.of(), exception);
-			}
-		}
-
-		private static String encode(GroupSummary group) {
-			return CursorCodec.encodeValue(group.memberCount() + ":" + group.groupId());
-		}
 	}
 }
