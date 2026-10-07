@@ -27,6 +27,7 @@ import com.example.KTB_Agile_backend.item.exception.ItemErrorCode;
 import com.example.KTB_Agile_backend.item.repository.ItemLikeRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemStatsRepository;
+import com.example.KTB_Agile_backend.user.entity.UserStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -66,13 +67,17 @@ public class ItemQueryService {
 				.orElseThrow(() -> new ApiException(ItemErrorCode.ITEM_NOT_FOUND));
 		ItemStats stats = itemStatsRepository.findById(itemId).orElse(null);
 		Image thumbnailImage = item.getThumbnailImage();
+		List<GroupItem> activeGroupItems = groupItemRepository.findActiveGroupItemsByItemId(itemId);
+		Map<Long, GroupMemberStatus> ownerMembershipStatuses = findOwnerMembershipStatuses(
+				item.getUser().getId(), activeGroupItems);
 
 		return new ItemDetailResponse(
 				item.getId(),
-				groupItemRepository.findActiveGroupItemsByItemId(itemId).stream()
+				activeGroupItems.stream()
 						.map(groupItem -> new ItemDetailResponse.GroupInfo(
 								groupItem.getGroup().getId(),
-								groupItem.getGroup().getGroupName()
+								groupItem.getGroup().getGroupName(),
+								ownerMembershipStatuses.get(groupItem.getGroup().getId())
 						))
 						.toList(),
 				item.getTitle(),
@@ -82,7 +87,8 @@ public class ItemQueryService {
 				new ItemDetailResponse.Owner(
 						item.getUser().getId(),
 						item.getUser().getNickname(),
-						item.getUser().getProfileImageUrl()
+						item.getUser().getProfileImageUrl(),
+						item.getUser().getUserStatus()
 				),
 				toImageInfos(imageRepository.findAllByItem_IdOrderByIdAsc(itemId)),
 				thumbnailImage == null ? null : thumbnailImage.getId(),
@@ -95,6 +101,17 @@ public class ItemQueryService {
 				item.getExchangeUrgencyScore(),
 				item.getValueGapToleranceScore()
 		);
+	}
+
+	private Map<Long, GroupMemberStatus> findOwnerMembershipStatuses(Long userId, List<GroupItem> groupItems) {
+		if (groupItems.isEmpty()) {
+			return Map.of();
+		}
+		List<Long> groupIds = groupItems.stream().map(groupItem -> groupItem.getGroup().getId()).toList();
+		Map<Long, GroupMemberStatus> statuses = new HashMap<>();
+		groupMemberRepository.findStatusesByGroupIdsAndUserIds(groupIds, List.of(userId))
+				.forEach(status -> statuses.put(status.getGroupId(), status.getMembershipStatus()));
+		return statuses;
 	}
 
 	@Transactional(readOnly = true)
@@ -111,8 +128,10 @@ public class ItemQueryService {
 		Long cursorId = CursorCodec.decodeId(cursor);
 		Pageable pageable = PageRequest.of(0, FETCH_SIZE);
 		List<ItemSummaryProjection> summaries = cursorId == null
-				? groupItemRepository.findActiveItemSummariesByGroupId(groupId, pageable)
-				: groupItemRepository.findActiveItemSummariesByGroupIdAfter(groupId, cursorId, pageable);
+				? groupItemRepository.findActiveItemSummariesByGroupId(
+						groupId, UserStatus.ACTIVE, GroupMemberStatus.ACTIVE, pageable)
+				: groupItemRepository.findActiveItemSummariesByGroupIdAfter(
+						groupId, cursorId, UserStatus.ACTIVE, GroupMemberStatus.ACTIVE, pageable);
 		CursorPage<ItemSummaryProjection> page = CursorPage.fromIds(
 				summaries, PAGE_SIZE, ItemSummaryProjection::itemId);
 		List<Long> itemIds = page.items().stream().map(ItemSummaryProjection::itemId).toList();

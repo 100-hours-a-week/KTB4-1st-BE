@@ -5,6 +5,7 @@ import com.example.KTB_Agile_backend.exchange.repository.ExchangeRequestReposito
 import com.example.KTB_Agile_backend.group.entity.Group;
 import com.example.KTB_Agile_backend.group.entity.GroupItem;
 import com.example.KTB_Agile_backend.group.entity.GroupMember;
+import com.example.KTB_Agile_backend.group.entity.GroupMemberStatus;
 import com.example.KTB_Agile_backend.group.repository.GroupItemRepository;
 import com.example.KTB_Agile_backend.group.repository.GroupMemberRepository;
 import com.example.KTB_Agile_backend.group.repository.GroupRepository;
@@ -25,6 +26,7 @@ import com.example.KTB_Agile_backend.item.repository.ItemStatsRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemViewRepository;
 import com.example.KTB_Agile_backend.ai.text.service.ModerationCheckService;
 import com.example.KTB_Agile_backend.user.entity.User;
+import com.example.KTB_Agile_backend.user.entity.UserStatus;
 import com.example.KTB_Agile_backend.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -258,9 +260,11 @@ class ItemServiceTest {
 			firstItems.add(summary(id));
 		}
 		ItemSummaryProjection lastItem = summary(1L);
-		when(groupItemRepository.findActiveItemSummariesByGroupId(eq(101L), any(Pageable.class)))
+		when(groupItemRepository.findActiveItemSummariesByGroupId(
+				eq(101L), eq(UserStatus.ACTIVE), eq(GroupMemberStatus.ACTIVE), any(Pageable.class)))
 				.thenReturn(firstItems);
-		when(groupItemRepository.findActiveItemSummariesByGroupIdAfter(eq(101L), eq(2L), any(Pageable.class)))
+		when(groupItemRepository.findActiveItemSummariesByGroupIdAfter(
+				eq(101L), eq(2L), eq(UserStatus.ACTIVE), eq(GroupMemberStatus.ACTIVE), any(Pageable.class)))
 				.thenReturn(List.of(lastItem));
 		when(itemStatsRepository.findAllById(any())).thenReturn(List.of());
 		when(itemLikeRepository.findAllByItemIdsAndUserId(any(), eq(42L))).thenReturn(List.of());
@@ -292,6 +296,7 @@ class ItemServiceTest {
 		when(owner.getId()).thenReturn(10L);
 		when(owner.getNickname()).thenReturn("사용자1");
 		when(owner.getProfileImageUrl()).thenReturn("https://example.com/profile.jpg");
+		when(owner.getUserStatus()).thenReturn(UserStatus.ACTIVE);
 		Item item = mock(Item.class);
 		when(item.getId()).thenReturn(123L);
 		when(item.getUser()).thenReturn(owner);
@@ -329,12 +334,13 @@ class ItemServiceTest {
 
 		assertThat(response).usingRecursiveComparison().isEqualTo(new ItemDetailResponse(
 				123L,
-				List.of(new ItemDetailResponse.GroupInfo(101L, "카테뷰")),
+				List.of(new ItemDetailResponse.GroupInfo(101L, "카테뷰", null)),
 				"게시글 제목1",
 				"게시글 내용입니다.",
 				1,
 				ItemState.AVAILABLE,
-				new ItemDetailResponse.Owner(10L, "사용자1", "https://example.com/profile.jpg"),
+				new ItemDetailResponse.Owner(
+						10L, "사용자1", "https://example.com/profile.jpg", UserStatus.ACTIVE),
 				List.of(
 						new ItemDetailResponse.ImageInfo(501L, "https://example.com/item1.jpg", 1),
 						new ItemDetailResponse.ImageInfo(502L, "https://example.com/item2.jpg", 2)
