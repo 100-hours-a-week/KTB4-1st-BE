@@ -103,6 +103,17 @@ public class ItemController {
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 
+	@GetMapping("/users/me/liked-items")
+	public ResponseEntity<ApiResponse<MyItemPageResponse>> findMyLikedItems(
+			Authentication authentication,
+			@RequestParam(defaultValue = "10") String size,
+			@RequestParam(required = false) String cursor
+	) {
+		MyItemPageResponse response = itemQueryService.findMyLikedItems(
+				Long.valueOf(authentication.getName()), size, cursor);
+		return ResponseEntity.ok(new ApiResponse<>(response, null));
+	}
+
 	@GetMapping("/groups/{groupId}/items")
 	public ResponseEntity<ApiResponse<ItemPageResponse>> findByGroup(
 			Authentication authentication,

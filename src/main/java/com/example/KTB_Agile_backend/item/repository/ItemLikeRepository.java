@@ -1,7 +1,9 @@
 package com.example.KTB_Agile_backend.item.repository;
 
+import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemLike;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -12,6 +14,31 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ItemLikeRepository extends JpaRepository<ItemLike, Long> {
+
+	@Query("""
+			select item
+			from ItemLike itemLike
+			join itemLike.item item
+			where itemLike.user.id = :userId
+				and item.deletedAt is null
+			order by item.id desc
+			""")
+	List<Item> findLikedItemsByUserId(@Param("userId") Long userId, Pageable pageable);
+
+	@Query("""
+			select item
+			from ItemLike itemLike
+			join itemLike.item item
+			where itemLike.user.id = :userId
+				and item.deletedAt is null
+				and item.id < :cursorId
+			order by item.id desc
+			""")
+	List<Item> findLikedItemsByUserIdAfter(
+			@Param("userId") Long userId,
+			@Param("cursorId") Long cursorId,
+			Pageable pageable
+	);
 
 	@Query("""
 			select itemLike
