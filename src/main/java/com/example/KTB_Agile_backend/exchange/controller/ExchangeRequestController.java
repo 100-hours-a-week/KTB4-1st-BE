@@ -9,6 +9,7 @@ import com.example.KTB_Agile_backend.exchange.dto.request.ExchangeRequestCreateR
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestCreatedResponse;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestEditResponse;
 import com.example.KTB_Agile_backend.exchange.dto.response.ExchangeRequestStatusResponse;
+import com.example.KTB_Agile_backend.exchange.dto.response.CompletedExchangePageResponse;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
 import com.example.KTB_Agile_backend.exchange.service.ExchangeRequestService;
 import com.example.KTB_Agile_backend.exchange.service.ExchangeRequestQueryService;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
@@ -44,6 +46,17 @@ public class ExchangeRequestController {
 		long requestId = parseId(exchangeRequestId, ExchangeErrorCode.EXCHANGE_REQUEST_UPDATE_INVALID);
 		ExchangeRequestEditResponse response = exchangeRequestQueryService.findForEdit(
 				requestId, Long.valueOf(authentication.getName()));
+		return ResponseEntity.ok(new ApiResponse<>(response, null));
+	}
+
+	@GetMapping("/users/me/exchanged-items")
+	public ResponseEntity<ApiResponse<CompletedExchangePageResponse>> findCompletedExchanges(
+			Authentication authentication,
+			@RequestParam(defaultValue = "10") String size,
+			@RequestParam(required = false) String cursor
+	) {
+		CompletedExchangePageResponse response = exchangeRequestQueryService.findCompletedExchanges(
+				Long.valueOf(authentication.getName()), size, cursor);
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 
