@@ -19,24 +19,24 @@ public interface ItemLikeRepository extends JpaRepository<ItemLike, Long> {
 			select item
 			from ItemLike itemLike
 			join itemLike.item item
-			where itemLike.user.id = :userId
+			where itemLike.user.id = ?1
 				and item.deletedAt is null
 			order by item.id desc
 			""")
-	List<Item> findLikedItemsByUserId(@Param("userId") Long userId, Pageable pageable);
+	List<Item> findLikedItemsByUserId(Long userId, Pageable pageable);
 
 	@Query("""
 			select item
 			from ItemLike itemLike
 			join itemLike.item item
-			where itemLike.user.id = :userId
+			where itemLike.user.id = ?1
 				and item.deletedAt is null
-				and item.id < :cursorId
+				and item.id < ?2
 			order by item.id desc
 			""")
 	List<Item> findLikedItemsByUserIdAfter(
-			@Param("userId") Long userId,
-			@Param("cursorId") Long cursorId,
+			Long userId,
+			Long cursorId,
 			Pageable pageable
 	);
 

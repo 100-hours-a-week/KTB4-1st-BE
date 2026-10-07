@@ -174,7 +174,7 @@ public class ItemQueryService {
 		try {
 			cursorId = CursorCodec.decodeId(cursor);
 		} catch (ApiException exception) {
-			throw invalidMyItemsRequest();
+			throw new ApiException(ErrorCode.BAD_REQUEST, MY_ITEMS_BAD_REQUEST_MESSAGE, exception);
 		}
 		Pageable pageable = PageRequest.of(0, size + 1);
 		List<Item> items = cursorId == null
