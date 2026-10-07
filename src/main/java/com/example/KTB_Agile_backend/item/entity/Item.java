@@ -14,6 +14,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -29,6 +31,8 @@ import static java.util.Objects.requireNonNull;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Item extends SoftDeletableEntity {
 	private static final int MINIMUM_EXCHANGE_QUANTITY = 1;
+	private static final int MINIMUM_QUANTITY = 0;
+	private static final int MAXIMUM_QUANTITY = 99;
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,6 +48,8 @@ public class Item extends SoftDeletableEntity {
 	private Image thumbnailImage;
 
 	@Column(nullable = false)
+	@Min(value = 0, message = "재고 수량은 0 이상이어야 합니다.")
+	@Max(value = MAXIMUM_QUANTITY, message = "수량은 99개 이하여야 합니다.")
 	private Integer quantity = 1;
 
 	@Enumerated(EnumType.STRING)
@@ -87,9 +93,7 @@ public class Item extends SoftDeletableEntity {
 			BigDecimal valueGapToleranceScore
 	) {
 		this(user, title, content);
-		if (quantity == null || quantity < 1) {
-			throw new IllegalArgumentException("quantity must be positive");
-		}
+		validateQuantity(quantity);
 		this.quantity = quantity;
 		this.itemState = requireNonNull(itemState, "itemState must not be null");
 		this.exchangeUrgencyScore = requireNonNull(
@@ -110,9 +114,7 @@ public class Item extends SoftDeletableEntity {
 			BigDecimal exchangeUrgencyScore,
 			BigDecimal valueGapToleranceScore
 	) {
-		if (quantity == null || quantity < 1) {
-			throw new IllegalArgumentException("quantity must be positive");
-		}
+		validateQuantity(quantity);
 		this.title = requireNonNull(title, "title must not be null");
 		this.content = requireNonNull(content, "content must not be null");
 		this.quantity = quantity;
@@ -128,6 +130,12 @@ public class Item extends SoftDeletableEntity {
 		this.quantity = Math.max(0, this.quantity - quantity);
 		if (this.quantity == 0) {
 			this.itemState = ItemState.UNAVAILABLE;
+		}
+	}
+
+	private static void validateQuantity(Integer quantity) {
+		if (quantity == null || quantity < MINIMUM_QUANTITY || quantity > MAXIMUM_QUANTITY) {
+			throw new IllegalArgumentException("quantity must be between 0 and 99");
 		}
 	}
 
