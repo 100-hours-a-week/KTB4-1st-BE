@@ -65,9 +65,11 @@ localhost와 127.0.0.1은 쿠키 저장 위치와 로컬 네트워크 처리에�
 | 409 | 소셜 계정 충돌 |
 | 415 | 지원하지 않는 Content-Type |
 | 500 | 서버 내부 오류 |
+| 503 | DB 또는 FastAPI health check 실패 |
 
 애플리케이션이 처리한 오류는 JSON 응답입니다. Tomcat의 HTML 400 Bad Request가 보이면
 요청 URL, HTTP 메서드, JSON 문법, Postman Agent 또는 로컬 호스트를 먼저 확인합니다.
+Health check API는 `status`를 반환하며, 실패 시 HTTP 503을 반환합니다.
 
 ## 3. 인증 및 쿠키
 
@@ -117,6 +119,8 @@ state는 Authorization 헤더에 넣는 값이 아닙니다.
 | GET | /api/search-histories | Bearer | 검색 이력 최신순 조회 (최대 10개씩 커서 페이지) |
 | DELETE | /api/search-histories/{searchHistoryId} | Bearer | 검색 이력 한 건 soft-delete |
 | DELETE | /api/search-histories | Bearer | 로그인 사용자의 검색 이력 전체 soft-delete |
+| GET | /health/ping/mysql | 없음 | MySQL 연결 확인 (200 UP / 503 DOWN) |
+| GET | /health/ping/fastapi | 없음 | FastAPI `/health` 확인 (200 UP / 503 DOWN) |
 
 ---
 
