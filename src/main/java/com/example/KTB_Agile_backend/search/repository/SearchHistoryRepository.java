@@ -10,8 +10,8 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@SuppressWarnings("PMD.AvoidDuplicateLiterals")
 public interface SearchHistoryRepository extends JpaRepository<SearchHistory, Long> {
-	String USER_ID_PARAM = "userId";
 
 	@Modifying
 	@Query(value = """
@@ -22,7 +22,7 @@ public interface SearchHistoryRepository extends JpaRepository<SearchHistory, Lo
 				updated_at = :searchedAt
 			""", nativeQuery = true)
 	void upsertActiveKeyword(
-			@Param(USER_ID_PARAM) Long userId,
+			@Param("userId") Long userId,
 			@Param("keyword") String keyword,
 			@Param("searchedAt") LocalDateTime searchedAt
 	);
@@ -35,7 +35,7 @@ public interface SearchHistoryRepository extends JpaRepository<SearchHistory, Lo
 			order by history.lastSearchedAt desc, history.id desc
 			""")
 	List<SearchHistory> findActiveByUserId(
-			@Param(USER_ID_PARAM) Long userId,
+			@Param("userId") Long userId,
 			Pageable pageable
 	);
 
@@ -51,7 +51,7 @@ public interface SearchHistoryRepository extends JpaRepository<SearchHistory, Lo
 			order by history.lastSearchedAt desc, history.id desc
 			""")
 	List<SearchHistory> findActiveByUserIdAfter(
-			@Param(USER_ID_PARAM) Long userId,
+			@Param("userId") Long userId,
 			@Param("lastSearchedAt") LocalDateTime lastSearchedAt,
 			@Param("cursorId") Long cursorId,
 			Pageable pageable
@@ -66,7 +66,7 @@ public interface SearchHistoryRepository extends JpaRepository<SearchHistory, Lo
 				AND deleted_at IS NULL
 			""", nativeQuery = true)
 	void softDeleteOne(
-			@Param(USER_ID_PARAM) Long userId,
+			@Param("userId") Long userId,
 			@Param("searchHistoryId") Long searchHistoryId,
 			@Param("deletedAt") LocalDateTime deletedAt
 	);
