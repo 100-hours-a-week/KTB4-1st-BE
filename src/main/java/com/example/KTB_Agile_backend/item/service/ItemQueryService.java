@@ -157,13 +157,13 @@ public class ItemQueryService {
 		CursorPage<ItemSummaryProjection> page = CursorPage.fromIds(
 				summaries, PAGE_SIZE, ItemSummaryProjection::itemId);
 		List<Long> itemIds = page.items().stream().map(ItemSummaryProjection::itemId).toList();
-		Map<Long, Long> likeCounts = findLikeCounts(itemIds);
+		Map<Long, ItemStats> statsByItemId = findStats(itemIds);
 		Set<Long> likedItemIds = findLikedItemIds(userId, itemIds);
 		Map<Long, String> thumbnails = findThumbnails(itemIds);
 
 		return new ItemPageResponse(
 				page.items().stream()
-						.map(summary -> toSummary(summary, likeCounts, likedItemIds, thumbnails))
+						.map(summary -> toSummary(summary, statsByItemId, likedItemIds, thumbnails))
 						.toList(),
 				page.nextCursor(),
 				page.hasNext()
