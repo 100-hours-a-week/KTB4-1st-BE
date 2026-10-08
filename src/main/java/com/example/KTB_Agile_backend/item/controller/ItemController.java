@@ -35,6 +35,17 @@ public class ItemController {
 	private final ItemLikeService itemLikeService;
 	private final ItemQueryService itemQueryService;
 
+	@GetMapping("/items")
+	public ResponseEntity<ApiResponse<ItemPageResponse>> search(
+			Authentication authentication,
+			@RequestParam(defaultValue = "") String keyword,
+			@RequestParam(required = false) String cursor
+	) {
+		ItemPageResponse response = itemQueryService.search(
+				Long.valueOf(authentication.getName()), keyword, cursor);
+		return ResponseEntity.ok(new ApiResponse<>(response, null));
+	}
+
 	@PostMapping("/items")
 	public ResponseEntity<ApiResponse<ItemCreateResponse>> create(
 			Authentication authentication,

@@ -27,6 +27,8 @@ import com.example.KTB_Agile_backend.item.exception.ItemErrorCode;
 import com.example.KTB_Agile_backend.item.repository.ItemLikeRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemStatsRepository;
+import com.example.KTB_Agile_backend.search.entity.SearchHistory;
+import com.example.KTB_Agile_backend.search.service.SearchHistoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -59,6 +61,7 @@ public class ItemQueryService {
 	private final ImageRepository imageRepository;
 	private final ImageUrlResolver imageUrlResolver;
 	private final ExchangeRequestRepository exchangeRequestRepository;
+	private final SearchHistoryService searchHistoryService;
 
 	@Transactional(readOnly = true)
 	public ItemDetailResponse findDetail(Long userId, Long itemId) {
@@ -113,6 +116,44 @@ public class ItemQueryService {
 		List<ItemSummaryProjection> summaries = cursorId == null
 				? groupItemRepository.findActiveItemSummariesByGroupId(groupId, pageable)
 				: groupItemRepository.findActiveItemSummariesByGroupIdAfter(groupId, cursorId, pageable);
+		CursorPage<ItemSummaryProjection> page = CursorPage.fromIds(
+				summaries, PAGE_SIZE, ItemSummaryProjection::itemId);
+		List<Long> itemIds = page.items().stream().map(ItemSummaryProjection::itemId).toList();
+		Map<Long, Long> likeCounts = findLikeCounts(itemIds);
+		Set<Long> likedItemIds = findLikedItemIds(userId, itemIds);
+		Map<Long, String> thumbnails = findThumbnails(itemIds);
+
+		return new ItemPageResponse(
+				page.items().stream()
+						.map(summary -> toSummary(summary, likeCounts, likedItemIds, thumbnails))
+						.toList(),
+				page.nextCursor(),
+				page.hasNext()
+		);
+	}
+
+	@Transactional
+	public ItemPageResponse search(Long userId, String keywordValue, String cursor) {
+		String keyword = keywordValue == null ? "" : keywordValue.strip();
+		if (keyword.length() > SearchHistory.MAX_KEYWORD_LENGTH) {
+			throw new ApiException(
+					ErrorCode.BAD_REQUEST,
+					"검색어는 " + SearchHistory.MAX_KEYWORD_LENGTH + "자 이하여야 합니다."
+			);
+		}
+
+		Long cursorId = CursorCodec.decodeId(cursor);
+		if (cursorId == null && !keyword.isEmpty()) {
+			searchHistoryService.recordProductSearch(userId, keyword);
+		}
+
+		Pageable pageable = PageRequest.of(0, FETCH_SIZE);
+		String escapedKeyword = escapeLikeWildcards(keyword);
+		List<ItemSummaryProjection> summaries = cursorId == null
+				? groupItemRepository.findActiveItemSummariesForSearch(
+						userId, GroupMemberStatus.ACTIVE, escapedKeyword, pageable)
+				: groupItemRepository.findActiveItemSummariesForSearchAfter(
+						userId, GroupMemberStatus.ACTIVE, escapedKeyword, cursorId, pageable);
 		CursorPage<ItemSummaryProjection> page = CursorPage.fromIds(
 				summaries, PAGE_SIZE, ItemSummaryProjection::itemId);
 		List<Long> itemIds = page.items().stream().map(ItemSummaryProjection::itemId).toList();
@@ -327,5 +368,11 @@ public class ItemQueryService {
 		return content.length() <= CONTENT_PREVIEW_LENGTH
 				? content
 				: content.substring(0, CONTENT_PREVIEW_LENGTH - 3) + "...";
+	}
+
+	private static String escapeLikeWildcards(String value) {
+		return value.replace("!", "!!")
+				.replace("%", "!%")
+				.replace("_", "!_");
 	}
 }
