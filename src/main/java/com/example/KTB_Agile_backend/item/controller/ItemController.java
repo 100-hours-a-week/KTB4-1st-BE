@@ -8,6 +8,8 @@ import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemLikeResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
 import com.example.KTB_Agile_backend.item.dto.response.MyItemPageResponse;
+import com.example.KTB_Agile_backend.item.event.ItemViewEvent;
+import com.example.KTB_Agile_backend.item.event.ItemViewEventPublisher;
 import com.example.KTB_Agile_backend.item.service.ItemLikeService;
 import com.example.KTB_Agile_backend.item.service.ItemService;
 import com.example.KTB_Agile_backend.item.service.ItemQueryService;
@@ -34,6 +36,7 @@ public class ItemController {
 	private final ItemService itemService;
 	private final ItemLikeService itemLikeService;
 	private final ItemQueryService itemQueryService;
+	private final ItemViewEventPublisher itemViewEventPublisher;
 
 	@GetMapping("/items")
 	public ResponseEntity<ApiResponse<ItemPageResponse>> search(
@@ -98,8 +101,8 @@ public class ItemController {
 			@PathVariable Long itemId
 	) {
 		Long userId = Long.valueOf(authentication.getName());
-		itemService.recordView(userId, itemId);
 		ItemDetailResponse response = itemQueryService.findDetail(userId, itemId);
+		itemViewEventPublisher.publish(new ItemViewEvent(userId, itemId));
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 
