@@ -1,7 +1,6 @@
 package com.example.KTB_Agile_backend.health.controller;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.actuate.health.Health;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +14,7 @@ import org.springframework.web.client.RestClientException;
 
 import java.net.URI;
 import java.time.Duration;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/health/ping")
@@ -37,17 +37,17 @@ public class HealthPingController {
 	}
 
 	@GetMapping("/mysql")
-	public ResponseEntity<Health> pingMysql() {
+	public ResponseEntity<Map<String, String>> pingMysql() {
 		try {
 			jdbcTemplate.queryForObject("SELECT 1", Integer.class);
-			return ResponseEntity.ok(Health.up().build());
+			return ResponseEntity.ok(Map.of("status", "UP"));
 		} catch (DataAccessException ignored) {
 			return unavailable();
 		}
 	}
 
 	@GetMapping("/fastapi")
-	public ResponseEntity<Health> pingFastApi() {
+	public ResponseEntity<Map<String, String>> pingFastApi() {
 		if (aiImageAnalysisUrl.isBlank()) {
 			return unavailable();
 		}
@@ -56,13 +56,13 @@ public class HealthPingController {
 					.uri(URI.create(aiImageAnalysisUrl).resolve("/health"))
 					.retrieve()
 					.toBodilessEntity();
-			return ResponseEntity.ok(Health.up().build());
+			return ResponseEntity.ok(Map.of("status", "UP"));
 		} catch (IllegalArgumentException | RestClientException ignored) {
 			return unavailable();
 		}
 	}
 
-	private static ResponseEntity<Health> unavailable() {
-		return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Health.down().build());
+	private static ResponseEntity<Map<String, String>> unavailable() {
+		return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of("status", "DOWN"));
 	}
 }

@@ -69,7 +69,7 @@ localhost와 127.0.0.1은 쿠키 저장 위치와 로컬 네트워크 처리에�
 
 애플리케이션이 처리한 오류는 JSON 응답입니다. Tomcat의 HTML 400 Bad Request가 보이면
 요청 URL, HTTP 메서드, JSON 문법, Postman Agent 또는 로컬 호스트를 먼저 확인합니다.
-Health check API는 Spring Actuator 형식으로 `status`를 반환하며, 실패 시 HTTP 503을 반환합니다.
+Health check API는 `status`를 반환하며, 실패 시 HTTP 503을 반환합니다.
 
 ## 3. 인증 및 쿠키
 
