@@ -78,7 +78,7 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 			join item.user owner
 			where groupItem.deletedAt is null
 				and groupItem.group.deletedAt is null
-				and groupItem.group.id = :groupId
+				and groupItem.group.id = :searchGroupId
 				and item.deletedAt is null
 				and (
 					:keyword = ''
@@ -88,7 +88,7 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 			order by item.id desc
 			""")
 	List<ItemSummaryProjection> findActiveItemSummariesForSearch(
-			@Param("groupId") Long groupId,
+			@Param("searchGroupId") Long groupId,
 			@Param("keyword") String keyword,
 			Pageable pageable
 	);
@@ -109,7 +109,7 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 			join item.user owner
 			where groupItem.deletedAt is null
 				and groupItem.group.deletedAt is null
-				and groupItem.group.id = :groupId
+				and groupItem.group.id = :searchGroupId
 				and item.deletedAt is null
 				and (
 					:keyword = ''
@@ -120,7 +120,7 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 			order by item.id desc
 			""")
 	List<ItemSummaryProjection> findActiveItemSummariesForSearchAfter(
-			@Param("groupId") Long groupId,
+			@Param("searchGroupId") Long groupId,
 			@Param("keyword") String keyword,
 			@Param("cursorId") Long cursorId,
 			Pageable pageable
