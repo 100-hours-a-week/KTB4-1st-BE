@@ -1,7 +1,6 @@
 package com.example.KTB_Agile_backend.group.repository;
 
 import com.example.KTB_Agile_backend.group.entity.GroupItem;
-import com.example.KTB_Agile_backend.group.entity.GroupMemberStatus;
 import com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -79,14 +78,8 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 			join item.user owner
 			where groupItem.deletedAt is null
 				and groupItem.group.deletedAt is null
+				and groupItem.group.id = :searchGroupId
 				and item.deletedAt is null
-				and exists (
-					select groupMember.id
-					from GroupMember groupMember
-					where groupMember.group.id = groupItem.group.id
-						and groupMember.user.id = :userId
-						and groupMember.status = :activeStatus
-				)
 				and (
 					:keyword = ''
 					or item.title like concat('%', :keyword, '%') escape '!'
@@ -95,8 +88,7 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 			order by item.id desc
 			""")
 	List<ItemSummaryProjection> findActiveItemSummariesForSearch(
-			@Param("userId") Long userId,
-			@Param("activeStatus") GroupMemberStatus activeStatus,
+			@Param("searchGroupId") Long groupId,
 			@Param("keyword") String keyword,
 			Pageable pageable
 	);
@@ -117,14 +109,8 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 			join item.user owner
 			where groupItem.deletedAt is null
 				and groupItem.group.deletedAt is null
+				and groupItem.group.id = :searchGroupId
 				and item.deletedAt is null
-				and exists (
-					select groupMember.id
-					from GroupMember groupMember
-					where groupMember.group.id = groupItem.group.id
-						and groupMember.user.id = :userId
-						and groupMember.status = :activeStatus
-				)
 				and (
 					:keyword = ''
 					or item.title like concat('%', :keyword, '%') escape '!'
@@ -134,8 +120,7 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 			order by item.id desc
 			""")
 	List<ItemSummaryProjection> findActiveItemSummariesForSearchAfter(
-			@Param("userId") Long userId,
-			@Param("activeStatus") GroupMemberStatus activeStatus,
+			@Param("searchGroupId") Long groupId,
 			@Param("keyword") String keyword,
 			@Param("cursorId") Long cursorId,
 			Pageable pageable

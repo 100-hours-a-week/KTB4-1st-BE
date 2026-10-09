@@ -41,11 +41,12 @@ public class ItemController {
 	@GetMapping("/items")
 	public ResponseEntity<ApiResponse<ItemPageResponse>> search(
 			Authentication authentication,
+			@RequestParam Long groupId,
 			@RequestParam(defaultValue = "") String keyword,
 			@RequestParam(required = false) String cursor
 	) {
 		ItemPageResponse response = itemQueryService.search(
-				Long.valueOf(authentication.getName()), keyword, cursor);
+				Long.valueOf(authentication.getName()), groupId, keyword, cursor);
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 

@@ -134,7 +134,16 @@ public class ItemQueryService {
 	}
 
 	@Transactional
-	public ItemPageResponse search(Long userId, String keywordValue, String cursor) {
+	public ItemPageResponse search(Long userId, Long groupId, String keywordValue, String cursor) {
+		if (!groupRepository.existsByIdAndDeletedAtIsNull(groupId)) {
+			throw new ApiException(GroupErrorCode.GROUP_NOT_FOUND);
+		}
+		GroupMember member = groupMemberRepository.findByGroup_IdAndUser_Id(groupId, userId)
+				.orElseThrow(() -> new ApiException(GroupErrorCode.GROUP_MEMBERSHIP_REQUIRED));
+		if (member.getStatus() != GroupMemberStatus.ACTIVE) {
+			throw new ApiException(GroupErrorCode.GROUP_MEMBERSHIP_REQUIRED);
+		}
+
 		String keyword = keywordValue == null ? "" : keywordValue.strip();
 		if (keyword.length() > SearchHistory.MAX_KEYWORD_LENGTH) {
 			throw new ApiException(
@@ -152,9 +161,9 @@ public class ItemQueryService {
 		String escapedKeyword = escapeLikeWildcards(keyword);
 		List<ItemSummaryProjection> summaries = cursorId == null
 				? groupItemRepository.findActiveItemSummariesForSearch(
-						userId, GroupMemberStatus.ACTIVE, escapedKeyword, pageable)
+						groupId, escapedKeyword, pageable)
 				: groupItemRepository.findActiveItemSummariesForSearchAfter(
-						userId, GroupMemberStatus.ACTIVE, escapedKeyword, cursorId, pageable);
+						groupId, escapedKeyword, cursorId, pageable);
 		CursorPage<ItemSummaryProjection> page = CursorPage.fromIds(
 				summaries, PAGE_SIZE, ItemSummaryProjection::itemId);
 		List<Long> itemIds = page.items().stream().map(ItemSummaryProjection::itemId).toList();
