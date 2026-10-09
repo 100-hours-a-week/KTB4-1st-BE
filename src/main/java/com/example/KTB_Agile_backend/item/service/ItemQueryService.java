@@ -28,7 +28,8 @@ import com.example.KTB_Agile_backend.item.repository.ItemLikeRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemStatsRepository;
 import com.example.KTB_Agile_backend.search.entity.SearchHistory;
-import com.example.KTB_Agile_backend.search.service.SearchHistoryService;
+import com.example.KTB_Agile_backend.search.event.SearchHistoryEvent;
+import com.example.KTB_Agile_backend.search.event.SearchHistoryEventPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -61,7 +62,7 @@ public class ItemQueryService {
 	private final ImageRepository imageRepository;
 	private final ImageUrlResolver imageUrlResolver;
 	private final ExchangeRequestRepository exchangeRequestRepository;
-	private final SearchHistoryService searchHistoryService;
+	private final SearchHistoryEventPublisher searchHistoryEventPublisher;
 
 	@Transactional(readOnly = true)
 	public ItemDetailResponse findDetail(Long userId, Long itemId) {
@@ -144,7 +145,7 @@ public class ItemQueryService {
 
 		Long cursorId = CursorCodec.decodeId(cursor);
 		if (cursorId == null && !keyword.isEmpty()) {
-			searchHistoryService.recordProductSearch(userId, keyword);
+			searchHistoryEventPublisher.publish(new SearchHistoryEvent(userId, keyword));
 		}
 
 		Pageable pageable = PageRequest.of(0, FETCH_SIZE);
