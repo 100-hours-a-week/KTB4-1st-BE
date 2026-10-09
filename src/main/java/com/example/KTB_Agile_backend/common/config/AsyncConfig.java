@@ -18,6 +18,7 @@ public class AsyncConfig {
 		executor.setMaxPoolSize(2);
 		executor.setQueueCapacity(200);
 		executor.setThreadNamePrefix("view-count-");
+		// ponytail: Counts can be lost on queue overflow or shutdown; use a durable queue if that becomes unacceptable.
 		executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
 		return executor;
 	}
