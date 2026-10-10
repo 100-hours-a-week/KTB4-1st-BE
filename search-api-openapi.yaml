@@ -1,0 +1,436 @@
+openapi: 3.1.0
+info:
+  title: KTB Agile Backend - Search APIs
+  version: 0.0.1-SNAPSHOT
+  description: |
+    검색어 이력은 별도의 저장 API가 없습니다. 비어 있지 않은 검색어로 GET /items의 첫 페이지를 요청하면
+    검색 이력이 저장됩니다. 앞뒤 공백 제거 후 대소문자까지 같은 문자열의 활성 이력이 있으면 해당 이력의 lastSearchedAt이 갱신됩니다.
+
+    이 문서의 경로는 Spring 컨트롤러의 실제 매핑을 기준으로 합니다. 현재 백엔드에는 /api context path가 없습니다.
+    날짜/시각은 서버의 LocalDateTime 값으로, 시간대 정보 없이 반환됩니다.
+servers:
+  - url: http://127.0.0.1:8080
+    description: 로컬 개발 서버
+tags:
+  - name: 상품 검색
+  - name: 검색 기록
+security:
+  - bearerAuth: []
+paths:
+  /items:
+    get:
+      tags:
+        - 상품 검색
+      summary: 상품 검색 및 검색 이력 저장
+      description: |
+        로그인 사용자가 현재 선택한 그룹의 ACTIVE 멤버일 때 해당 그룹의 활성 상품만 조회합니다. 검색어 앞뒤 공백을 제거한 뒤 상품 제목 또는 내용에 부분 일치로 검색하며,
+        정렬은 상품 ID 내림차순입니다. 페이지 크기는 20개입니다.
+
+        검색어가 비어 있으면 선택한 그룹의 전체 상품을 조회하고 검색 이력을 저장하지 않습니다. 비어 있지 않은 검색어는 첫 페이지 요청에서
+        검색 결과가 0건이어도 이력을 저장합니다. 앞뒤 공백 제거 후 대소문자까지 같은 문자열의 활성 이력이 있으면 최근 검색 시각을 갱신합니다.
+        다음 페이지를 조회할 때는 같은 keyword와 이전 응답의 nextCursor를 전달합니다.
+      operationId: searchItemsAndRecordHistory
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          description: 현재 선택한 그룹 ID. 로그인 사용자가 ACTIVE 멤버인 그룹이어야 합니다.
+          schema:
+            type: integer
+            format: int64
+          example: 101
+        - name: keyword
+          in: query
+          required: false
+          description: 앞뒤 공백 제거 후 최대 255자. 생략하거나 빈 값이면 선택한 그룹의 전체 상품을 조회하며 검색 이력은 저장하지 않습니다.
+          schema:
+            type: string
+            default: ""
+          example: 충전기
+        - name: cursor
+          in: query
+          required: false
+          description: 이전 응답의 nextCursor 값. 첫 페이지 요청에서는 생략합니다. 커서 내부 형식은 클라이언트에서 해석하지 않습니다.
+          schema:
+            type: string
+          example: MTAw
+      responses:
+        "200":
+          description: 상품 검색 결과
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseItemPage"
+              example:
+                data:
+                  items:
+                    - itemId: 100
+                      title: 충전기
+                      contentPreview: USB-C 충전기입니다.
+                      quantity: 1
+                      owner:
+                        userId: 42
+                        nickname: 사용자
+                      itemState: AVAILABLE
+                      thumbnailImageUrl: null
+                      likeCount: 0
+                      viewCount: 0
+                      exchangeRequestCount: 0
+                      isLiked: false
+                      createdAt: "2026-09-07T10:30:00"
+                  nextCursor: null
+                  hasNext: false
+                error: null
+        "400":
+          description: groupId가 누락되었거나 정수가 아니거나, 검색어가 255자를 초과하거나 cursor가 유효하지 않습니다.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+              examples:
+                invalidCursor:
+                  value:
+                    data: null
+                    error:
+                      code: INVALID_CURSOR
+                      message: cursor가 올바르지 않습니다.
+                      details: []
+                keywordTooLong:
+                  value:
+                    data: null
+                    error:
+                      code: BAD_REQUEST
+                      message: 검색어는 255자 이하여야 합니다.
+                      details: []
+                invalidGroupId:
+                  value:
+                    data: null
+                    error:
+                      code: BAD_REQUEST
+                      message: 요청 값이 올바르지 않습니다.
+                      details: []
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "403":
+          description: 로그인 사용자가 해당 그룹의 ACTIVE 멤버가 아닙니다.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+              example:
+                data: null
+                error:
+                  code: GROUP_MEMBERSHIP_REQUIRED
+                  message: 그룹 멤버만 물품을 조회할 수 있습니다.
+                  details: []
+        "404":
+          description: 그룹이 존재하지 않거나 삭제되었습니다.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+              example:
+                data: null
+                error:
+                  code: GROUP_NOT_FOUND
+                  message: 그룹을 찾을 수 없습니다.
+                  details: []
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /search-histories:
+    get:
+      tags:
+        - 검색 기록
+      summary: 검색 기록 조회
+      description: |
+        로그인 사용자의 활성 검색 기록을 조회합니다. 최근 검색 시각(lastSearchedAt) 내림차순이며, 시각이 같으면
+        검색 기록 ID 내림차순입니다. 한 페이지에 최대 10건을 반환합니다.
+
+        다음 페이지 요청에는 응답의 nextCursor를 그대로 전달합니다. 첫 페이지에서는 cursor를 생략합니다.
+      operationId: getSearchHistories
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          description: 이전 응답의 nextCursor 값. 첫 페이지 요청에서는 생략하며, 커서 내부 형식은 클라이언트에서 해석하지 않습니다.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 검색 기록 페이지
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseSearchHistoryPage"
+              example:
+                data:
+                  searchHistories:
+                    - searchHistoryId: 801
+                      keyword: 충전기
+                      lastSearchedAt: "2026-09-07T10:30:00"
+                      createdAt: "2026-09-01T09:00:00"
+                  nextCursor: null
+                  hasNext: false
+                error: null
+        "400":
+          description: cursor가 유효하지 않습니다.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+              example:
+                data: null
+                error:
+                  code: INVALID_CURSOR
+                  message: cursor가 올바르지 않습니다.
+                  details: []
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    delete:
+      tags:
+        - 검색 기록
+      summary: 검색 기록 전체 삭제
+      description: 로그인 사용자의 활성 검색 기록 전체를 soft-delete합니다. 기록이 없더라도 204를 반환합니다.
+      operationId: deleteAllSearchHistories
+      responses:
+        "204":
+          description: 삭제 처리 완료. 응답 본문은 없습니다.
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /search-histories/{searchHistoryId}:
+    delete:
+      tags:
+        - 검색 기록
+      summary: 검색 기록 단건 삭제
+      description: |
+        로그인 사용자의 검색 기록을 soft-delete합니다. 다른 사용자의 기록이나 존재하지 않는 ID를 지정해도
+        삭제 여부를 노출하지 않고 204를 반환합니다. 이미 삭제된 기록에 대한 재요청도 204입니다.
+      operationId: deleteSearchHistory
+      parameters:
+        - name: searchHistoryId
+          in: path
+          required: true
+          description: 삭제할 검색 기록 ID
+          schema:
+            type: integer
+            format: int64
+          example: 801
+      responses:
+        "204":
+          description: 삭제 처리 완료. 응답 본문은 없습니다.
+        "400":
+          description: searchHistoryId가 정수로 변환되지 않습니다.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+              example:
+                data: null
+                error:
+                  code: BAD_REQUEST
+                  message: 요청 값이 올바르지 않습니다.
+                  details: []
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    AuthenticationRequired:
+      description: Bearer access token이 없거나 유효하지 않습니다.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+          example:
+            data: null
+            error:
+              code: AUTHENTICATION_REQUIRED
+              message: 로그인이 필요합니다.
+              details: []
+    InternalServerError:
+      description: 서버 내부 오류입니다.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+          example:
+            data: null
+            error:
+              code: INTERNAL_SERVER_ERROR
+              message: 서버 오류가 발생했습니다.
+              details: []
+  schemas:
+    ApiResponseItemPage:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          $ref: "#/components/schemas/ItemPageResponse"
+        error:
+          oneOf:
+            - $ref: "#/components/schemas/ErrorResponse"
+            - type: "null"
+    ApiResponseSearchHistoryPage:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          $ref: "#/components/schemas/SearchHistoryPageResponse"
+        error:
+          oneOf:
+            - $ref: "#/components/schemas/ErrorResponse"
+            - type: "null"
+    ApiErrorResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          type: "null"
+        error:
+          $ref: "#/components/schemas/ErrorResponse"
+    ErrorResponse:
+      type: object
+      required: [code, message, details]
+      properties:
+        code:
+          type: string
+          example: INVALID_CURSOR
+        message:
+          type: string
+          example: cursor가 올바르지 않습니다.
+        details:
+          type: array
+          items:
+            type: object
+            required: [field, reason]
+            properties:
+              field:
+                type: string
+              reason:
+                type: string
+    ItemPageResponse:
+      type: object
+      required: [items, nextCursor, hasNext]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ItemSummary"
+        nextCursor:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: 다음 페이지가 있으면 커서 문자열, 없으면 null
+        hasNext:
+          type: boolean
+    ItemSummary:
+      type: object
+      required:
+        - itemId
+        - title
+        - contentPreview
+        - quantity
+        - owner
+        - itemState
+        - thumbnailImageUrl
+        - likeCount
+        - viewCount
+        - exchangeRequestCount
+        - isLiked
+        - createdAt
+      properties:
+        itemId:
+          type: integer
+          format: int64
+        title:
+          type: string
+        contentPreview:
+          type: string
+          description: 상품 내용 미리보기
+        quantity:
+          type: integer
+          format: int32
+        owner:
+          $ref: "#/components/schemas/ItemOwner"
+        itemState:
+          type: string
+          enum: [AVAILABLE, UNAVAILABLE]
+        thumbnailImageUrl:
+          oneOf:
+            - type: string
+              format: uri
+            - type: "null"
+        likeCount:
+          type: integer
+          format: int64
+        viewCount:
+          type: integer
+          format: int64
+        exchangeRequestCount:
+          type: integer
+          format: int64
+          description: 현재 검색 결과 구현에서는 0을 반환합니다.
+        isLiked:
+          type: boolean
+          description: 현재 로그인 사용자의 좋아요 여부
+        createdAt:
+          type: string
+          description: 상품 등록 시각(LocalDateTime, 시간대 정보 없음)
+          example: "2026-09-07T10:30:00"
+    ItemOwner:
+      type: object
+      required: [userId, nickname]
+      properties:
+        userId:
+          type: integer
+          format: int64
+        nickname:
+          type: string
+    SearchHistoryPageResponse:
+      type: object
+      required: [searchHistories, nextCursor, hasNext]
+      properties:
+        searchHistories:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchHistorySummary"
+        nextCursor:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: 다음 페이지가 있으면 커서 문자열, 없으면 null
+        hasNext:
+          type: boolean
+    SearchHistorySummary:
+      type: object
+      required: [searchHistoryId, keyword, lastSearchedAt, createdAt]
+      properties:
+        searchHistoryId:
+          type: integer
+          format: int64
+        keyword:
+          type: string
+          description: 앞뒤 공백을 제거한 검색어
+          example: 충전기
+        lastSearchedAt:
+          type: string
+          description: 가장 최근 검색한 시각(LocalDateTime, 시간대 정보 없음)
+          example: "2026-09-07T10:30:00"
+        createdAt:
+          type: string
+          description: 검색 기록이 처음 생성된 시각(LocalDateTime, 시간대 정보 없음)
+          example: "2026-09-01T09:00:00"
