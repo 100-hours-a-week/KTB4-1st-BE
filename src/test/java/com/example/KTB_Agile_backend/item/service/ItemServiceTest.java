@@ -24,6 +24,7 @@ import com.example.KTB_Agile_backend.item.repository.ItemLikeRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemStatsRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemViewRepository;
+import com.example.KTB_Agile_backend.search.event.SearchHistoryEventPublisher;
 import com.example.KTB_Agile_backend.ai.text.service.ModerationCheckService;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.entity.UserStatus;
@@ -489,7 +490,8 @@ class ItemServiceTest {
 				groupItemRepository,
 				imageRepository,
 				Image::getImageUrl,
-				mock(ExchangeRequestRepository.class)
+				mock(ExchangeRequestRepository.class),
+				mock(SearchHistoryEventPublisher.class)
 		);
 	}
 

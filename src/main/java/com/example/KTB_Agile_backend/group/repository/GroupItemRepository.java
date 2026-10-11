@@ -77,6 +77,70 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 	);
 
 	@Query("""
+			select distinct new com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection(
+				item.id,
+				item.title,
+				item.content,
+				item.quantity,
+				owner.id,
+				owner.nickname,
+				item.itemState,
+				item.createdAt
+			)
+			from GroupItem groupItem
+			join groupItem.item item
+			join item.user owner
+			where groupItem.deletedAt is null
+				and groupItem.group.deletedAt is null
+				and groupItem.group.id = :searchGroupId
+				and item.deletedAt is null
+				and (
+					:keyword = ''
+					or item.title like concat('%', :keyword, '%') escape '!'
+					or item.content like concat('%', :keyword, '%') escape '!'
+				)
+			order by item.id desc
+			""")
+	List<ItemSummaryProjection> findActiveItemSummariesForSearch(
+			@Param("searchGroupId") Long groupId,
+			@Param("keyword") String keyword,
+			Pageable pageable
+	);
+
+	@Query("""
+			select distinct new com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection(
+				item.id,
+				item.title,
+				item.content,
+				item.quantity,
+				owner.id,
+				owner.nickname,
+				item.itemState,
+				item.createdAt
+			)
+			from GroupItem groupItem
+			join groupItem.item item
+			join item.user owner
+			where groupItem.deletedAt is null
+				and groupItem.group.deletedAt is null
+				and groupItem.group.id = :searchGroupId
+				and item.deletedAt is null
+				and (
+					:keyword = ''
+					or item.title like concat('%', :keyword, '%') escape '!'
+					or item.content like concat('%', :keyword, '%') escape '!'
+				)
+				and item.id < :cursorId
+			order by item.id desc
+			""")
+	List<ItemSummaryProjection> findActiveItemSummariesForSearchAfter(
+			@Param("searchGroupId") Long groupId,
+			@Param("keyword") String keyword,
+			@Param("cursorId") Long cursorId,
+			Pageable pageable
+	);
+
+	@Query("""
 			select groupItem
 			from GroupItem groupItem
 			join fetch groupItem.group group

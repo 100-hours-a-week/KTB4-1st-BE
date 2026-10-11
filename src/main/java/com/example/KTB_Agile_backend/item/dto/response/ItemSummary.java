@@ -13,6 +13,7 @@ public record ItemSummary(
 		ItemState itemState,
 		String thumbnailImageUrl,
 		Long likeCount,
+		Long viewCount,
 		Long exchangeRequestCount,
 		Boolean isLiked,
 		LocalDateTime createdAt

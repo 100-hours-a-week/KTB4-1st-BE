@@ -80,6 +80,7 @@ public class SecurityConfig {
 						.requestMatchers(
 								"/actuator/health/liveness",
 								"/actuator/health/readiness",
+								"/health/ping/**",
 								"/auth/oauth/**",
 								"/auth/kakao/callback",
 								"/auth/refresh",

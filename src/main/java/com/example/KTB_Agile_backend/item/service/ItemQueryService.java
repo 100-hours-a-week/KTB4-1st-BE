@@ -28,6 +28,9 @@ import com.example.KTB_Agile_backend.item.repository.ItemLikeRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemStatsRepository;
 import com.example.KTB_Agile_backend.user.entity.UserStatus;
+import com.example.KTB_Agile_backend.search.entity.SearchHistory;
+import com.example.KTB_Agile_backend.search.event.SearchHistoryEvent;
+import com.example.KTB_Agile_backend.search.event.SearchHistoryEventPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -60,6 +63,7 @@ public class ItemQueryService {
 	private final ImageRepository imageRepository;
 	private final ImageUrlResolver imageUrlResolver;
 	private final ExchangeRequestRepository exchangeRequestRepository;
+	private final SearchHistoryEventPublisher searchHistoryEventPublisher;
 
 	@Transactional(readOnly = true)
 	public ItemDetailResponse findDetail(Long userId, Long itemId) {
@@ -135,13 +139,60 @@ public class ItemQueryService {
 		CursorPage<ItemSummaryProjection> page = CursorPage.fromIds(
 				summaries, PAGE_SIZE, ItemSummaryProjection::itemId);
 		List<Long> itemIds = page.items().stream().map(ItemSummaryProjection::itemId).toList();
-		Map<Long, Long> likeCounts = findLikeCounts(itemIds);
+		Map<Long, ItemStats> statsByItemId = findStats(itemIds);
 		Set<Long> likedItemIds = findLikedItemIds(userId, itemIds);
 		Map<Long, String> thumbnails = findThumbnails(itemIds);
 
 		return new ItemPageResponse(
 				page.items().stream()
-						.map(summary -> toSummary(summary, likeCounts, likedItemIds, thumbnails))
+						.map(summary -> toSummary(summary, statsByItemId, likedItemIds, thumbnails))
+						.toList(),
+				page.nextCursor(),
+				page.hasNext()
+		);
+	}
+
+	@Transactional
+	public ItemPageResponse search(Long userId, Long groupId, String keywordValue, String cursor) {
+		if (!groupRepository.existsByIdAndDeletedAtIsNull(groupId)) {
+			throw new ApiException(GroupErrorCode.GROUP_NOT_FOUND);
+		}
+		GroupMember member = groupMemberRepository.findByGroup_IdAndUser_Id(groupId, userId)
+				.orElseThrow(() -> new ApiException(GroupErrorCode.GROUP_MEMBERSHIP_REQUIRED));
+		if (member.getStatus() != GroupMemberStatus.ACTIVE) {
+			throw new ApiException(GroupErrorCode.GROUP_MEMBERSHIP_REQUIRED);
+		}
+
+		String keyword = keywordValue == null ? "" : keywordValue.strip();
+		if (keyword.length() > SearchHistory.MAX_KEYWORD_LENGTH) {
+			throw new ApiException(
+					ErrorCode.BAD_REQUEST,
+					"검색어는 " + SearchHistory.MAX_KEYWORD_LENGTH + "자 이하여야 합니다."
+			);
+		}
+
+		Long cursorId = CursorCodec.decodeId(cursor);
+		if (cursorId == null && !keyword.isEmpty()) {
+			searchHistoryEventPublisher.publish(new SearchHistoryEvent(userId, keyword));
+		}
+
+		Pageable pageable = PageRequest.of(0, FETCH_SIZE);
+		String escapedKeyword = escapeLikeWildcards(keyword);
+		List<ItemSummaryProjection> summaries = cursorId == null
+				? groupItemRepository.findActiveItemSummariesForSearch(
+						groupId, escapedKeyword, pageable)
+				: groupItemRepository.findActiveItemSummariesForSearchAfter(
+						groupId, escapedKeyword, cursorId, pageable);
+		CursorPage<ItemSummaryProjection> page = CursorPage.fromIds(
+				summaries, PAGE_SIZE, ItemSummaryProjection::itemId);
+		List<Long> itemIds = page.items().stream().map(ItemSummaryProjection::itemId).toList();
+		Map<Long, ItemStats> statsByItemId = findStats(itemIds);
+		Set<Long> likedItemIds = findLikedItemIds(userId, itemIds);
+		Map<Long, String> thumbnails = findThumbnails(itemIds);
+
+		return new ItemPageResponse(
+				page.items().stream()
+						.map(summary -> toSummary(summary, statsByItemId, likedItemIds, thumbnails))
 						.toList(),
 				page.nextCursor(),
 				page.hasNext()
@@ -159,7 +210,7 @@ public class ItemQueryService {
 						userId, cursorId, pageable);
 		CursorPage<Item> page = CursorPage.fromIds(items, size, Item::getId);
 		List<Long> itemIds = itemIds(page.items());
-		Map<Long, Long> likeCounts = findLikeCounts(itemIds);
+		Map<Long, ItemStats> statsByItemId = findStats(itemIds);
 		Set<Long> likedItemIds = findLikedItemIds(userId, itemIds);
 		Map<Long, String> thumbnails = findThumbnails(itemIds);
 		Map<Long, List<MyItemPageResponse.GroupInfo>> groups = findGroupInfos(page.items());
@@ -167,19 +218,23 @@ public class ItemQueryService {
 
 		return new MyItemPageResponse(
 				page.items().stream()
-						.map(item -> new MyItemPageResponse.MyItem(
-								item.getId(),
-								groups.getOrDefault(item.getId(), List.of()),
-								item.getTitle(),
-								contentPreview(item.getContent()),
-								item.getQuantity(),
-								item.getItemState(),
-								thumbnails.get(item.getId()),
-								likeCounts.getOrDefault(item.getId(), 0L),
-								exchangeRequestCounts.getOrDefault(item.getId(), 0L),
-								likedItemIds.contains(item.getId()),
-								item.getCreatedAt()
-						))
+						.map(item -> {
+							ItemStats stats = statsByItemId.get(item.getId());
+							return new MyItemPageResponse.MyItem(
+									item.getId(),
+									groups.getOrDefault(item.getId(), List.of()),
+									item.getTitle(),
+									contentPreview(item.getContent()),
+									item.getQuantity(),
+									item.getItemState(),
+									thumbnails.get(item.getId()),
+									stats == null ? 0L : stats.getLikeCount(),
+									stats == null ? 0L : stats.getViewCount(),
+									exchangeRequestCounts.getOrDefault(item.getId(), 0L),
+									likedItemIds.contains(item.getId()),
+									item.getCreatedAt()
+							);
+						})
 						.toList(),
 				page.nextCursor(),
 				page.hasNext()
@@ -201,26 +256,30 @@ public class ItemQueryService {
 				: itemLikeRepository.findLikedItemsByUserIdAfter(userId, cursorId, pageable);
 		CursorPage<Item> page = CursorPage.fromIds(items, size, Item::getId);
 		List<Long> itemIds = itemIds(page.items());
-		Map<Long, Long> likeCounts = findLikeCounts(itemIds);
+		Map<Long, ItemStats> statsByItemId = findStats(itemIds);
 		Map<Long, String> thumbnails = findThumbnails(itemIds);
 		Map<Long, List<MyItemPageResponse.GroupInfo>> groups = findGroupInfos(page.items());
 		Map<Long, Long> exchangeRequestCounts = findExchangeRequestCounts(itemIds);
 
 		return new MyItemPageResponse(
 				page.items().stream()
-						.map(item -> new MyItemPageResponse.MyItem(
-								item.getId(),
-								groups.getOrDefault(item.getId(), List.of()),
-								item.getTitle(),
-								contentPreview(item.getContent()),
-								item.getQuantity(),
-								item.getItemState(),
-								thumbnails.get(item.getId()),
-								likeCounts.getOrDefault(item.getId(), 0L),
-								exchangeRequestCounts.getOrDefault(item.getId(), 0L),
-								true,
-								item.getCreatedAt()
-						))
+						.map(item -> {
+							ItemStats stats = statsByItemId.get(item.getId());
+							return new MyItemPageResponse.MyItem(
+									item.getId(),
+									groups.getOrDefault(item.getId(), List.of()),
+									item.getTitle(),
+									contentPreview(item.getContent()),
+									item.getQuantity(),
+									item.getItemState(),
+									thumbnails.get(item.getId()),
+									stats == null ? 0L : stats.getLikeCount(),
+									stats == null ? 0L : stats.getViewCount(),
+									exchangeRequestCounts.getOrDefault(item.getId(), 0L),
+									true,
+									item.getCreatedAt()
+							);
+						})
 						.toList(),
 				page.nextCursor(),
 				page.hasNext()
@@ -269,14 +328,14 @@ public class ItemQueryService {
 		return new ApiException(ErrorCode.BAD_REQUEST, MY_ITEMS_BAD_REQUEST_MESSAGE);
 	}
 
-	private Map<Long, Long> findLikeCounts(List<Long> itemIds) {
+	private Map<Long, ItemStats> findStats(List<Long> itemIds) {
 		if (itemIds.isEmpty()) {
 			return Map.of();
 		}
-		Map<Long, Long> counts = new HashMap<>();
+		Map<Long, ItemStats> statsByItemId = new HashMap<>();
 		itemStatsRepository.findAllById(itemIds)
-				.forEach(stats -> counts.put(stats.getId(), stats.getLikeCount()));
-		return counts;
+				.forEach(stats -> statsByItemId.put(stats.getId(), stats));
+		return statsByItemId;
 	}
 
 	private Set<Long> findLikedItemIds(Long userId, List<Long> itemIds) {
@@ -323,10 +382,11 @@ public class ItemQueryService {
 
 	private static ItemSummary toSummary(
 			ItemSummaryProjection item,
-			Map<Long, Long> likeCounts,
+			Map<Long, ItemStats> statsByItemId,
 			Set<Long> likedItemIds,
 			Map<Long, String> thumbnails
 	) {
+		ItemStats stats = statsByItemId.get(item.itemId());
 		return new ItemSummary(
 				item.itemId(),
 				item.title(),
@@ -335,7 +395,8 @@ public class ItemQueryService {
 				new ItemSummary.Owner(item.ownerId(), item.ownerNickname()),
 				item.itemState(),
 				thumbnails.get(item.itemId()),
-				likeCounts.getOrDefault(item.itemId(), 0L),
+				stats == null ? 0L : stats.getLikeCount(),
+				stats == null ? 0L : stats.getViewCount(),
 				0L,
 				likedItemIds.contains(item.itemId()),
 				item.createdAt()
@@ -346,5 +407,11 @@ public class ItemQueryService {
 		return content.length() <= CONTENT_PREVIEW_LENGTH
 				? content
 				: content.substring(0, CONTENT_PREVIEW_LENGTH - 3) + "...";
+	}
+
+	private static String escapeLikeWildcards(String value) {
+		return value.replace("!", "!!")
+				.replace("%", "!%")
+				.replace("_", "!_");
 	}
 }

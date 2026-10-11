@@ -11,6 +11,10 @@ spring:
       hibernate:
         format_sql: true
 
+app:
+  item-view:
+    publisher: executor
+
 sentry:
   dsn: https://229674fc538ca9111da07811ffe4537c@o4512173324500992.ingest.us.sentry.io/4512174894481408
   # Add request headers and IP data to events.

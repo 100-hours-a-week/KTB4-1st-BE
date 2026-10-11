@@ -7,6 +7,8 @@ import com.example.KTB_Agile_backend.item.dto.response.ItemCreateResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
+import com.example.KTB_Agile_backend.item.event.ItemViewEvent;
+import com.example.KTB_Agile_backend.item.event.ItemViewEventPublisher;
 import com.example.KTB_Agile_backend.item.service.ItemService;
 import com.example.KTB_Agile_backend.item.service.ItemQueryService;
 import com.example.KTB_Agile_backend.item.service.ItemLikeService;
@@ -37,6 +39,7 @@ class ItemControllerTest {
 	private ItemService itemService;
 	private ItemLikeService itemLikeService;
 	private ItemQueryService itemQueryService;
+	private ItemViewEventPublisher itemViewEventPublisher;
 	private MockMvc mockMvc;
 
 	@BeforeEach
@@ -44,8 +47,10 @@ class ItemControllerTest {
 		itemService = mock(ItemService.class);
 		itemLikeService = mock(ItemLikeService.class);
 		itemQueryService = mock(ItemQueryService.class);
+		itemViewEventPublisher = mock(ItemViewEventPublisher.class);
 		mockMvc = MockMvcBuilders
-				.standaloneSetup(new ItemController(itemService, itemLikeService, itemQueryService))
+				.standaloneSetup(new ItemController(
+						itemService, itemLikeService, itemQueryService, itemViewEventPublisher))
 				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
 	}
@@ -126,7 +131,7 @@ class ItemControllerTest {
 				.andExpect(jsonPath("$.data.viewCount").value(128))
 				.andExpect(jsonPath("$.data.isLiked").value(false));
 
-		verify(itemService).recordView(42L, 123L);
+		verify(itemViewEventPublisher).publish(new ItemViewEvent(42L, 123L));
 		verify(itemQueryService).findDetail(42L, 123L);
 	}
 
