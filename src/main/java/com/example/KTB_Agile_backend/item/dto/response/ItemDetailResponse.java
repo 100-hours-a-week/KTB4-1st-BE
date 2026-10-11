@@ -1,6 +1,8 @@
 package com.example.KTB_Agile_backend.item.dto.response;
 
 import com.example.KTB_Agile_backend.item.entity.ItemState;
+import com.example.KTB_Agile_backend.group.entity.GroupMemberStatus;
+import com.example.KTB_Agile_backend.user.entity.UserStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -33,14 +35,16 @@ public record ItemDetailResponse(
 
 	public record GroupInfo(
 			Long groupId,
-			String groupName
+			String groupName,
+			GroupMemberStatus ownerMembershipStatus
 	) {
 	}
 
 	public record Owner(
 			Long userId,
 			String nickname,
-			String profileImageUrl
+			String profileImageUrl,
+			UserStatus userStatus
 	) {
 	}
 
