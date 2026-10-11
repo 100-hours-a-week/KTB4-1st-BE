@@ -4,8 +4,10 @@ import com.example.KTB_Agile_backend.common.response.ApiResponse;
 import com.example.KTB_Agile_backend.group.dto.response.GroupPageResponse;
 import com.example.KTB_Agile_backend.group.service.GroupQueryService;
 import com.example.KTB_Agile_backend.user.dto.request.UserPreferenceRequest;
+import com.example.KTB_Agile_backend.user.dto.response.UserProfileResponse;
 import com.example.KTB_Agile_backend.user.dto.response.UserPreferenceResponse;
 import com.example.KTB_Agile_backend.user.service.AccountWithdrawalService;
+import com.example.KTB_Agile_backend.user.service.UserProfileQueryService;
 import com.example.KTB_Agile_backend.user.service.UserPreferenceService;
 import com.example.KTB_Agile_backend.user.service.UserPreferenceQueryService;
 import jakarta.validation.Valid;
@@ -23,6 +25,7 @@ public class UserController {
 	private final AccountWithdrawalService accountWithdrawalService;
 	private final UserPreferenceService userPreferenceService;
 	private final UserPreferenceQueryService userPreferenceQueryService;
+	private final UserProfileQueryService userProfileQueryService;
 	private final GroupQueryService groupQueryService;
 
 	@DeleteMapping
@@ -36,6 +39,14 @@ public class UserController {
 			Authentication authentication
 	) {
 		GroupPageResponse response = groupQueryService.myGroups(Long.valueOf(authentication.getName()));
+		return ResponseEntity.ok(new ApiResponse<>(response, null));
+	}
+
+	@GetMapping("/me")
+	public ResponseEntity<ApiResponse<UserProfileResponse>> getMyProfile(
+			Authentication authentication
+	) {
+		UserProfileResponse response = userProfileQueryService.get(Long.valueOf(authentication.getName()));
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 

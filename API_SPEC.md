@@ -81,7 +81,7 @@ Health check API는 `status`를 반환하며, 실패 시 HTTP 503을 반환합�
 Authorization: Bearer <accessToken>
 ~~~
 
-현재 보호된 API는 POST /auth/logout, DELETE /users, 상품 검색 API, 검색 이력 API입니다.
+현재 보호된 API는 POST /auth/logout, GET /users/me, DELETE /users, 상품 검색 API, 검색 이력 API입니다.
 
 ### refresh_token 쿠키
 
@@ -114,6 +114,7 @@ state는 Authorization 헤더에 넣는 값이 아닙니다.
 | POST | /auth/oauth | state 쿠키 필요 | Kakao 인가 코드로 로그인 |
 | POST | /auth/refresh | refresh 쿠키 필요 | access token 재발급 |
 | POST | /auth/logout | Bearer + refresh 쿠키 | 로그아웃 및 refresh token 폐기 |
+| GET | /users/me | Bearer | 로그인 사용자의 닉네임과 프로필 이미지 조회 |
 | DELETE | /users | Bearer | 회원 탈퇴 처리 |
 | GET | /api/items | Bearer | 가입한 그룹의 상품 검색 및 빈 키워드일 때 전체 상품 조회 |
 | GET | /api/search-histories | Bearer | 검색 이력 최신순 조회 (최대 10개씩 커서 페이지) |
@@ -452,7 +453,7 @@ JWT secret, Kakao client secret, Kakao Admin key는 Postman 요청에 넣지 않
 
 ## 13. 현재 구현의 범위와 제한
 
-- 현재 API 목록에는 사용자 조회와 token introspection API가 없습니다.
+- token introspection API는 제공하지 않습니다.
 - Kakao callback은 백엔드 `/auth/kakao/callback` 컨트롤러가 처리합니다.
 - callback 성공 후 `FRONTEND_REDIRECT_URI`로 `302 Found` redirect하고 Refresh Token 쿠키를 반환합니다. 프론트엔드는 `/auth/refresh`로 Access Token을 받습니다.
 - 메인 application.yaml에는 외부 DB 접속 설정이 없습니다.
@@ -500,6 +501,7 @@ JWT secret, Kakao client secret, Kakao Admin key는 Postman 요청에 넣지 않
 | 로그인 | POST | /auth/oauth | Content-Type: application/json<br>Accept: application/json (선택)<br>Cookie: oauth_state=state 값 | {<br>  "provider": "KAKAO",<br>  "authorizationCode": "카카오 인가 코드",<br>  "state": "state 값"<br>} | 필수<br>provider: String<br>authorizationCode: String<br>state: String<br><br>기존 사용자라면 isNewUser는 false입니다.<br>응답 시 refresh_token 쿠키 발급<br>HttpOnly; Secure; SameSite=Lax; Path=/auth; Max-Age=1209600 | 200 | {<br>  "data": {<br>    "accessToken": "우리 서비스 Access Token",<br>    "tokenType": "Bearer",<br>    "expiresIn": 900,<br>    "isNewUser": false,<br>    "user": {<br>      "userId": 101,<br>      "nickname": "닉네임",<br>      "profileImageUrl": "https://example.com/profile.png"<br>    }<br>  },<br>  "error": null<br>} |
 | Access Token 재발급 | POST | /auth/refresh | Accept: application/json (선택)<br>Cookie: refresh_token=refresh token 값 | 없음 | refresh_token 쿠키 필수<br>Authorization 헤더 불필요 | 200 | {<br>  "data": {<br>    "accessToken": "새 Access Token",<br>    "tokenType": "Bearer",<br>    "expiresIn": 900,<br>    "needsPreferenceSetup": true<br>  },<br>  "error": null<br>} |
 | 로그아웃 | POST | /auth/logout | Accept: application/json (선택)<br>Authorization: Bearer Access Token<br>Cookie: refresh_token=refresh token 값 (선택) | 없음 | Access Token 필요<br>refresh_token 쿠키가 있으면 폐기<br>정상 처리 후 refresh_token 쿠키 삭제 | 204 | 응답 본문 없음 |
+| 내 정보 조회 | GET | /users/me | Accept: application/json (선택)<br>Authorization: Bearer Access Token | 없음 | Access Token 필요<br>프로필 이미지가 없는 경우 `profileImageUrl`은 null입니다. | 200 | {<br>  "data": {<br>    "nickname": "닉네임",<br>    "profileImageUrl": "https://example.com/profile.png"<br>  },<br>  "error": null<br>} |
 | 회원 탈퇴 | DELETE | /users | Accept: application/json (선택)<br>Authorization: Bearer Access Token | 없음 | Access Token 필요<br>테스트 계정의 상태가 변경되므로 모든 테스트 마지막에 실행 | 204 | 응답 본문 없음 |
 
 ### 14-3. 실패 API 명세
