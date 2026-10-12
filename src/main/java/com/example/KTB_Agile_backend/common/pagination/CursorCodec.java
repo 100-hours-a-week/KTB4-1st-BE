@@ -11,6 +11,7 @@ import java.util.List;
 
 public final class CursorCodec {
 	private static final int COMPOSITE_PART_COUNT = 2;
+	private static final int SINGLE_PART_COUNT = 1;
 	private static final long MIN_CURSOR_ID = 1L;
 	private static final long MIN_COUNT = 0L;
 	private static final String TIME_ID_SEPARATOR_REGEX = "\\|";
@@ -47,7 +48,7 @@ public final class CursorCodec {
 
 		try {
 			String[] parts = decodeValue(cursor).split(TIME_ID_SEPARATOR_REGEX, -1);
-			if (parts.length == 1) {
+			if (parts.length == SINGLE_PART_COUNT) {
 				long id = Long.parseLong(parts[0]);
 				if (id < MIN_CURSOR_ID) {
 					throw new IllegalArgumentException();
