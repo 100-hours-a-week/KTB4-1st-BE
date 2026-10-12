@@ -22,6 +22,7 @@ import com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection;
 import com.example.KTB_Agile_backend.item.dto.response.MyItemPageResponse;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemLike;
+import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.entity.ItemStats;
 import com.example.KTB_Agile_backend.item.exception.ItemErrorCode;
 import com.example.KTB_Agile_backend.item.repository.ItemLikeRepository;
@@ -153,7 +154,8 @@ public class ItemQueryService {
 	}
 
 	@Transactional
-	public ItemPageResponse search(Long userId, Long groupId, String keywordValue, String cursor) {
+	public ItemPageResponse search(
+			Long userId, Long groupId, String keywordValue, ItemState itemState, String cursor) {
 		if (!groupRepository.existsByIdAndDeletedAtIsNull(groupId)) {
 			throw new ApiException(GroupErrorCode.GROUP_NOT_FOUND);
 		}
@@ -171,7 +173,8 @@ public class ItemQueryService {
 			);
 		}
 
-		Long cursorId = CursorCodec.decodeId(cursor);
+		String itemStateFilter = itemState == null ? "ALL" : itemState.name();
+		Long cursorId = CursorCodec.decodeIdForFilter(cursor, itemStateFilter);
 		if (cursorId == null && !keyword.isEmpty()) {
 			searchHistoryEventPublisher.publish(new SearchHistoryEvent(userId, keyword));
 		}
@@ -180,11 +183,12 @@ public class ItemQueryService {
 		String escapedKeyword = escapeLikeWildcards(keyword);
 		List<ItemSummaryProjection> summaries = cursorId == null
 				? groupItemRepository.findActiveItemSummariesForSearch(
-						groupId, escapedKeyword, pageable)
+						groupId, escapedKeyword, itemState, pageable)
 				: groupItemRepository.findActiveItemSummariesForSearchAfter(
-						groupId, escapedKeyword, cursorId, pageable);
-		CursorPage<ItemSummaryProjection> page = CursorPage.fromIds(
-				summaries, PAGE_SIZE, ItemSummaryProjection::itemId);
+						groupId, escapedKeyword, cursorId, itemState, pageable);
+		CursorPage<ItemSummaryProjection> page = CursorPage.from(
+				summaries, PAGE_SIZE,
+				summary -> CursorCodec.encodeIdForFilter(summary.itemId(), itemStateFilter));
 		List<Long> itemIds = page.items().stream().map(ItemSummaryProjection::itemId).toList();
 		Map<Long, ItemStats> statsByItemId = findStats(itemIds);
 		Set<Long> likedItemIds = findLikedItemIds(userId, itemIds);

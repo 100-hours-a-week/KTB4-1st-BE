@@ -8,6 +8,7 @@ import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemLikeResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
 import com.example.KTB_Agile_backend.item.dto.response.MyItemPageResponse;
+import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.event.ItemViewEvent;
 import com.example.KTB_Agile_backend.item.event.ItemViewEventPublisher;
 import com.example.KTB_Agile_backend.item.service.ItemLikeService;
@@ -43,10 +44,11 @@ public class ItemController {
 			Authentication authentication,
 			@RequestParam Long groupId,
 			@RequestParam(defaultValue = "") String keyword,
+			@RequestParam(required = false) ItemState itemState,
 			@RequestParam(required = false) String cursor
 	) {
 		ItemPageResponse response = itemQueryService.search(
-				Long.valueOf(authentication.getName()), groupId, keyword, cursor);
+				Long.valueOf(authentication.getName()), groupId, keyword, itemState, cursor);
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 
