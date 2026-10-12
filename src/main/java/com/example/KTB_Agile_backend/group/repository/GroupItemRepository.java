@@ -3,6 +3,7 @@ package com.example.KTB_Agile_backend.group.repository;
 import com.example.KTB_Agile_backend.group.entity.GroupItem;
 import com.example.KTB_Agile_backend.group.entity.GroupMemberStatus;
 import com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection;
+import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.user.entity.UserStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -94,6 +95,7 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 				and groupItem.group.deletedAt is null
 				and groupItem.group.id = :searchGroupId
 				and item.deletedAt is null
+				and (:itemState is null or item.itemState = :itemState)
 				and (
 					:keyword = ''
 					or item.title like concat('%', :keyword, '%') escape '!'
@@ -104,6 +106,7 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 	List<ItemSummaryProjection> findActiveItemSummariesForSearch(
 			@Param("searchGroupId") Long groupId,
 			@Param("keyword") String keyword,
+			@Param("itemState") ItemState itemState,
 			Pageable pageable
 	);
 
@@ -125,6 +128,7 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 				and groupItem.group.deletedAt is null
 				and groupItem.group.id = :searchGroupId
 				and item.deletedAt is null
+				and (:itemState is null or item.itemState = :itemState)
 				and (
 					:keyword = ''
 					or item.title like concat('%', :keyword, '%') escape '!'
@@ -137,6 +141,7 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 			@Param("searchGroupId") Long groupId,
 			@Param("keyword") String keyword,
 			@Param("cursorId") Long cursorId,
+			@Param("itemState") ItemState itemState,
 			Pageable pageable
 	);
 

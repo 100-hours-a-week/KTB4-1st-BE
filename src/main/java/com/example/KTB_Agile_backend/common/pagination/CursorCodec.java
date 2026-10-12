@@ -15,6 +15,7 @@ public final class CursorCodec {
 	private static final long MIN_COUNT = 0L;
 	private static final String TIME_ID_SEPARATOR_REGEX = "\\|";
 	private static final String COUNT_ID_SEPARATOR_REGEX = ":";
+	private static final String ALL_FILTER = "ALL";
 
 	private CursorCodec() {
 	}
@@ -37,6 +38,38 @@ public final class CursorCodec {
 
 	public static String encodeId(Long id) {
 		return encodeValue(String.valueOf(id));
+	}
+
+	public static Long decodeIdForFilter(String cursor, String filter) {
+		if (cursor == null || cursor.isBlank()) {
+			return null;
+		}
+
+		try {
+			String[] parts = decodeValue(cursor).split(TIME_ID_SEPARATOR_REGEX, -1);
+			if (parts.length == 1) {
+				long id = Long.parseLong(parts[0]);
+				if (id < MIN_CURSOR_ID) {
+					throw new IllegalArgumentException();
+				}
+				return ALL_FILTER.equals(filter) ? id : null;
+			}
+			if (parts.length != COMPOSITE_PART_COUNT) {
+				throw new IllegalArgumentException();
+			}
+
+			long id = Long.parseLong(parts[1]);
+			if (id < MIN_CURSOR_ID) {
+				throw new IllegalArgumentException();
+			}
+			return parts[0].equals(filter) ? id : null;
+		} catch (IllegalArgumentException exception) {
+			throw new ApiException(ErrorCode.INVALID_CURSOR, List.of(), exception);
+		}
+	}
+
+	public static String encodeIdForFilter(Long id, String filter) {
+		return ALL_FILTER.equals(filter) ? encodeId(id) : encodeValue(filter + "|" + id);
 	}
 
 	public static TimeIdCursor decodeTimeId(String cursor) {
