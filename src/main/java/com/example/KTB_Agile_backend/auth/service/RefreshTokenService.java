@@ -63,10 +63,7 @@ public class RefreshTokenService {
 
 		refreshTokenRepository
 				.findByTokenHashAndDeletedAtIsNull(Hashing.sha256(token))
-				.ifPresent(savedToken -> {
-					savedToken.revoke();
-					refreshTokenRepository.save(savedToken);
-				});
+				.ifPresent(RefreshToken::revoke);
 	}
 
 	private static ApiException invalidRefreshToken() {

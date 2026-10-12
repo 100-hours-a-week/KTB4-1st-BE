@@ -5,6 +5,7 @@ import com.example.KTB_Agile_backend.exchange.repository.ExchangeRequestReposito
 import com.example.KTB_Agile_backend.group.entity.Group;
 import com.example.KTB_Agile_backend.group.entity.GroupItem;
 import com.example.KTB_Agile_backend.group.entity.GroupMember;
+import com.example.KTB_Agile_backend.group.entity.GroupMemberStatus;
 import com.example.KTB_Agile_backend.group.repository.GroupItemRepository;
 import com.example.KTB_Agile_backend.group.repository.GroupMemberRepository;
 import com.example.KTB_Agile_backend.group.repository.GroupRepository;
@@ -14,6 +15,7 @@ import com.example.KTB_Agile_backend.image.service.S3ImageObjectService;
 import com.example.KTB_Agile_backend.item.dto.request.CreateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.request.UpdateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
+import com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.entity.ItemStats;
@@ -22,13 +24,16 @@ import com.example.KTB_Agile_backend.item.repository.ItemLikeRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemStatsRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemViewRepository;
+import com.example.KTB_Agile_backend.search.event.SearchHistoryEventPublisher;
 import com.example.KTB_Agile_backend.ai.text.service.ModerationCheckService;
 import com.example.KTB_Agile_backend.user.entity.User;
+import com.example.KTB_Agile_backend.user.entity.UserStatus;
 import com.example.KTB_Agile_backend.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -86,7 +91,7 @@ class ItemServiceTest {
 				eq(List.of(101L, 205L)), eq(42L), any()))
 				.thenReturn(2L);
 		when(imageRepository.existsByObjectKeyIn(List.of("images/42/1001.jpg"))).thenReturn(false);
-		when(itemRepository.saveAndFlush(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		var response = service.create(42L, request(List.of(101L, 205L), List.of("images/42/1001.jpg")));
 
@@ -97,7 +102,7 @@ class ItemServiceTest {
 		verify(groupItemRepository).saveAll(groupItemsCaptor.capture());
 		assertThat(((Iterable<?>) groupItemsCaptor.getValue())).hasSize(2);
 		ArgumentCaptor<Iterable<Image>> imagesCaptor = ArgumentCaptor.forClass(Iterable.class);
-		verify(imageRepository).saveAllAndFlush(imagesCaptor.capture());
+		verify(imageRepository).saveAll(imagesCaptor.capture());
 		assertThat(imagesCaptor.getValue()).hasSize(1);
 		verify(s3ImageObjectService).markRegistered(List.of("images/42/1001.jpg"));
 	}
@@ -128,6 +133,7 @@ class ItemServiceTest {
 		Group group = mock(Group.class);
 		when(group.getId()).thenReturn(101L);
 		Image image = new Image(owner, "https://example.com/image.jpg");
+		ReflectionTestUtils.setField(image, "id", 1001L);
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(owner));
 		when(itemRepository.findByIdAndDeletedAtIsNull(123L)).thenReturn(Optional.of(item));
 		when(groupRepository.findAllByIdInAndDeletedAtIsNull(List.of(101L)))
@@ -158,7 +164,7 @@ class ItemServiceTest {
 				image.getItem()
 		)).containsExactly("새 제목", "새 내용", 2, ItemState.UNAVAILABLE, item);
 		verify(groupItemRepository).saveAll(any());
-		verify(imageRepository).saveAll(List.of(image));
+		verify(imageRepository, never()).saveAll(any());
 	}
 
 	@Test
@@ -178,7 +184,7 @@ class ItemServiceTest {
 				() -> service.create(42L, request(List.of(101L, 205L), List.of("images/42/1001.jpg"))));
 
 		assertThat(exception.status()).isEqualTo(HttpStatus.NOT_FOUND);
-		verify(itemRepository, never()).saveAndFlush(any());
+		verify(itemRepository, never()).save(any());
 		verify(groupMemberRepository, never()).countByGroup_IdInAndUser_IdAndStatus(any(), any(), any());
 	}
 
@@ -243,7 +249,6 @@ class ItemServiceTest {
 		ItemStatsRepository itemStatsRepository = mock(ItemStatsRepository.class);
 		ItemLikeRepository itemLikeRepository = mock(ItemLikeRepository.class);
 		ImageRepository imageRepository = mock(ImageRepository.class);
-		User owner = user(10L);
 		User memberUser = user(42L);
 		ItemQueryService service = queryService(mock(ItemRepository.class), itemStatsRepository,
 				itemLikeRepository, groupRepository, groupMemberRepository, groupItemRepository, imageRepository);
@@ -251,18 +256,20 @@ class ItemServiceTest {
 		when(groupRepository.existsByIdAndDeletedAtIsNull(101L)).thenReturn(true);
 		when(groupMemberRepository.findByGroup_IdAndUser_Id(101L, 42L))
 				.thenReturn(Optional.of(new GroupMember(group, memberUser)));
-		List<Item> firstItems = new ArrayList<>();
+		List<ItemSummaryProjection> firstItems = new ArrayList<>();
 		for (long id = 21; id >= 1; id--) {
-			firstItems.add(item(id, owner));
+			firstItems.add(summary(id));
 		}
-		Item lastItem = item(1L, owner);
-		when(groupItemRepository.findActiveItemsByGroupId(eq(101L), any(Pageable.class)))
+		ItemSummaryProjection lastItem = summary(1L);
+		when(groupItemRepository.findActiveItemSummariesByGroupId(
+				eq(101L), eq(UserStatus.ACTIVE), eq(GroupMemberStatus.ACTIVE), any(Pageable.class)))
 				.thenReturn(firstItems);
-		when(groupItemRepository.findActiveItemsByGroupIdAfter(eq(101L), eq(2L), any(Pageable.class)))
+		when(groupItemRepository.findActiveItemSummariesByGroupIdAfter(
+				eq(101L), eq(2L), eq(UserStatus.ACTIVE), eq(GroupMemberStatus.ACTIVE), any(Pageable.class)))
 				.thenReturn(List.of(lastItem));
 		when(itemStatsRepository.findAllById(any())).thenReturn(List.of());
 		when(itemLikeRepository.findAllByItemIdsAndUserId(any(), eq(42L))).thenReturn(List.of());
-		when(imageRepository.findAllByItemIdsOrderByItemIdAndId(any())).thenReturn(List.of());
+		when(imageRepository.findThumbnailImagesByItemIds(any())).thenReturn(List.of());
 
 		var firstResponse = service.findByGroup(42L, 101L, null);
 		var lastResponse = service.findByGroup(42L, 101L, "Mg");
@@ -290,6 +297,7 @@ class ItemServiceTest {
 		when(owner.getId()).thenReturn(10L);
 		when(owner.getNickname()).thenReturn("사용자1");
 		when(owner.getProfileImageUrl()).thenReturn("https://example.com/profile.jpg");
+		when(owner.getUserStatus()).thenReturn(UserStatus.ACTIVE);
 		Item item = mock(Item.class);
 		when(item.getId()).thenReturn(123L);
 		when(item.getUser()).thenReturn(owner);
@@ -327,16 +335,18 @@ class ItemServiceTest {
 
 		assertThat(response).usingRecursiveComparison().isEqualTo(new ItemDetailResponse(
 				123L,
-				List.of(new ItemDetailResponse.GroupInfo(101L, "카테뷰")),
+				List.of(new ItemDetailResponse.GroupInfo(101L, "카테뷰", null)),
 				"게시글 제목1",
 				"게시글 내용입니다.",
 				1,
 				ItemState.AVAILABLE,
-				new ItemDetailResponse.Owner(10L, "사용자1", "https://example.com/profile.jpg"),
+				new ItemDetailResponse.Owner(
+						10L, "사용자1", "https://example.com/profile.jpg", UserStatus.ACTIVE),
 				List.of(
 						new ItemDetailResponse.ImageInfo(501L, "https://example.com/item1.jpg", 1),
 						new ItemDetailResponse.ImageInfo(502L, "https://example.com/item2.jpg", 2)
 				),
+				null,
 				33L,
 				128L,
 				0L,
@@ -425,6 +435,12 @@ class ItemServiceTest {
 		return item;
 	}
 
+	private static ItemSummaryProjection summary(long id) {
+		return new ItemSummaryProjection(
+				id, "물품 " + id, "내용", 1, 10L, "판매자", ItemState.AVAILABLE,
+				LocalDateTime.of(2026, 1, 1, 0, 0));
+	}
+
 	private static ItemService service(
 			ItemRepository itemRepository,
 			GroupRepository groupRepository,
@@ -473,8 +489,9 @@ class ItemServiceTest {
 				groupMemberRepository,
 				groupItemRepository,
 				imageRepository,
-				mock(S3ImageObjectService.class),
-				mock(ExchangeRequestRepository.class)
+				Image::getImageUrl,
+				mock(ExchangeRequestRepository.class),
+				mock(SearchHistoryEventPublisher.class)
 		);
 	}
 

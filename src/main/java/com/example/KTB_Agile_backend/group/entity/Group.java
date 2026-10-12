@@ -27,9 +27,6 @@ public class Group extends SoftDeletableEntity {
 	@Column(name = "group_name", nullable = false, length = 30)
 	private String groupName;
 
-	@Column(name = "active_group_name", length = 30, unique = true)
-	private String activeGroupName;
-
 	@Column(name = "road_address", nullable = false, length = 100)
 	private String roadAddress;
 
@@ -50,7 +47,6 @@ public class Group extends SoftDeletableEntity {
 			String groupContent
 	) {
 		this.groupName = requireText(groupName, "groupName", 30);
-		this.activeGroupName = this.groupName;
 		this.roadAddress = requireText(roadAddress, "roadAddress", 100);
 		this.longitude = requireCoordinate(longitude, "longitude", -180, 180);
 		this.latitude = requireCoordinate(latitude, "latitude", -90, 90);
@@ -67,10 +63,8 @@ public class Group extends SoftDeletableEntity {
 		return new Group(groupName, roadAddress, longitude, latitude, groupContent);
 	}
 
-	@SuppressWarnings("PMD.NullAssignment")
 	public void delete() {
 		if (!isDeleted()) {
-			this.activeGroupName = null;
 			markDeleted(LocalDateTime.now());
 		}
 	}

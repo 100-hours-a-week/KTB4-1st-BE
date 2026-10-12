@@ -39,13 +39,13 @@ class UserPreferenceServiceTest {
 		User user = new User("nickname");
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(user));
 		when(preferenceRepository.existsByUser_Id(42L)).thenReturn(false);
-		when(preferenceRepository.saveAndFlush(any(UserPreference.class)))
+		when(preferenceRepository.save(any(UserPreference.class)))
 				.thenAnswer(invocation -> invocation.getArgument(0));
 
 		var response = service.create(42L, allAnswers());
 
 		ArgumentCaptor<UserPreference> captor = ArgumentCaptor.forClass(UserPreference.class);
-		verify(preferenceRepository).saveAndFlush(captor.capture());
+		verify(preferenceRepository).save(captor.capture());
 		assertThat(captor.getValue().getAnswers()).hasSize(3);
 		assertThat(response.answers()).hasSize(3);
 	}
@@ -64,7 +64,7 @@ class UserPreferenceServiceTest {
 		));
 
 		assertThat(exception.status()).isEqualTo(HttpStatus.CONFLICT);
-		verify(preferenceRepository, never()).saveAndFlush(any());
+		verify(preferenceRepository, never()).save(any());
 	}
 
 	@Test
@@ -74,7 +74,7 @@ class UserPreferenceServiceTest {
 		UserPreferenceService service = new UserPreferenceService(userRepository, preferenceRepository);
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(new User("nickname")));
 		when(preferenceRepository.existsByUser_Id(42L)).thenReturn(false);
-		when(preferenceRepository.saveAndFlush(any(UserPreference.class)))
+		when(preferenceRepository.save(any(UserPreference.class)))
 				.thenThrow(new DataIntegrityViolationException("duplicate user preference"));
 
 		ApiException exception = assertThrows(ApiException.class, () -> service.create(
@@ -121,7 +121,7 @@ class UserPreferenceServiceTest {
 		))));
 
 		assertThat(exception.status()).isEqualTo(HttpStatus.BAD_REQUEST);
-		verify(preferenceRepository, never()).saveAndFlush(any());
+		verify(preferenceRepository, never()).save(any());
 	}
 
 	@Test
@@ -145,7 +145,7 @@ class UserPreferenceServiceTest {
 		))));
 
 		assertThat(exception.status()).isEqualTo(HttpStatus.BAD_REQUEST);
-		verify(preferenceRepository, never()).saveAndFlush(any());
+		verify(preferenceRepository, never()).save(any());
 	}
 
 	private static UserPreferenceRequest allAnswers() {

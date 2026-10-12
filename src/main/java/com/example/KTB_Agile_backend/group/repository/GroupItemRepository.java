@@ -1,7 +1,9 @@
 package com.example.KTB_Agile_backend.group.repository;
 
 import com.example.KTB_Agile_backend.group.entity.GroupItem;
-import com.example.KTB_Agile_backend.item.entity.Item;
+import com.example.KTB_Agile_backend.group.entity.GroupMemberStatus;
+import com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection;
+import com.example.KTB_Agile_backend.user.entity.UserStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -13,29 +15,127 @@ import java.util.List;
 public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 
 	@Query("""
-			select groupItem.item
-			from GroupItem groupItem
-			where groupItem.group.id = :groupId
-				and groupItem.deletedAt is null
-				and groupItem.item.deletedAt is null
-			order by groupItem.item.id desc
-			""")
-	List<Item> findActiveItemsByGroupId(
+				select new com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection(
+					item.id,
+					item.title,
+					item.content,
+					item.quantity,
+					owner.id,
+					owner.nickname,
+					item.itemState,
+					item.createdAt
+				)
+				from GroupItem groupItem
+				join groupItem.item item
+				join item.user owner
+				join GroupMember membership on membership.group = groupItem.group
+					and membership.user = owner
+				where groupItem.group.id = :groupId
+					and groupItem.deletedAt is null
+					and item.deletedAt is null
+					and owner.userStatus = :activeUserStatus
+					and membership.status = :activeMemberStatus
+				order by item.id desc
+				""")
+	List<ItemSummaryProjection> findActiveItemSummariesByGroupId(
 			@Param("groupId") Long groupId,
+			@Param("activeUserStatus") UserStatus activeUserStatus,
+			@Param("activeMemberStatus") GroupMemberStatus activeMemberStatus,
 			Pageable pageable
 	);
 
 	@Query("""
-			select groupItem.item
-			from GroupItem groupItem
-			where groupItem.group.id = :groupId
-				and groupItem.deletedAt is null
-				and groupItem.item.deletedAt is null
-				and groupItem.item.id < :cursorId
-			order by groupItem.item.id desc
-			""")
-	List<Item> findActiveItemsByGroupIdAfter(
+				select new com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection(
+					item.id,
+					item.title,
+					item.content,
+					item.quantity,
+					owner.id,
+					owner.nickname,
+					item.itemState,
+					item.createdAt
+				)
+				from GroupItem groupItem
+				join groupItem.item item
+				join item.user owner
+				join GroupMember membership on membership.group = groupItem.group
+					and membership.user = owner
+				where groupItem.group.id = :groupId
+					and groupItem.deletedAt is null
+					and item.deletedAt is null
+					and owner.userStatus = :activeUserStatus
+					and membership.status = :activeMemberStatus
+					and item.id < :cursorId
+				order by item.id desc
+				""")
+	List<ItemSummaryProjection> findActiveItemSummariesByGroupIdAfter(
 			@Param("groupId") Long groupId,
+			@Param("cursorId") Long cursorId,
+			@Param("activeUserStatus") UserStatus activeUserStatus,
+			@Param("activeMemberStatus") GroupMemberStatus activeMemberStatus,
+			Pageable pageable
+	);
+
+	@Query("""
+			select distinct new com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection(
+				item.id,
+				item.title,
+				item.content,
+				item.quantity,
+				owner.id,
+				owner.nickname,
+				item.itemState,
+				item.createdAt
+			)
+			from GroupItem groupItem
+			join groupItem.item item
+			join item.user owner
+			where groupItem.deletedAt is null
+				and groupItem.group.deletedAt is null
+				and groupItem.group.id = :searchGroupId
+				and item.deletedAt is null
+				and (
+					:keyword = ''
+					or item.title like concat('%', :keyword, '%') escape '!'
+					or item.content like concat('%', :keyword, '%') escape '!'
+				)
+			order by item.id desc
+			""")
+	List<ItemSummaryProjection> findActiveItemSummariesForSearch(
+			@Param("searchGroupId") Long groupId,
+			@Param("keyword") String keyword,
+			Pageable pageable
+	);
+
+	@Query("""
+			select distinct new com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection(
+				item.id,
+				item.title,
+				item.content,
+				item.quantity,
+				owner.id,
+				owner.nickname,
+				item.itemState,
+				item.createdAt
+			)
+			from GroupItem groupItem
+			join groupItem.item item
+			join item.user owner
+			where groupItem.deletedAt is null
+				and groupItem.group.deletedAt is null
+				and groupItem.group.id = :searchGroupId
+				and item.deletedAt is null
+				and (
+					:keyword = ''
+					or item.title like concat('%', :keyword, '%') escape '!'
+					or item.content like concat('%', :keyword, '%') escape '!'
+				)
+				and item.id < :cursorId
+			order by item.id desc
+			""")
+	List<ItemSummaryProjection> findActiveItemSummariesForSearchAfter(
+			@Param("searchGroupId") Long groupId,
+			@Param("keyword") String keyword,
 			@Param("cursorId") Long cursorId,
 			Pageable pageable
 	);

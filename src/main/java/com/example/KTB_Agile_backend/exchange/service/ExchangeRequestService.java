@@ -83,8 +83,8 @@ public class ExchangeRequestService {
 		for (ExchangeRequestCreateRequest.OfferedItemRequest offeredRequest : request.offeredItems()) {
 			exchangeRequest.addOfferedItem(items.get(offeredRequest.itemId()), offeredRequest.quantity());
 		}
-		exchangeRequestRepository.saveAndFlush(exchangeRequest);
-		ChatRoom chatRoom = chatRoomRepository.saveAndFlush(new ChatRoom(exchangeRequest));
+		exchangeRequestRepository.save(exchangeRequest);
+		ChatRoom chatRoom = chatRoomRepository.save(new ChatRoom(exchangeRequest));
 		chatMemberRepository.saveAll(List.of(
 				new ChatMember(chatRoom, requester, ChatMemberRole.REQUESTER),
 				new ChatMember(chatRoom, requestedItem.getUser(), ChatMemberRole.OWNER)
@@ -120,7 +120,6 @@ public class ExchangeRequestService {
 
 		exchangeRequest.updateRequestedQuantity(request.requestedQuantity());
 		updateOfferedItems(exchangeRequest, request, items);
-		exchangeRequestRepository.saveAndFlush(exchangeRequest);
 	}
 
 	@Transactional
@@ -135,7 +134,6 @@ public class ExchangeRequestService {
 		}
 		exchangeRequest.changeStatus(ExchangeRequestStatus.CANCELED);
 		chatRoomRepository.findByExchangeRequest_Id(exchangeRequestId).ifPresent(ChatRoom::close);
-		exchangeRequestRepository.saveAndFlush(exchangeRequest);
 	}
 
 	@Transactional
@@ -180,7 +178,8 @@ public class ExchangeRequestService {
 		if (status == ExchangeRequestStatus.REJECTED || status == ExchangeRequestStatus.CANCELED) {
 			chatRoomRepository.findByExchangeRequest_Id(exchangeRequestId).ifPresent(ChatRoom::close);
 		}
-		exchangeRequestRepository.saveAndFlush(exchangeRequest);
+		// Populate @LastModifiedDate before including it in the response.
+		exchangeRequestRepository.flush();
 		return new ExchangeRequestStatusResponse(
 				exchangeRequest.getId(), exchangeRequest.getItem().getId(), status,
 				exchangeRequest.getUpdatedAt()

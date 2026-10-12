@@ -42,7 +42,7 @@ public class AccountProvisioningService {
 				new User(userInfo.nickname(), userInfo.profileImageUrl())
 		);
 		try {
-			socialAccountRepository.saveAndFlush(
+			socialAccountRepository.save(
 					new SocialAccount(user, provider, userInfo.providerUserId())
 			);
 		} catch (DataIntegrityViolationException exception) {

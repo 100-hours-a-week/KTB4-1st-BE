@@ -65,9 +65,11 @@ localhost와 127.0.0.1은 쿠키 저장 위치와 로컬 네트워크 처리에�
 | 409 | 소셜 계정 충돌 |
 | 415 | 지원하지 않는 Content-Type |
 | 500 | 서버 내부 오류 |
+| 503 | DB 또는 FastAPI health check 실패 |
 
 애플리케이션이 처리한 오류는 JSON 응답입니다. Tomcat의 HTML 400 Bad Request가 보이면
 요청 URL, HTTP 메서드, JSON 문법, Postman Agent 또는 로컬 호스트를 먼저 확인합니다.
+Health check API는 `status`를 반환하며, 실패 시 HTTP 503을 반환합니다.
 
 ## 3. 인증 및 쿠키
 
@@ -79,7 +81,7 @@ localhost와 127.0.0.1은 쿠키 저장 위치와 로컬 네트워크 처리에�
 Authorization: Bearer <accessToken>
 ~~~
 
-현재 보호된 API는 POST /auth/logout과 DELETE /users입니다.
+현재 보호된 API는 POST /auth/logout, GET /users/me, DELETE /users, 상품 검색 API, 검색 이력 API입니다.
 
 ### refresh_token 쿠키
 
@@ -112,7 +114,14 @@ state는 Authorization 헤더에 넣는 값이 아닙니다.
 | POST | /auth/oauth | state 쿠키 필요 | Kakao 인가 코드로 로그인 |
 | POST | /auth/refresh | refresh 쿠키 필요 | access token 재발급 |
 | POST | /auth/logout | Bearer + refresh 쿠키 | 로그아웃 및 refresh token 폐기 |
+| GET | /users/me | Bearer | 로그인 사용자의 닉네임과 프로필 이미지 조회 |
 | DELETE | /users | Bearer | 회원 탈퇴 처리 |
+| GET | /api/items | Bearer | 가입한 그룹의 상품 검색 및 빈 키워드일 때 전체 상품 조회 |
+| GET | /api/search-histories | Bearer | 검색 이력 최신순 조회 (최대 10개씩 커서 페이지) |
+| DELETE | /api/search-histories/{searchHistoryId} | Bearer | 검색 이력 한 건 soft-delete |
+| DELETE | /api/search-histories | Bearer | 로그인 사용자의 검색 이력 전체 soft-delete |
+| GET | /health/ping/mysql | 없음 | MySQL 연결 확인 (200 UP / 503 DOWN) |
+| GET | /health/ping/fastapi | 없음 | FastAPI `/health` 확인 (200 UP / 503 DOWN) |
 
 ---
 
@@ -444,7 +453,7 @@ JWT secret, Kakao client secret, Kakao Admin key는 Postman 요청에 넣지 않
 
 ## 13. 현재 구현의 범위와 제한
 
-- 현재 API 목록에는 사용자 조회와 token introspection API가 없습니다.
+- token introspection API는 제공하지 않습니다.
 - Kakao callback은 백엔드 `/auth/kakao/callback` 컨트롤러가 처리합니다.
 - callback 성공 후 `FRONTEND_REDIRECT_URI`로 `302 Found` redirect하고 Refresh Token 쿠키를 반환합니다. 프론트엔드는 `/auth/refresh`로 Access Token을 받습니다.
 - 메인 application.yaml에는 외부 DB 접속 설정이 없습니다.
@@ -482,12 +491,17 @@ JWT secret, Kakao client secret, Kakao Admin key는 Postman 요청에 넣지 않
 
 | 기능 | Method | URL | Request Header | Request Body | 필수 / 검증 및 쿠키 | Response Status | Response Body |
 |---|---|---|---|---|---|---|---|
+| 상품 검색 | GET | /api/items?groupId={groupId}&keyword={keyword}&cursor={cursor} | Authorization: Bearer Access Token<br>Accept: application/json (선택) | 없음 | groupId 필수, keyword와 cursor 선택<br>로그인 사용자가 ACTIVE 멤버인 그룹만 검색할 수 있습니다.<br>keyword는 앞뒤 공백 제거 후 상품명 또는 내용에 부분 매칭합니다.<br>최대 255자입니다. 빈 키워드는 선택한 그룹의 전체 상품을 조회하고 이력은 저장하지 않습니다.<br>실행된 검색은 결과가 0건이어도 첫 페이지 요청에서 이력을 저장합니다. | 200 | {<br>  "data": {<br>    "items": [],<br>    "nextCursor": null,<br>    "hasNext": false<br>  },<br>  "error": null<br>} |
+| 검색 이력 조회 | GET | /api/search-histories?cursor={cursor} | Authorization: Bearer Access Token<br>Accept: application/json (선택) | 없음 | cursor 선택<br>lastSearchedAt 내림차순, 동률이면 ID 내림차순으로 조회합니다.<br>한 페이지에 최대 10개를 반환합니다. | 200 | {<br>  "data": {<br>    "searchHistories": [<br>      {<br>        "searchHistoryId": 801,<br>        "keyword": "충전기",<br>        "lastSearchedAt": "2026-09-07T10:30:00",<br>        "createdAt": "2026-09-01T09:00:00"<br>      }<br>    ],<br>    "nextCursor": null,<br>    "hasNext": false<br>  },<br>  "error": null<br>} |
+| 검색 이력 단일 삭제 | DELETE | /api/search-histories/{searchHistoryId} | Authorization: Bearer Access Token<br>Accept: application/json (선택) | 없음 | 로그인 사용자가 소유한 검색 이력 한 건을 soft-delete합니다. | 204 | 응답 본문 없음 |
+| 검색 이력 전체 삭제 | DELETE | /api/search-histories | Authorization: Bearer Access Token<br>Accept: application/json (선택) | 없음 | 로그인 사용자의 활성 검색 이력 전체를 soft-delete합니다. | 204 | 응답 본문 없음 |
 | Kakao callback | GET | /auth/kakao/callback | Cookie: oauth_state=state 값 | 없음 | query `code`, `state` 필수<br>query state와 쿠키 state가 같아야 합니다.<br>응답 시 refresh_token 쿠키 발급 | 302 | `Location: FRONTEND_REDIRECT_URI`<br>응답 body 없음 |
 | OAuth state 발급 | GET | /auth/oauth/state | Accept: application/json (선택) | 없음 | 응답 시 oauth_state 쿠키 발급<br>HttpOnly; Secure; SameSite=Lax; Path=/auth; Max-Age=300 | 200 | {<br>  "data": {<br>    "state": "state 값",<br>    "expiresIn": 300<br>  },<br>  "error": null<br>} |
 | 회원가입 | POST | /auth/oauth | Content-Type: application/json<br>Accept: application/json (선택)<br>Cookie: oauth_state=state 값 | {<br>  "provider": "KAKAO",<br>  "authorizationCode": "카카오 인가 코드",<br>  "state": "state 값"<br>} | 필수<br>provider: String<br>authorizationCode: String<br>state: String<br><br>body.state와 oauth_state 쿠키가 같아야 합니다.<br>응답 시 refresh_token 쿠키 발급<br>HttpOnly; Secure; SameSite=Lax; Path=/auth; Max-Age=1209600 | 201 | {<br>  "data": {<br>    "accessToken": "우리 서비스 Access Token",<br>    "tokenType": "Bearer",<br>    "expiresIn": 900,<br>    "isNewUser": true,<br>    "user": {<br>      "userId": 101,<br>      "nickname": "닉네임",<br>      "profileImageUrl": "https://example.com/profile.png"<br>    }<br>  },<br>  "error": null<br>} |
 | 로그인 | POST | /auth/oauth | Content-Type: application/json<br>Accept: application/json (선택)<br>Cookie: oauth_state=state 값 | {<br>  "provider": "KAKAO",<br>  "authorizationCode": "카카오 인가 코드",<br>  "state": "state 값"<br>} | 필수<br>provider: String<br>authorizationCode: String<br>state: String<br><br>기존 사용자라면 isNewUser는 false입니다.<br>응답 시 refresh_token 쿠키 발급<br>HttpOnly; Secure; SameSite=Lax; Path=/auth; Max-Age=1209600 | 200 | {<br>  "data": {<br>    "accessToken": "우리 서비스 Access Token",<br>    "tokenType": "Bearer",<br>    "expiresIn": 900,<br>    "isNewUser": false,<br>    "user": {<br>      "userId": 101,<br>      "nickname": "닉네임",<br>      "profileImageUrl": "https://example.com/profile.png"<br>    }<br>  },<br>  "error": null<br>} |
 | Access Token 재발급 | POST | /auth/refresh | Accept: application/json (선택)<br>Cookie: refresh_token=refresh token 값 | 없음 | refresh_token 쿠키 필수<br>Authorization 헤더 불필요 | 200 | {<br>  "data": {<br>    "accessToken": "새 Access Token",<br>    "tokenType": "Bearer",<br>    "expiresIn": 900,<br>    "needsPreferenceSetup": true<br>  },<br>  "error": null<br>} |
 | 로그아웃 | POST | /auth/logout | Accept: application/json (선택)<br>Authorization: Bearer Access Token<br>Cookie: refresh_token=refresh token 값 (선택) | 없음 | Access Token 필요<br>refresh_token 쿠키가 있으면 폐기<br>정상 처리 후 refresh_token 쿠키 삭제 | 204 | 응답 본문 없음 |
+| 내 정보 조회 | GET | /users/me | Accept: application/json (선택)<br>Authorization: Bearer Access Token | 없음 | Access Token 필요<br>프로필 이미지가 없는 경우 `profileImageUrl`은 null입니다. | 200 | {<br>  "data": {<br>    "nickname": "닉네임",<br>    "profileImageUrl": "https://example.com/profile.png"<br>  },<br>  "error": null<br>} |
 | 회원 탈퇴 | DELETE | /users | Accept: application/json (선택)<br>Authorization: Bearer Access Token | 없음 | Access Token 필요<br>테스트 계정의 상태가 변경되므로 모든 테스트 마지막에 실행 | 204 | 응답 본문 없음 |
 
 ### 14-3. 실패 API 명세

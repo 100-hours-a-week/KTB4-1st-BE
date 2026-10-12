@@ -65,7 +65,6 @@ class RefreshTokenServiceTest {
 
 		service.revoke("refresh-token");
 
-		verify(repository).save(savedToken);
 		assertNotNull(savedToken.getDeletedAt());
 	}
 }

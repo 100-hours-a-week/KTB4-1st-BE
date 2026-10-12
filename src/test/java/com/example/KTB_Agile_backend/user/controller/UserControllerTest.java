@@ -7,6 +7,7 @@ import com.example.KTB_Agile_backend.user.dto.UserPreferenceAnswerOption;
 import com.example.KTB_Agile_backend.user.dto.UserPreferenceQuestion;
 import com.example.KTB_Agile_backend.user.dto.response.UserPreferenceResponse;
 import com.example.KTB_Agile_backend.user.service.AccountWithdrawalService;
+import com.example.KTB_Agile_backend.user.service.UserProfileQueryService;
 import com.example.KTB_Agile_backend.user.service.UserPreferenceService;
 import com.example.KTB_Agile_backend.user.service.UserPreferenceQueryService;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +37,7 @@ class UserControllerTest {
 	private AccountWithdrawalService accountWithdrawalService;
 	private UserPreferenceService userPreferenceService;
 	private UserPreferenceQueryService userPreferenceQueryService;
+	private UserProfileQueryService userProfileQueryService;
 	private GroupQueryService groupQueryService;
 	private MockMvc mockMvc;
 
@@ -44,12 +46,14 @@ class UserControllerTest {
 		accountWithdrawalService = mock(AccountWithdrawalService.class);
 		userPreferenceService = mock(UserPreferenceService.class);
 		userPreferenceQueryService = mock(UserPreferenceQueryService.class);
+		userProfileQueryService = mock(UserProfileQueryService.class);
 		groupQueryService = mock(GroupQueryService.class);
 		mockMvc = MockMvcBuilders
 				.standaloneSetup(new UserController(
 					accountWithdrawalService,
 					userPreferenceService,
 					userPreferenceQueryService,
+					userProfileQueryService,
 					groupQueryService
 				))
 				.setControllerAdvice(new GlobalExceptionHandler())

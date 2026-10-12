@@ -71,4 +71,66 @@ class CreateItemRequestTest {
 				.extracting(violation -> violation.getMessage())
 				.contains("그룹 ID는 중복될 수 없습니다.", "이미지 objectKey는 중복될 수 없습니다.");
 	}
+
+	@Test
+	void acceptsOnlyQuantitiesFromZeroThroughNinetyNine() {
+		assertThat(validator.validate(request(0))).isEmpty();
+		assertThat(validator.validate(request(99))).isEmpty();
+		assertThat(validator.validate(request(-1)))
+				.extracting(violation -> violation.getMessage())
+				.contains("수량은 0 이상이어야 합니다.");
+		assertThat(validator.validate(request(100)))
+				.extracting(violation -> violation.getMessage())
+				.contains("수량은 99개 이하여야 합니다.");
+	}
+
+	@Test
+	void rejectsUpdateQuantityAboveNinetyNine() {
+		UpdateItemRequest request = new UpdateItemRequest(
+				"제목",
+				"내용",
+				100,
+				ItemState.AVAILABLE,
+				new BigDecimal("0.50"),
+				new BigDecimal("0.30"),
+				List.of(101L),
+				List.of(1001L)
+		);
+
+		assertThat(validator.validate(request))
+				.extracting(violation -> violation.getMessage())
+				.contains("수량은 99개 이하여야 합니다.");
+	}
+
+	@Test
+	void rejectsNegativeUpdateQuantity() {
+		UpdateItemRequest request = new UpdateItemRequest(
+				"제목",
+				"내용",
+				-1,
+				ItemState.AVAILABLE,
+				new BigDecimal("0.50"),
+				new BigDecimal("0.30"),
+				List.of(101L),
+				List.of(1001L)
+		);
+
+		assertThat(validator.validate(request))
+				.extracting(violation -> violation.getMessage())
+				.contains("수량은 0 이상이어야 합니다.");
+	}
+
+	private static CreateItemRequest request(int quantity) {
+		return new CreateItemRequest(
+				"제목",
+				"내용",
+				"test-check-id",
+				quantity,
+				ItemState.AVAILABLE,
+				new BigDecimal("0.50"),
+				new BigDecimal("0.30"),
+				List.of(101L),
+				List.of("images/42/1001.jpg")
+		);
+	}
 }

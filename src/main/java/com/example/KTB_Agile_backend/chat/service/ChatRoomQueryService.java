@@ -7,6 +7,8 @@ import com.example.KTB_Agile_backend.chat.entity.ChatMessage;
 import com.example.KTB_Agile_backend.chat.entity.ChatRoom;
 import com.example.KTB_Agile_backend.chat.repository.ChatMemberRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatMessageRepository;
+import com.example.KTB_Agile_backend.group.entity.GroupMemberStatus;
+import com.example.KTB_Agile_backend.group.repository.GroupMemberRepository;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.common.pagination.CursorCodec;
@@ -14,7 +16,7 @@ import com.example.KTB_Agile_backend.common.pagination.CursorPage;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequest;
 import com.example.KTB_Agile_backend.image.entity.Image;
 import com.example.KTB_Agile_backend.image.repository.ImageRepository;
-import com.example.KTB_Agile_backend.image.service.S3ImageObjectService;
+import com.example.KTB_Agile_backend.image.service.ImageUrlResolver;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.user.entity.User;
 import lombok.RequiredArgsConstructor;
@@ -23,11 +25,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -37,22 +39,24 @@ public class ChatRoomQueryService {
 	private static final String INVALID_PAGE_MESSAGE = "direction, size 또는 cursor 값이 올바르지 않습니다.";
 	private final ChatMemberRepository chatMemberRepository;
 	private final ChatMessageRepository chatMessageRepository;
+	private final GroupMemberRepository groupMemberRepository;
 	private final ImageRepository imageRepository;
-	private final S3ImageObjectService s3ImageObjectService;
+	private final ImageUrlResolver imageUrlResolver;
 
 	@Transactional(readOnly = true)
 	public ChatRoomPageResponse findChatRooms(Long userId, String directionValue, String sizeValue, String cursorValue) {
 		String direction = parseDirection(directionValue);
 		int size = parseSize(sizeValue);
-		ChatRoomCursor cursor = ChatRoomCursor.decode(cursorValue);
+		CursorCodec.TimeIdCursor cursor = CursorCodec.decodeTimeId(cursorValue);
 		Pageable pageable = PageRequest.of(0, size + 1);
 		List<ChatMember> fetched = cursor == null
 				? chatMemberRepository.findChatRoomsByUserId(userId, direction, pageable)
 				: chatMemberRepository.findChatRoomsByUserIdAfter(
-						userId, direction, cursor.lastMessageAt(), cursor.chatRoomId(), pageable);
+						userId, direction, cursor.time(), cursor.id(), pageable);
 
 		CursorPage<ChatMember> page = CursorPage.from(
-				fetched, size, member -> ChatRoomCursor.encode(member.getChatRoom()));
+				fetched, size, member -> CursorCodec.encodeTimeId(
+						member.getChatRoom().getLastMessageAt(), member.getChatRoom().getId()));
 		if (page.items().isEmpty()) {
 			return new ChatRoomPageResponse(List.of(), null, false);
 		}
@@ -68,19 +72,48 @@ public class ChatRoomQueryService {
 		chatMemberRepository.findUnreadMessageCounts(userId, roomIds)
 				.forEach(count -> unreadCounts.put(count.getChatRoomId(), count.getUnreadMessageCount()));
 		Map<Long, String> thumbnails = findThumbnails(itemIds);
+		Map<GroupMembershipKey, GroupMemberStatus> groupMemberStatuses = findOtherUserGroupStatuses(
+				userId, page.items());
 
 		List<ChatRoomSummary> chatRooms = page.items().stream()
-				.map(member -> toSummary(userId, member, latestMessages, unreadCounts, thumbnails))
+				.map(member -> toSummary(
+						userId, member, latestMessages, unreadCounts, thumbnails, groupMemberStatuses))
 				.toList();
 		return new ChatRoomPageResponse(chatRooms, page.nextCursor(), page.hasNext());
 	}
 
+	private Map<GroupMembershipKey, GroupMemberStatus> findOtherUserGroupStatuses(
+			Long userId,
+			List<ChatMember> members
+	) {
+		Set<Long> groupIds = new HashSet<>();
+		Set<Long> otherUserIds = new HashSet<>();
+		for (ChatMember member : members) {
+			ExchangeRequest request = member.getChatRoom().getExchangeRequest();
+			if (request.getGroup() == null) {
+				continue;
+			}
+			groupIds.add(request.getGroup().getId());
+			boolean sent = request.getRequester().getId().equals(userId);
+			User otherUser = sent ? request.getItem().getUser() : request.getRequester();
+			otherUserIds.add(otherUser.getId());
+		}
+		if (groupIds.isEmpty()) {
+			return Map.of();
+		}
+
+		Map<GroupMembershipKey, GroupMemberStatus> statuses = new HashMap<>();
+		groupMemberRepository.findStatusesByGroupIdsAndUserIds(groupIds, otherUserIds)
+				.forEach(status -> statuses.put(
+						new GroupMembershipKey(status.getGroupId(), status.getUserId()),
+						status.getMembershipStatus()));
+		return statuses;
+	}
+
 	private Map<Long, String> findThumbnails(List<Long> itemIds) {
 		Map<Long, String> thumbnails = new HashMap<>();
-		for (Image image : imageRepository.findAllByItemIdsOrderByItemIdAndId(itemIds)) {
-			thumbnails.putIfAbsent(image.getItem().getId(), image.getObjectKey() == null
-					? image.getImageUrl()
-					: s3ImageObjectService.presignedReadUrl(image.getObjectKey()));
+		for (Image image : imageRepository.findThumbnailImagesByItemIds(itemIds)) {
+			thumbnails.putIfAbsent(image.getItem().getId(), imageUrlResolver.resolve(image));
 		}
 		return thumbnails;
 	}
@@ -90,13 +123,16 @@ public class ChatRoomQueryService {
 			ChatMember member,
 			Map<Long, ChatMessage> latestMessages,
 			Map<Long, Long> unreadCounts,
-			Map<Long, String> thumbnails
+			Map<Long, String> thumbnails,
+			Map<GroupMembershipKey, GroupMemberStatus> groupMemberStatuses
 	) {
 		ChatRoom room = member.getChatRoom();
 		ExchangeRequest request = room.getExchangeRequest();
 		Item item = request.getItem();
 		boolean sent = request.getRequester().getId().equals(userId);
 		User otherUser = sent ? item.getUser() : request.getRequester();
+		GroupMemberStatus groupMemberStatus = request.getGroup() == null ? null
+				: groupMemberStatuses.get(new GroupMembershipKey(request.getGroup().getId(), otherUser.getId()));
 		ChatMessage lastMessage = latestMessages.get(room.getId());
 		ChatRoomSummary.LastMessage lastMessageResponse = lastMessage == null ? null
 				: new ChatRoomSummary.LastMessage(
@@ -107,7 +143,8 @@ public class ChatRoomQueryService {
 				request.getGroup() == null ? null : new ChatRoomSummary.GroupInfo(
 						request.getGroup().getId(), request.getGroup().getGroupName()),
 				new ChatRoomSummary.OtherUser(
-						otherUser.getId(), otherUser.getNickname(), otherUser.getProfileImageUrl()),
+						otherUser.getId(), otherUser.getNickname(), otherUser.getProfileImageUrl(),
+						otherUser.getUserStatus(), groupMemberStatus),
 				new ChatRoomSummary.TargetItem(item.getId(), item.getTitle(), thumbnails.get(item.getId())),
 				lastMessageResponse, unreadCounts.getOrDefault(room.getId(), 0L),
 				room.getLastMessageAt()
@@ -140,32 +177,6 @@ public class ChatRoomQueryService {
 		return new ApiException(ErrorCode.BAD_REQUEST, INVALID_PAGE_MESSAGE);
 	}
 
-	private record ChatRoomCursor(LocalDateTime lastMessageAt, Long chatRoomId) {
-		private static final int PART_COUNT = 2;
-		private static final long MIN_CHAT_ROOM_ID = 1;
-
-		private static ChatRoomCursor decode(String cursor) {
-			if (cursor == null || cursor.isBlank()) {
-				return null;
-			}
-			try {
-				String[] parts = CursorCodec.decodeValue(cursor).split("\\|", -1);
-				if (parts.length != PART_COUNT) {
-					throw new IllegalArgumentException();
-				}
-				LocalDateTime lastMessageAt = LocalDateTime.parse(parts[0]);
-				long chatRoomId = Long.parseLong(parts[1]);
-				if (chatRoomId < MIN_CHAT_ROOM_ID) {
-					throw new IllegalArgumentException();
-				}
-				return new ChatRoomCursor(lastMessageAt, chatRoomId);
-			} catch (IllegalArgumentException | DateTimeParseException exception) {
-				throw new ApiException(ErrorCode.INVALID_CURSOR, List.of(), exception);
-			}
-		}
-
-		private static String encode(ChatRoom room) {
-			return CursorCodec.encodeValue(room.getLastMessageAt() + "|" + room.getId());
-		}
+	private record GroupMembershipKey(Long groupId, Long userId) {
 	}
 }

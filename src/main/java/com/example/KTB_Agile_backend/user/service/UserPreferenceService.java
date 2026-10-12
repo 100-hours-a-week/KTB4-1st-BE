@@ -35,7 +35,7 @@ public class UserPreferenceService {
 		}
 
 		try {
-			UserPreference preference = userPreferenceRepository.saveAndFlush(
+			UserPreference preference = userPreferenceRepository.save(
 					new UserPreference(user, preferenceAnswers)
 			);
 			return UserPreferenceResponse.from(preference);
