@@ -1,19 +1,15 @@
 package com.example.KTB_Agile_backend.item.event;
 
+import com.example.KTB_Agile_backend.common.config.KafkaAddressCondition;
 import com.example.KTB_Agile_backend.item.service.ItemService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(
-		prefix = "app.item-view",
-		name = "publisher",
-		havingValue = "executor",
-		matchIfMissing = true
-)
+@Conditional(KafkaAddressCondition.Missing.class)
 public class ExecutorItemViewEventPublisher implements ItemViewEventPublisher {
 
 	private final ItemService itemService;
