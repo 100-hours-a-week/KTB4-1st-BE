@@ -16,6 +16,8 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
 
 	Optional<Item> findByIdAndDeletedAtIsNull(Long itemId);
 
+	List<Item> findAllByIdInAndDeletedAtIsNull(Collection<Long> itemIds);
+
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select item from Item item where item.id in :itemIds order by item.id")
 	List<Item> findAllForExchange(@Param("itemIds") Collection<Long> itemIds);

@@ -3,6 +3,21 @@ spring:
     name: KTB-Agile-backend
   profiles:
     default: dev
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${spring.application.name}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      acks: 1
+      buffer-memory: ${KAFKA_PRODUCER_BUFFER_MEMORY:8388608}
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        "[max.block.ms]": ${KAFKA_PRODUCER_MAX_BLOCK_MS:5000}
+        "[delivery.timeout.ms]": ${KAFKA_PRODUCER_DELIVERY_TIMEOUT_MS:60000}
   flyway:
     enabled: false
   jpa:
@@ -12,8 +27,16 @@ spring:
         format_sql: true
 
 app:
-  item-view:
-    publisher: executor
+  kafka:
+    retry:
+      item-view:
+        attempts: ${KAFKA_ITEM_VIEW_RETRY_ATTEMPTS:2}
+        backoff: ${KAFKA_ITEM_VIEW_RETRY_BACKOFF:500ms}
+      search-history:
+        attempts: ${KAFKA_SEARCH_HISTORY_RETRY_ATTEMPTS:4}
+        backoff: ${KAFKA_SEARCH_HISTORY_RETRY_BACKOFF:1s}
+        multiplier: ${KAFKA_SEARCH_HISTORY_RETRY_MULTIPLIER:2.0}
+        max-backoff: ${KAFKA_SEARCH_HISTORY_RETRY_MAX_BACKOFF:5s}
 
 sentry:
   dsn: https://229674fc538ca9111da07811ffe4537c@o4512173324500992.ingest.us.sentry.io/4512174894481408
@@ -51,6 +74,7 @@ ai:
   image-analysis-url: ${AI_IMAGE_ANALYSIS_URL:}
   text-moderation-url: ${AI_TEXT_MODERATION_URL:}
   item-price-url: ${AI_ITEM_PRICE_URL:}
+  smart-search-url: ${AI_SMART_SEARCH_URL:}
   connect-timeout-seconds: ${AI_CONNECT_TIMEOUT_SECONDS:5}
   read-timeout-seconds: ${AI_READ_TIMEOUT_SECONDS:90}
 
