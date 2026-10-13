@@ -12,7 +12,7 @@ public final class KafkaAddressCondition {
 	private KafkaAddressCondition() {
 	}
 
-	private static boolean isConfigured(ConditionContext context) {
+	public static boolean isConfigured(ConditionContext context) {
 		return StringUtils.hasText(context.getEnvironment().getProperty(ADDRESS_ENV));
 	}
 
