@@ -3,6 +3,17 @@ spring:
     name: KTB-Agile-backend
   profiles:
     default: dev
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${spring.application.name}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      acks: 1
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
   flyway:
     enabled: false
   jpa:
@@ -10,10 +21,6 @@ spring:
     properties:
       hibernate:
         format_sql: true
-
-app:
-  item-view:
-    publisher: executor
 
 sentry:
   dsn: https://229674fc538ca9111da07811ffe4537c@o4512173324500992.ingest.us.sentry.io/4512174894481408
