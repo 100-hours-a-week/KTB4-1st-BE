@@ -108,6 +108,17 @@ public class ItemQueryService {
 		);
 	}
 
+	@Transactional(readOnly = true)
+	public List<ItemSummary> toSummariesForUser(Long userId, List<ItemSummaryProjection> summaries) {
+		List<Long> itemIds = summaries.stream().map(ItemSummaryProjection::itemId).toList();
+		Map<Long, ItemStats> statsByItemId = findStats(itemIds);
+		Set<Long> likedItemIds = findLikedItemIds(userId, itemIds);
+		Map<Long, String> thumbnails = findThumbnails(itemIds);
+		return summaries.stream()
+				.map(summary -> toSummary(summary, statsByItemId, likedItemIds, thumbnails))
+				.toList();
+	}
+
 	private Map<Long, GroupMemberStatus> findOwnerMembershipStatuses(Long userId, List<GroupItem> groupItems) {
 		if (groupItems.isEmpty()) {
 			return Map.of();
