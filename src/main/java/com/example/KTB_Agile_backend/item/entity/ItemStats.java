@@ -33,10 +33,6 @@ public class ItemStats extends BaseEntity {
 		this.item = requireNonNull(item, "item must not be null");
 	}
 
-	public void increaseViewCount() {
-		this.viewCount++;
-	}
-
 	public void increaseLikeCount() {
 		this.likeCount++;
 	}

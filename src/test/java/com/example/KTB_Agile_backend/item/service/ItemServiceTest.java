@@ -379,18 +379,17 @@ class ItemServiceTest {
 
 		User viewer = user(42L);
 		Item item = item(123L, viewer);
-		ItemStats stats = mock(ItemStats.class);
 		ItemView recentView = new ItemView(item, viewer, LocalDateTime.now().minusHours(23));
 		ItemView expiredView = new ItemView(item, viewer, LocalDateTime.now().minusHours(25));
 		when(itemRepository.findByIdAndDeletedAtIsNull(123L)).thenReturn(Optional.of(item));
-		when(itemStatsRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(stats));
+		when(itemStatsRepository.incrementViewCount(123L)).thenReturn(1);
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(viewer));
 		when(itemViewRepository.findByItem_IdAndUser_Id(123L, 42L))
 				.thenReturn(Optional.of(recentView), Optional.of(expiredView));
 		service.recordView(42L, 123L);
 		service.recordView(42L, 123L);
 
-		verify(stats).increaseViewCount();
+		verify(itemStatsRepository).incrementViewCount(123L);
 	}
 
 	private static ItemCashService itemCashService() {
