@@ -21,12 +21,17 @@ public class KafkaSearchHistoryEventPublisher implements SearchHistoryEventPubli
 
 	@Override
 	public void publish(SearchHistoryEvent event) {
-		kafkaTemplate.send(KafkaTopics.SEARCH_HISTORY_EVENTS, event.userId().toString(), toJson(event))
-				.whenComplete((result, error) -> {
-					if (error != null) {
-						log.error("Failed to publish search history event", error);
-					}
-				});
+		String payload = toJson(event);
+		try {
+			kafkaTemplate.send(KafkaTopics.SEARCH_HISTORY_EVENTS, event.userId().toString(), payload)
+					.whenComplete((result, error) -> {
+						if (error != null) {
+							log.error("Failed to publish search history event", error);
+						}
+					});
+		} catch (RuntimeException exception) {
+			log.error("Failed to publish search history event", exception);
+		}
 	}
 
 	private String toJson(SearchHistoryEvent event) {

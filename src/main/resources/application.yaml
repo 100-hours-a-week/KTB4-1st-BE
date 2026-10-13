@@ -12,8 +12,12 @@ spring:
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
     producer:
       acks: 1
+      buffer-memory: ${KAFKA_PRODUCER_BUFFER_MEMORY:8388608}
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        "[max.block.ms]": ${KAFKA_PRODUCER_MAX_BLOCK_MS:5000}
+        "[delivery.timeout.ms]": ${KAFKA_PRODUCER_DELIVERY_TIMEOUT_MS:60000}
   flyway:
     enabled: false
   jpa:
@@ -21,6 +25,18 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+app:
+  kafka:
+    retry:
+      item-view:
+        attempts: ${KAFKA_ITEM_VIEW_RETRY_ATTEMPTS:2}
+        backoff: ${KAFKA_ITEM_VIEW_RETRY_BACKOFF:500ms}
+      search-history:
+        attempts: ${KAFKA_SEARCH_HISTORY_RETRY_ATTEMPTS:4}
+        backoff: ${KAFKA_SEARCH_HISTORY_RETRY_BACKOFF:1s}
+        multiplier: ${KAFKA_SEARCH_HISTORY_RETRY_MULTIPLIER:2.0}
+        max-backoff: ${KAFKA_SEARCH_HISTORY_RETRY_MAX_BACKOFF:5s}
 
 sentry:
   dsn: https://229674fc538ca9111da07811ffe4537c@o4512173324500992.ingest.us.sentry.io/4512174894481408

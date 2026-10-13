@@ -21,12 +21,17 @@ public class KafkaItemViewEventPublisher implements ItemViewEventPublisher {
 
 	@Override
 	public void publish(ItemViewEvent event) {
-		kafkaTemplate.send(KafkaTopics.ITEM_VIEW_EVENTS, event.itemId().toString(), toJson(event))
-				.whenComplete((result, error) -> {
-					if (error != null) {
-						log.error("Failed to publish item view event", error);
-					}
-				});
+		String payload = toJson(event);
+		try {
+			kafkaTemplate.send(KafkaTopics.ITEM_VIEW_EVENTS, event.itemId().toString(), payload)
+					.whenComplete((result, error) -> {
+						if (error != null) {
+							log.error("Failed to publish item view event", error);
+						}
+					});
+		} catch (RuntimeException exception) {
+			log.error("Failed to publish item view event", exception);
+		}
 	}
 
 	private String toJson(ItemViewEvent event) {
