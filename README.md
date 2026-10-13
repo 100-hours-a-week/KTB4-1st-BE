@@ -38,6 +38,8 @@ The client must send the `requiredHeaders` returned by `POST /images/presigned-u
 
 Set `AI_SMART_SEARCH_URL` to the AI server's `POST /api/search/rank-candidates` URL. Call the backend's `POST /search/rank-candidates` with the selected `groupId`, `items` (`itemId` and `quantity`), and optional `preferenceText`, for example `{"groupId":1,"items":[{"itemId":101,"quantity":2}],"preferenceText":"야식으로 먹을 거 찾아요"}`. The backend sums each selected item's unit price multiplied by its requested quantity, fetches up to 30 recent requestable items in that group priced at no more than 120% of the total, and returns their summaries in the AI-ranked order in `data.items`. Missing or blank `preferenceText` returns candidates in recent-first order without calling AI; no candidates returns an empty list. AI failure messages are returned in the common API envelope's `error.message`.
 
+The frontend request and response contract is documented in [docs/openapi/smart-search.yaml](docs/openapi/smart-search.yaml).
+
 ## Item text moderation
 
 Set `AI_TEXT_MODERATION_URL` to the AI server's `POST /api/moderation/check-text` URL (the same AI server used by `AI_IMAGE_ANALYSIS_URL`). Before creating an item, call `POST /moderation-checks` with `title` and `content`. The response includes `isAppropriate`, `rejectionReason`, and a five-minute `checkId` when approved. Send that `moderationCheckId` with the item payload to `POST /items`; it is bound to the authenticated user and checked title/content, and can be used once. Inappropriate content returns the AI rejection reason and no `checkId`.
