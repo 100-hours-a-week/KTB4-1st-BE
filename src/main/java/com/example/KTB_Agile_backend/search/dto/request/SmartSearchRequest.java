@@ -18,7 +18,7 @@ public record SmartSearchRequest(
 		String preferenceText
 ) {
 	public SmartSearchRequest {
-		preferenceText = preferenceText == null ? null : preferenceText.strip();
+		preferenceText = preferenceText == null ? "" : preferenceText.strip();
 	}
 
 	public record SelectedItem(
