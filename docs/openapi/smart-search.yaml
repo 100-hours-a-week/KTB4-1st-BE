@@ -1,0 +1,310 @@
+openapi: 3.1.0
+info:
+  title: Smart Search API
+  version: 1.0.0
+  description: |
+    프론트엔드가 사용자의 선택 물품과 선택 취향으로 그룹 내 거래 가능 후보를 조회합니다.
+    자연어 취향이 있으면 AI가 후보 순서만 정렬하고, 취향이 없으면 최근 등록순으로 반환합니다.
+paths:
+  /search/rank-candidates:
+    post:
+      operationId: rankSmartSearchCandidates
+      tags:
+        - Smart Search
+      summary: 스마트 검색 후보 조회
+      description: |
+        인증된 사용자의 활성 그룹에서 본인 소유의 활성 물품을 하나 이상 선택합니다.
+        예산은 선택 물품별 `unitPrice × quantity`의 합이며, 후보의 기본 `unitPrice`가 예산의 120% 이하인
+        거래 가능 물품을 최근 등록순으로 최대 30개 반환합니다. 선택 ID는 중복될 수 없고 수량은 보유 수량 이하여야 합니다.
+        `preferenceText`가 없거나 공백이면 AI 호출 없이 최근 등록순으로 반환합니다. 문구가 있으면 AI는 후보를 추가·제외하지 않고 순서만 정렬합니다.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SmartSearchRequest'
+            example:
+              groupId: 1
+              items:
+                - itemId: 101
+                  quantity: 2
+                - itemId: 108
+                  quantity: 1
+              preferenceText: 야식으로 먹을 거 찾아요
+      responses:
+        '200':
+          description: 검색 결과를 AI 순서 또는 최근 등록순으로 반환합니다. 후보가 없으면 items는 빈 배열입니다.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SmartSearchApiResponse'
+              example:
+                data:
+                  items:
+                    - itemId: 102
+                      title: 라면
+                      contentPreview: 매콤한 라면입니다.
+                      quantity: 4
+                      owner:
+                        userId: 22
+                        nickname: 민수
+                      itemState: AVAILABLE
+                      thumbnailImageUrl: https://example.com/thumbnail.jpg
+                      likeCount: 3
+                      viewCount: 17
+                      exchangeRequestCount: 0
+                      isLiked: false
+                      createdAt: '2026-10-13T10:30:00'
+                error: null
+        '400':
+          description: 요청 본문이 유효하지 않거나 선택 물품 ID가 중복되었습니다. 중복 ID는 BAD_REQUEST, 필드 검증 실패는 REQUEST_VALIDATION_FAILED를 반환합니다.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              example:
+                data: null
+                error:
+                  code: REQUEST_VALIDATION_FAILED
+                  message: 요청 값이 올바르지 않습니다.
+                  details:
+                    - field: items[0].quantity
+                      reason: 수량은 양수여야 합니다.
+        '401':
+          description: 인증 토큰이 없거나 유효하지 않습니다.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              example:
+                data: null
+                error:
+                  code: AUTHENTICATION_REQUIRED
+                  message: 로그인이 필요합니다.
+                  details: []
+        '403':
+          description: 요청자가 그룹의 활성 멤버가 아니거나, 선택 물품의 소유자 또는 그룹 연결이 유효하지 않습니다.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              example:
+                data: null
+                error:
+                  code: GROUP_MEMBERSHIP_REQUIRED
+                  message: 그룹 멤버만 물품을 조회할 수 있습니다.
+                  details: []
+        '404':
+          description: 그룹 또는 선택 물품을 찾을 수 없습니다.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              example:
+                data: null
+                error:
+                  code: GROUP_NOT_FOUND
+                  message: 그룹을 찾을 수 없습니다.
+                  details: []
+        '409':
+          description: 선택 물품이 현재 거래 가능한 상태가 아닙니다.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              example:
+                data: null
+                error:
+                  code: EXCHANGE_REQUEST_CREATE_CONFLICT
+                  message: 이미 처리 중인 교환 요청이 있거나 거래 가능한 물품이 아닙니다.
+                  details: []
+        '422':
+          description: 선택 수량이 물품의 현재 보유 수량을 초과합니다.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              example:
+                data: null
+                error:
+                  code: EXCHANGE_REQUEST_CREATE_QUANTITY_EXCEEDED
+                  message: 요청 수량 또는 제안 수량이 보유 수량을 초과했습니다.
+                  details: []
+        '500':
+          description: AI 서버 설정이 없거나 AI 호출·응답 검증에 실패했습니다. AI가 보낸 message가 error.message에 포함될 수 있습니다.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              example:
+                data: null
+                error:
+                  code: AI_SMART_SEARCH_FAILED
+                  message: 스마트 검색에 실패했어요. 잠시 후 다시 시도해주세요.
+                  details: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    SmartSearchRequest:
+      type: object
+      required:
+        - groupId
+        - items
+      properties:
+        groupId:
+          type: integer
+          format: int64
+          minimum: 1
+          description: 검색할 그룹 ID
+        items:
+          type: array
+          minItems: 1
+          description: 본인이 등록한 물품과 검색 예산 계산에 사용할 수량. itemId는 중복될 수 없습니다.
+          items:
+            $ref: '#/components/schemas/SelectedItem'
+        preferenceText:
+          type:
+            - string
+            - 'null'
+          description: 취향 검색 문구. 생략, null 또는 공백이면 AI를 호출하지 않습니다.
+          example: 야식으로 먹을 거 찾아요
+    SelectedItem:
+      type: object
+      required:
+        - itemId
+        - quantity
+      properties:
+        itemId:
+          type: integer
+          format: int64
+          minimum: 1
+          description: 본인이 등록한 물품 ID
+        quantity:
+          type: integer
+          format: int32
+          minimum: 1
+          description: 검색 예산에 반영할 선택 수량. 현재 보유 수량 이하여야 합니다.
+    SmartSearchApiResponse:
+      type: object
+      required:
+        - data
+        - error
+      properties:
+        data:
+          $ref: '#/components/schemas/SmartSearchResponse'
+        error:
+          oneOf:
+            - $ref: '#/components/schemas/ErrorResponse'
+            - type: 'null'
+    SmartSearchResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          description: AI가 정렬한 순서 또는 취향 문구가 없을 때 최근 등록순의 후보 물품 요약
+          items:
+            $ref: '#/components/schemas/ItemSummary'
+    ItemSummary:
+      type: object
+      required:
+        - itemId
+        - title
+        - contentPreview
+        - quantity
+        - owner
+        - itemState
+        - likeCount
+        - viewCount
+        - exchangeRequestCount
+        - isLiked
+        - createdAt
+      properties:
+        itemId:
+          type: integer
+          format: int64
+        title:
+          type: string
+        contentPreview:
+          type: string
+        quantity:
+          type: integer
+          format: int32
+        owner:
+          $ref: '#/components/schemas/ItemOwner'
+        itemState:
+          type: string
+          enum: [AVAILABLE]
+        thumbnailImageUrl:
+          type:
+            - string
+            - 'null'
+          format: uri
+        likeCount:
+          type: integer
+          format: int64
+        viewCount:
+          type: integer
+          format: int64
+        exchangeRequestCount:
+          type: integer
+          format: int64
+        isLiked:
+          type: boolean
+        createdAt:
+          type: string
+          description: 타임존 오프셋이 없는 LocalDateTime 문자열
+    ItemOwner:
+      type: object
+      required:
+        - userId
+        - nickname
+      properties:
+        userId:
+          type: integer
+          format: int64
+        nickname:
+          type: string
+    ApiErrorResponse:
+      type: object
+      required:
+        - data
+        - error
+      properties:
+        data:
+          type: 'null'
+        error:
+          $ref: '#/components/schemas/ErrorResponse'
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+        - details
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorField'
+    ErrorField:
+      type: object
+      required:
+        - field
+        - reason
+      properties:
+        field:
+          type: string
+        reason:
+          type: string
