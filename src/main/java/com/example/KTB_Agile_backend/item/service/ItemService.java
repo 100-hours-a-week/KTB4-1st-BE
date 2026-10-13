@@ -156,28 +156,29 @@ public class ItemService {
 	public void recordView(Long userId, Long itemId) {
 		Item item = itemRepository.findByIdAndDeletedAtIsNull(itemId)
 				.orElseThrow(() -> new ApiException(ItemErrorCode.ITEM_NOT_FOUND));
-		ItemStats stats = itemStatsRepository.findByIdForUpdate(itemId).orElse(null);
-		if (stats != null) {
-			User viewer = userRepository.findActiveById(userId)
-					.orElseThrow(() -> new ApiException(ErrorCode.AUTHENTICATION_REQUIRED));
-			countViewIfNeeded(item, viewer, stats);
-		}
+		User viewer = userRepository.findActiveById(userId)
+				.orElseThrow(() -> new ApiException(ErrorCode.AUTHENTICATION_REQUIRED));
+		countViewIfNeeded(item, viewer);
 	}
 
-	private void countViewIfNeeded(Item item, User viewer, ItemStats stats) {
+	private void countViewIfNeeded(Item item, User viewer) {
 		LocalDateTime now = LocalDateTime.now();
 		ItemView itemView = itemViewRepository.findByItem_IdAndUser_Id(item.getId(), viewer.getId())
 				.orElse(null);
 		if (itemView == null) {
+			if (itemStatsRepository.incrementViewCount(item.getId()) == 0) {
+				return;
+			}
 			itemViewRepository.save(new ItemView(item, viewer, now));
-			stats.increaseViewCount();
 			return;
 		}
 
 		LocalDateTime nextCountableAt = itemView.getLastCountedAt().plus(VIEW_COUNT_COOLDOWN);
 		if (!nextCountableAt.isAfter(now)) {
+			if (itemStatsRepository.incrementViewCount(item.getId()) == 0) {
+				return;
+			}
 			itemView.countAt(now);
-			stats.increaseViewCount();
 		}
 	}
 
