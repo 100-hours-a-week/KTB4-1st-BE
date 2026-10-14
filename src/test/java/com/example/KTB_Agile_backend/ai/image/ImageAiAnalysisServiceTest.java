@@ -1,11 +1,13 @@
 package com.example.KTB_Agile_backend.ai.image;
 
+import com.example.KTB_Agile_backend.ai.config.AiProperties;
 import com.example.KTB_Agile_backend.image.service.S3ImageObjectService;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestClient;
 
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -39,8 +41,10 @@ class ImageAiAnalysisServiceTest {
 			List<String> objectKeys = List.of("images/42/first.jpg", "images/42/second.jpg");
 			when(s3.presignedAnalysisUrl(objectKeys.get(0))).thenReturn("https://s3.example/first");
 			when(s3.presignedAnalysisUrl(objectKeys.get(1))).thenReturn("https://s3.example/second");
+			AiProperties aiProperties = new AiProperties(
+					"http://127.0.0.1:" + server.getAddress().getPort() + "/analyze", "", "", "", 2, 2);
 			ImageAiAnalysisService service = new ImageAiAnalysisService(
-					s3, "http://127.0.0.1:" + server.getAddress().getPort() + "/analyze", 2, 2);
+					s3, aiProperties, RestClient.builder().build());
 
 			ResponseEntity<String> response = service.analyze(42L, objectKeys);
 
