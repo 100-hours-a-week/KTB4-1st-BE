@@ -13,7 +13,6 @@ import org.springframework.kafka.config.TopicBuilder;
 public class KafkaTopicConfig {
 	private static final String EVENT_RETENTION_MS = Long.toString(Duration.ofDays(7).toMillis());
 
-	// shortcut: one partition and replica per topic for the initial switch; tune for volume and availability later.
 	@Bean
 	NewTopic itemViewEventsTopic() {
 		return TopicBuilder.name(KafkaTopics.ITEM_VIEW_EVENTS)

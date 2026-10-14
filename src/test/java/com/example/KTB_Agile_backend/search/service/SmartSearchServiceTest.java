@@ -1,6 +1,7 @@
 package com.example.KTB_Agile_backend.search.service;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
+import com.example.KTB_Agile_backend.ai.config.AiProperties;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
 import com.example.KTB_Agile_backend.group.entity.Group;
 import com.example.KTB_Agile_backend.group.entity.GroupItem;
@@ -21,6 +22,7 @@ import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.entity.UserStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.client.RestClient;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
@@ -112,9 +114,8 @@ class SmartSearchServiceTest {
 				itemQueryService,
 				new SmartSearchBudgetCalculator(),
 				mock(ObjectMapper.class),
-				"",
-				1,
-				1
+				new AiProperties("", "", "", "", 5, 90),
+				RestClient.builder().build()
 		);
 		return new Fixture(service, groupItemRepository, itemQueryService);
 	}
