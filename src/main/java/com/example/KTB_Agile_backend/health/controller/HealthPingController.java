@@ -1,6 +1,6 @@
 package com.example.KTB_Agile_backend.health.controller;
 
-import org.springframework.beans.factory.annotation.Value;
+import com.example.KTB_Agile_backend.ai.config.AiProperties;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,14 +22,14 @@ public class HealthPingController {
 
 	private final JdbcTemplate jdbcTemplate;
 	private final RestClient restClient;
-	private final String aiImageAnalysisUrl;
+	private final String aiBaseUrl;
 
 	public HealthPingController(
 			JdbcTemplate jdbcTemplate,
-			@Value("${ai.image-analysis-url:}") String aiImageAnalysisUrl
+			AiProperties aiProperties
 	) {
 		this.jdbcTemplate = jdbcTemplate;
-		this.aiImageAnalysisUrl = aiImageAnalysisUrl;
+		this.aiBaseUrl = aiProperties.baseUrl();
 		SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
 		requestFactory.setConnectTimeout(Duration.ofSeconds(3));
 		requestFactory.setReadTimeout(Duration.ofSeconds(3));
@@ -48,12 +48,12 @@ public class HealthPingController {
 
 	@GetMapping("/fastapi")
 	public ResponseEntity<Map<String, String>> pingFastApi() {
-		if (aiImageAnalysisUrl.isBlank()) {
+		if (aiBaseUrl.isBlank()) {
 			return unavailable();
 		}
 		try {
 			restClient.get()
-					.uri(URI.create(aiImageAnalysisUrl).resolve("/health"))
+					.uri(URI.create(aiBaseUrl).resolve("/health"))
 					.retrieve()
 					.toBodilessEntity();
 			return ResponseEntity.ok(Map.of("status", "UP"));

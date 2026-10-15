@@ -114,7 +114,7 @@ class SmartSearchServiceTest {
 				itemQueryService,
 				new SmartSearchBudgetCalculator(),
 				mock(ObjectMapper.class),
-				new AiProperties("", "", "", "", 5, 90),
+				new AiProperties("", 5, 90),
 				RestClient.builder().build()
 		);
 		return new Fixture(service, groupItemRepository, itemQueryService);

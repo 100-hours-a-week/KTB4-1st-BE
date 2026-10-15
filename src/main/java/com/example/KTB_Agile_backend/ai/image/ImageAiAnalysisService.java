@@ -1,5 +1,6 @@
 package com.example.KTB_Agile_backend.ai.image;
 
+import com.example.KTB_Agile_backend.ai.config.AiEndpoints;
 import com.example.KTB_Agile_backend.ai.config.AiProperties;
 import com.example.KTB_Agile_backend.ai.exception.AiErrorCode;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
@@ -24,7 +25,7 @@ public class ImageAiAnalysisService {
 
 	public ResponseEntity<String> analyze(Long userId, List<String> objectKeys) {
 		s3ImageObjectService.validatePendingObjects(userId, objectKeys);
-		if (aiProperties.imageAnalysisUrl().isBlank()) {
+		if (aiProperties.baseUrl().isBlank()) {
 			throw new ApiException(AiErrorCode.AI_ANALYSIS_ENDPOINT_NOT_CONFIGURED);
 		}
 		List<String> imageUrls = objectKeys.stream()
@@ -32,7 +33,7 @@ public class ImageAiAnalysisService {
 				.toList();
 		try {
 			return restClient.post()
-					.uri(aiProperties.imageAnalysisUrl())
+					.uri(AiEndpoints.IMAGE_ANALYSIS)
 					.contentType(MediaType.APPLICATION_JSON)
 					.body(Map.of("imageUrls", imageUrls))
 					.exchange((request, response) -> ResponseEntity.status(response.getStatusCode())

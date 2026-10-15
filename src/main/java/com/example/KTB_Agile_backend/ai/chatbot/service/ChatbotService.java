@@ -1,14 +1,14 @@
 package com.example.KTB_Agile_backend.ai.chatbot.service;
 
+import com.example.KTB_Agile_backend.ai.config.AiEndpoints;
+import com.example.KTB_Agile_backend.ai.config.AiProperties;
 import com.example.KTB_Agile_backend.ai.chatbot.dto.ai.ChatbotAiRequest;
 import com.example.KTB_Agile_backend.ai.chatbot.dto.ai.ChatbotAiResponse;
 import com.example.KTB_Agile_backend.ai.chatbot.dto.request.ChatbotAskRequest;
 import com.example.KTB_Agile_backend.ai.chatbot.dto.response.ChatbotAskResponse;
 import com.example.KTB_Agile_backend.ai.chatbot.exception.ChatbotErrorCode;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -17,34 +17,28 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-import java.time.Duration;
-
 @Service
 public class ChatbotService {
 
+	private final AiProperties aiProperties;
 	private final RestClient restClient;
 	private final ObjectMapper objectMapper;
-	private final String aiEndpoint;
 	private final ChatbotHistoryService chatbotHistoryService;
 
 	public ChatbotService(
 			ObjectMapper objectMapper,
 			ChatbotHistoryService chatbotHistoryService,
-			@Value("${ai.chatbot-url:}") String aiEndpoint,
-			@Value("${ai.connect-timeout-seconds:5}") long connectTimeoutSeconds,
-			@Value("${ai.read-timeout-seconds:90}") long readTimeoutSeconds
+			AiProperties aiProperties,
+			RestClient restClient
 	) {
 		this.objectMapper = objectMapper;
 		this.chatbotHistoryService = chatbotHistoryService;
-		this.aiEndpoint = aiEndpoint;
-		SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-		requestFactory.setConnectTimeout(Duration.ofSeconds(connectTimeoutSeconds));
-		requestFactory.setReadTimeout(Duration.ofSeconds(readTimeoutSeconds));
-		this.restClient = RestClient.builder().requestFactory(requestFactory).build();
+		this.aiProperties = aiProperties;
+		this.restClient = restClient;
 	}
 
 	public ChatbotAskResponse ask(Long userId, ChatbotAskRequest request) {
-		if (aiEndpoint.isBlank()) {
+		if (aiProperties.baseUrl().isBlank()) {
 			throw new ApiException(ChatbotErrorCode.AI_CHATBOT_ENDPOINT_NOT_CONFIGURED);
 		}
 
@@ -56,7 +50,7 @@ public class ChatbotService {
 		ChatbotAiResponse aiResponse;
 		try {
 			aiResponse = restClient.post()
-					.uri(aiEndpoint)
+					.uri(AiEndpoints.CHATBOT_ASK)
 					.contentType(MediaType.APPLICATION_JSON)
 					.body(aiRequest)
 					.retrieve()

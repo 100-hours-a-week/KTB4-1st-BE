@@ -13,14 +13,14 @@ class AiConfigTest {
 		new ApplicationContextRunner()
 				.withUserConfiguration(AiConfig.class)
 				.withPropertyValues(
-						"ai.smart-search-url=https://ai.example/search",
+						"ai.base-url=https://ai.example",
 						"ai.connect-timeout-seconds=2",
 						"ai.read-timeout-seconds=10"
 				)
 				.run(context -> {
 					assertThat(context).hasNotFailed();
-					assertThat(context.getBean(AiProperties.class).smartSearchUrl())
-							.isEqualTo("https://ai.example/search");
+					assertThat(context.getBean(AiProperties.class).baseUrl())
+							.isEqualTo("https://ai.example");
 					assertThat(context.getBean(AiProperties.class).connectTimeoutSeconds()).isEqualTo(2);
 					assertThat(context.getBean(AiProperties.class).readTimeoutSeconds()).isEqualTo(10);
 					assertThat(context).hasSingleBean(RestClient.class);
