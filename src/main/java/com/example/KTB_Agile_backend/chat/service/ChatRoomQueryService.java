@@ -139,7 +139,8 @@ public class ChatRoomQueryService {
 						lastMessage.getId(), lastMessage.getContent(), lastMessage.getUser().getId(),
 						lastMessage.getCreatedAt());
 		return new ChatRoomSummary(
-				room.getId(), room.getChatRoomStatus(), request.getId(), sent ? "SENT" : "RECEIVED",
+				room.getId(), room.getChatRoomStatus(), request.getId(), request.getRequestedStatus(),
+				sent ? "SENT" : "RECEIVED",
 				request.getGroup() == null ? null : new ChatRoomSummary.GroupInfo(
 						request.getGroup().getId(), request.getGroup().getGroupName()),
 				new ChatRoomSummary.OtherUser(
