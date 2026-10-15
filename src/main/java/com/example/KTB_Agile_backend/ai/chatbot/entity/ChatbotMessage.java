@@ -49,14 +49,14 @@ public class ChatbotMessage extends BaseEntity {
 		USER("user"),
 		ASSISTANT("assistant");
 
-		private final String aiValue;
+		private final String wireValue;
 
 		Role(String aiValue) {
-			this.aiValue = aiValue;
+			this.wireValue = aiValue;
 		}
 
 		public String aiValue() {
-			return aiValue;
+			return wireValue;
 		}
 	}
 }

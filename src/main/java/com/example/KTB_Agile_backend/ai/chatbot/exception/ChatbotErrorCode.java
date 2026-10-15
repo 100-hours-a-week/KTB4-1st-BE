@@ -21,12 +21,12 @@ public enum ChatbotErrorCode implements ApiErrorCode {
 	RETRIEVAL_ERROR(
 			"retrieval_error", "정책 검색에 실패했어요. 잠시 후 다시 시도해주세요.");
 
-	private final String value;
-	private final String message;
+	private final String codeValue;
+	private final String errorMessage;
 
 	ChatbotErrorCode(String value, String message) {
-		this.value = value;
-		this.message = message;
+		this.codeValue = value;
+		this.errorMessage = message;
 	}
 
 	public static ChatbotErrorCode fromAiCode(String value) {
@@ -46,7 +46,7 @@ public enum ChatbotErrorCode implements ApiErrorCode {
 
 	@Override
 	public String value() {
-		return value;
+		return codeValue;
 	}
 
 	@Override
@@ -56,6 +56,6 @@ public enum ChatbotErrorCode implements ApiErrorCode {
 
 	@Override
 	public String message() {
-		return message;
+		return errorMessage;
 	}
 }
