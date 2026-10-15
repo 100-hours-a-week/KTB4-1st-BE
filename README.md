@@ -40,9 +40,7 @@ The backend calls the AI server's fixed `POST /api/search/rank-candidates` path 
 
 ## Chatbot
 
-Frontend API contract: [docs/api/chatbot-openapi.yaml](docs/api/chatbot-openapi.yaml).
-
-The backend calls the AI server's fixed `POST /api/chatbot/ask` path under `AI_BASE_URL`. Call the authenticated backend's `POST /chatbot/ask` with a nonblank `message`. Spring loads the authenticated user's latest 10 chatbot messages in chronological order and sends them as `history`; after a successful AI response, it stores the user message with role `user` and the AI answer with role `assistant`, retaining only the latest 10 messages per user. A successful response is wrapped in `data` with `answer` and nullable `action`; `action.screen` is one of `MY_PAGE`, `ITEM_LIST`, `ITEM_ADD`, `CHAT_LIST`, `GROUP_MANAGE`, `INTEREST_LIST`, or `INQUIRY`. The frontend maps that identifier to its route and displays `action.label` as the button text. AI errors are returned in the common API envelope as HTTP 500; an AI validation response (HTTP 422) is also mapped to the backend's chatbot failure response.
+The backend calls the AI server's fixed `POST /api/chatbot/ask` path under `AI_BASE_URL`. Call the authenticated backend's `POST /chatbot/ask` with a nonblank `message` and up to 10 previous `history` messages, each with a `role` of `user` or `assistant` and nonblank `content`. Missing or null `history` is treated as empty. The backend forwards the supplied history to the AI server and does not load or save chat history; the frontend owns it for the modal session and clears it when the modal closes. A successful response is wrapped in `data` with `answer` and nullable `action`; `action.screen` is one of `MY_PAGE`, `ITEM_LIST`, `ITEM_ADD`, `CHAT_LIST`, `GROUP_MANAGE`, `INTEREST_LIST`, or `INQUIRY`. The frontend maps that identifier to its route and displays `action.label` as the button text. AI errors are returned in the common API envelope as HTTP 500; an AI validation response (HTTP 422) is also mapped to the backend's chatbot failure response.
 
 ## Item text moderation
 

@@ -23,28 +23,27 @@ public class ChatbotService {
 	private final AiProperties aiProperties;
 	private final RestClient restClient;
 	private final ObjectMapper objectMapper;
-	private final ChatbotHistoryService chatbotHistoryService;
 
 	public ChatbotService(
 			ObjectMapper objectMapper,
-			ChatbotHistoryService chatbotHistoryService,
 			AiProperties aiProperties,
 			RestClient restClient
 	) {
 		this.objectMapper = objectMapper;
-		this.chatbotHistoryService = chatbotHistoryService;
 		this.aiProperties = aiProperties;
 		this.restClient = restClient;
 	}
 
-	public ChatbotAskResponse ask(Long userId, ChatbotAskRequest request) {
+	public ChatbotAskResponse ask(ChatbotAskRequest request) {
 		if (aiProperties.baseUrl().isBlank()) {
 			throw new ApiException(ChatbotErrorCode.AI_CHATBOT_ENDPOINT_NOT_CONFIGURED);
 		}
 
 		ChatbotAiRequest aiRequest = new ChatbotAiRequest(
 				request.message(),
-				chatbotHistoryService.findRecentHistory(userId)
+				request.history().stream()
+						.map(message -> new ChatbotAiRequest.HistoryMessage(message.role(), message.content()))
+						.toList()
 		);
 
 		ChatbotAiResponse aiResponse;
@@ -79,7 +78,6 @@ public class ChatbotService {
 				action = new ChatbotAskResponse.Action(aiResponse.action().label(), screen);
 			}
 		}
-		chatbotHistoryService.saveExchange(userId, request.message(), aiResponse.answer());
 		return new ChatbotAskResponse(aiResponse.answer(), action);
 	}
 

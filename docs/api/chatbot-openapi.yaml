@@ -3,8 +3,8 @@ info:
   title: Chatbot API
   description: |
     프론트엔드가 Spring 백엔드에 챗봇 질문을 보내는 API입니다.
-    대화 이력은 인증된 사용자 기준으로 Spring이 관리하므로 요청에는 message만 보냅니다.
-    Spring은 최근 대화 메시지를 AI 서버에 전달하고, 성공한 질문과 답변을 저장합니다.
+    프론트엔드는 모달이 열려 있는 동안 대화 이력을 상태로 관리하고 요청에 함께 전달합니다.
+    모달을 닫으면 대화 이력이 사라지며, Spring은 대화 이력을 저장하거나 이전 내역을 조회하지 않습니다.
   version: 1.0.0
 servers:
   - url: /
@@ -16,8 +16,9 @@ paths:
         - Chatbot
       summary: 챗봇 질문
       description: |
-        로그인한 사용자의 질문을 처리합니다. Spring은 해당 사용자의 최근 메시지 최대 10개를
-        시간순으로 AI 서버에 전달합니다. AI 서버의 응답은 data에 담아 반환합니다.
+        로그인한 사용자의 현재 질문과 프론트엔드가 전달한 이전 대화 내역을 AI 서버에 전달합니다.
+        history는 최대 10개 메시지이며 생략하거나 null이면 빈 대화 내역으로 처리합니다.
+        AI 서버의 응답은 data에 담아 반환합니다. Spring은 대화 이력을 저장하거나 불러오지 않습니다.
       operationId: askChatbot
       security:
         - bearerAuth: []
@@ -29,6 +30,11 @@ paths:
               $ref: '#/components/schemas/ChatbotAskRequest'
             example:
               message: 그러면 그룹은요?
+              history:
+                - role: user
+                  content: 그룹에서 거래하려면 어떻게 해야 하나요?
+                - role: assistant
+                  content: 먼저 그룹에 가입한 뒤 물품을 등록하고 교환을 요청할 수 있어요.
       responses:
         '200':
           description: 질문 처리 성공
@@ -54,7 +60,7 @@ paths:
                       action: null
                     error: null
         '400':
-          description: 메시지가 비어 있거나 요청 본문이 올바르지 않음
+          description: message가 비어 있거나 history의 메시지 형식이 잘못되었거나 10개를 초과함
           content:
             application/json:
               schema:
@@ -119,8 +125,31 @@ components:
           type: string
           minLength: 1
           pattern: '.*\S.*'
-          description: 공백이 아닌 질문 내용
+          description: 현재 질문. 공백만 입력할 수 없습니다.
           example: 그러면 그룹은요?
+        history:
+          type: array
+          nullable: true
+          maxItems: 10
+          description: 이전 대화 메시지. 생략하거나 null이면 빈 배열로 처리합니다.
+          items:
+            $ref: '#/components/schemas/ChatbotHistoryMessage'
+    ChatbotHistoryMessage:
+      type: object
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+          enum:
+            - user
+            - assistant
+        content:
+          type: string
+          minLength: 1
+          pattern: '.*\S.*'
+          description: 공백만 입력할 수 없습니다.
     ChatbotAskSuccess:
       type: object
       required:
