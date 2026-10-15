@@ -38,6 +38,12 @@ The client must send the `requiredHeaders` returned by `POST /images/presigned-u
 
 Set `AI_SMART_SEARCH_URL` to the AI server's `POST /api/search/rank-candidates` URL. Call the backend's `POST /search/rank-candidates` with the selected `groupId`, `items` (`itemId` and `quantity`), and optional `preferenceText`, for example `{"groupId":1,"items":[{"itemId":101,"quantity":2}],"preferenceText":"야식으로 먹을 거 찾아요"}`. The backend sums each selected item's unit price multiplied by its requested quantity, fetches up to 30 recent requestable items in that group priced at no more than 120% of the total, and returns their summaries in the AI-ranked order in `data.items`. Missing or blank `preferenceText` returns candidates in recent-first order without calling AI; no candidates returns an empty list. AI failure messages are returned in the common API envelope's `error.message`.
 
+## Chatbot
+
+Frontend API contract: [docs/api/chatbot-openapi.yaml](docs/api/chatbot-openapi.yaml).
+
+Set `AI_CHATBOT_URL` to the AI server's `POST /api/chatbot/ask` URL. Call the authenticated backend's `POST /chatbot/ask` with a nonblank `message`. Spring loads the authenticated user's latest 10 chatbot messages in chronological order and sends them as `history`; after a successful AI response, it stores the user message with role `user` and the AI answer with role `assistant`, retaining only the latest 10 messages per user. A successful response is wrapped in `data` with `answer` and nullable `action`; `action.screen` is one of `MY_PAGE`, `ITEM_LIST`, `ITEM_ADD`, `CHAT_LIST`, `GROUP_MANAGE`, `INTEREST_LIST`, or `INQUIRY`. The frontend maps that identifier to its route and displays `action.label` as the button text. AI errors are returned in the common API envelope as HTTP 500; an AI validation response (HTTP 422) is also mapped to the backend's chatbot failure response.
+
 ## Item text moderation
 
 Set `AI_TEXT_MODERATION_URL` to the AI server's `POST /api/moderation/check-text` URL (the same AI server used by `AI_IMAGE_ANALYSIS_URL`). Before creating an item, call `POST /moderation-checks` with `title` and `content`. The response includes `isAppropriate`, `rejectionReason`, and a five-minute `checkId` when approved. Send that `moderationCheckId` with the item payload to `POST /items`; it is bound to the authenticated user and checked title/content, and can be used once. Inappropriate content returns the AI rejection reason and no `checkId`.
