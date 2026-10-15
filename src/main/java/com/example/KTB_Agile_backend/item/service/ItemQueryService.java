@@ -215,14 +215,22 @@ public class ItemQueryService {
 	}
 
 	@Transactional(readOnly = true)
-	public MyItemPageResponse findMyItems(Long userId, String sizeValue, String cursor) {
+	public MyItemPageResponse findMyItems(Long userId, Long groupId, String sizeValue, String cursor) {
 		int size = parseMyItemsSize(sizeValue);
 		Long cursorId = CursorCodec.decodeId(cursor);
 		Pageable pageable = PageRequest.of(0, size + 1);
-		List<Item> items = cursorId == null
-			? itemRepository.findAllByUser_IdAndDeletedAtIsNullOrderByIdDesc(userId, pageable)
-			: itemRepository.findAllByUser_IdAndDeletedAtIsNullAndIdLessThanOrderByIdDesc(
-						userId, cursorId, pageable);
+		List<Item> items;
+		if (groupId == null) {
+			items = cursorId == null
+					? itemRepository.findAllByUser_IdAndDeletedAtIsNullOrderByIdDesc(userId, pageable)
+					: itemRepository.findAllByUser_IdAndDeletedAtIsNullAndIdLessThanOrderByIdDesc(
+							userId, cursorId, pageable);
+		} else {
+			items = cursorId == null
+					? itemRepository.findAllByUserIdAndGroupIdOrderByIdDesc(userId, groupId, pageable)
+					: itemRepository.findAllByUserIdAndGroupIdAndIdLessThanOrderByIdDesc(
+							userId, groupId, cursorId, pageable);
+		}
 		CursorPage<Item> page = CursorPage.fromIds(items, size, Item::getId);
 		List<Long> itemIds = itemIds(page.items());
 		Map<Long, ItemStats> statsByItemId = findStats(itemIds);
