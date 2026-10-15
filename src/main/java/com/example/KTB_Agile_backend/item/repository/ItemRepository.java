@@ -36,4 +36,48 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
 			Long cursorId,
 			Pageable pageable
 	);
+
+	@Query("""
+			select item
+			from Item item
+			where item.user.id = :userId
+				and item.deletedAt is null
+				and exists (
+					select groupItem.id
+					from GroupItem groupItem
+					where groupItem.item = item
+						and groupItem.group.id = :groupId
+						and groupItem.deletedAt is null
+						and groupItem.group.deletedAt is null
+				)
+			order by item.id desc
+			""")
+	List<Item> findAllByUserIdAndGroupIdOrderByIdDesc(
+			@Param("userId") Long userId,
+			@Param("groupId") Long groupId,
+			Pageable pageable
+	);
+
+	@Query("""
+			select item
+			from Item item
+			where item.user.id = :userId
+				and item.deletedAt is null
+				and item.id < :cursorId
+				and exists (
+					select groupItem.id
+					from GroupItem groupItem
+					where groupItem.item = item
+						and groupItem.group.id = :groupId
+						and groupItem.deletedAt is null
+						and groupItem.group.deletedAt is null
+				)
+			order by item.id desc
+			""")
+	List<Item> findAllByUserIdAndGroupIdAndIdLessThanOrderByIdDesc(
+			@Param("userId") Long userId,
+			@Param("groupId") Long groupId,
+			@Param("cursorId") Long cursorId,
+			Pageable pageable
+	);
 }
