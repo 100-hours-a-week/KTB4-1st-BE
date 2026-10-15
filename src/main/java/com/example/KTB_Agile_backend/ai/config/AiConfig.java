@@ -17,6 +17,10 @@ public class AiConfig {
 		SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
 		requestFactory.setConnectTimeout(Duration.ofSeconds(aiProperties.connectTimeoutSeconds()));
 		requestFactory.setReadTimeout(Duration.ofSeconds(aiProperties.readTimeoutSeconds()));
-		return RestClient.builder().requestFactory(requestFactory).build();
+		RestClient.Builder builder = RestClient.builder().requestFactory(requestFactory);
+		if (!aiProperties.baseUrl().isBlank()) {
+			builder.baseUrl(aiProperties.baseUrl().replaceAll("/+$", ""));
+		}
+		return builder.build();
 	}
 }

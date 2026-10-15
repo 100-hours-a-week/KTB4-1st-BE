@@ -1,13 +1,14 @@
 package com.example.KTB_Agile_backend.ai.text.service;
 
-import com.example.KTB_Agile_backend.common.exception.ApiException;
-import com.example.KTB_Agile_backend.common.util.Hashing;
+import com.example.KTB_Agile_backend.ai.config.AiEndpoints;
 import com.example.KTB_Agile_backend.ai.config.AiProperties;
 import com.example.KTB_Agile_backend.ai.exception.AiErrorCode;
 import com.example.KTB_Agile_backend.ai.text.dto.request.ModerationCheckRequest;
 import com.example.KTB_Agile_backend.ai.text.dto.response.ModerationCheckResponse;
 import com.example.KTB_Agile_backend.ai.text.entity.ModerationCheck;
 import com.example.KTB_Agile_backend.ai.text.repository.ModerationCheckRepository;
+import com.example.KTB_Agile_backend.common.exception.ApiException;
+import com.example.KTB_Agile_backend.common.util.Hashing;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -35,14 +36,14 @@ public class ModerationCheckService {
 	private final SecureRandom secureRandom = new SecureRandom();
 
 	public ModerationCheckResponse check(Long userId, ModerationCheckRequest request) {
-		if (aiProperties.textModerationUrl().isBlank()) {
+		if (aiProperties.baseUrl().isBlank()) {
 			throw aiFailure(null);
 		}
 
 		AiModerationResponse aiResponse;
 		try {
 			aiResponse = restClient.post()
-					.uri(aiProperties.textModerationUrl())
+					.uri(AiEndpoints.TEXT_MODERATION)
 					.contentType(MediaType.APPLICATION_JSON)
 					.body(Map.of("title", request.title(), "content", request.content()))
 					.retrieve()

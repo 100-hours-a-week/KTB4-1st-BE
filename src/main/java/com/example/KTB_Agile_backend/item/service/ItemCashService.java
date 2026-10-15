@@ -1,5 +1,6 @@
 package com.example.KTB_Agile_backend.item.service;
 
+import com.example.KTB_Agile_backend.ai.config.AiEndpoints;
 import com.example.KTB_Agile_backend.ai.config.AiProperties;
 import com.example.KTB_Agile_backend.ai.exception.AiErrorCode;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
@@ -65,12 +66,12 @@ public class ItemCashService {
 			BigDecimal valueGapToleranceScore,
 			BigDecimal exchangeUrgencyScore
 	) {
-		if (aiProperties.itemPriceUrl().isBlank()) {
+		if (aiProperties.baseUrl().isBlank()) {
 			throw new ApiException(AiErrorCode.AI_ITEM_PRICE_ENDPOINT_NOT_CONFIGURED);
 		}
 		try {
 			ItemPriceEstimationResponse response = restClient.post()
-					.uri(aiProperties.itemPriceUrl())
+					.uri(AiEndpoints.ITEM_PRICE)
 					.contentType(MediaType.APPLICATION_JSON)
 					.body(new ItemPriceEstimationRequest(
 							title, content, valueGapToleranceScore, exchangeUrgencyScore))

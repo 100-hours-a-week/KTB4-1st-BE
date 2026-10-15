@@ -1,5 +1,6 @@
 package com.example.KTB_Agile_backend.search.service;
 
+import com.example.KTB_Agile_backend.ai.config.AiEndpoints;
 import com.example.KTB_Agile_backend.ai.config.AiProperties;
 import com.example.KTB_Agile_backend.ai.exception.AiErrorCode;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
@@ -135,7 +136,7 @@ public class SmartSearchService {
 	}
 
 	private RankCandidatesResponse rankCandidates(List<ItemSummaryProjection> candidates, String preferenceText) {
-		if (aiProperties.smartSearchUrl().isBlank()) {
+		if (aiProperties.baseUrl().isBlank()) {
 			throw new ApiException(AiErrorCode.AI_SMART_SEARCH_ENDPOINT_NOT_CONFIGURED);
 		}
 		List<RankCandidatesRequest.Candidate> aiCandidates = candidates.stream()
@@ -143,7 +144,7 @@ public class SmartSearchService {
 				.toList();
 		try {
 			return restClient.post()
-					.uri(aiProperties.smartSearchUrl())
+					.uri(AiEndpoints.SMART_SEARCH)
 					.contentType(MediaType.APPLICATION_JSON)
 					.body(new RankCandidatesRequest(aiCandidates, preferenceText))
 					.retrieve()
