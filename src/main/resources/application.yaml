@@ -75,6 +75,7 @@ ai:
   text-moderation-url: ${AI_TEXT_MODERATION_URL:}
   item-price-url: ${AI_ITEM_PRICE_URL:}
   smart-search-url: ${AI_SMART_SEARCH_URL:}
+  chatbot-url: ${AI_CHATBOT_URL:}
   connect-timeout-seconds: ${AI_CONNECT_TIMEOUT_SECONDS:5}
   read-timeout-seconds: ${AI_READ_TIMEOUT_SECONDS:90}
 
