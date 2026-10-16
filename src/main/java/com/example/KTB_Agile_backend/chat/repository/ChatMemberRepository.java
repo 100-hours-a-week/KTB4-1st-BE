@@ -85,7 +85,7 @@ public interface ChatMemberRepository extends JpaRepository<ChatMember, Long> {
 		where member.user.id = :userId
 		  and member.chatRoom.id in :chatRoomIds
 		  and member.leftAt is null
-		  and message.user.id <> :userId
+		  and (message.user is null or message.user.id <> :userId)
 		  and (member.lastReadMessageId is null or message.id > member.lastReadMessageId)
 		group by member.chatRoom.id
 		""")

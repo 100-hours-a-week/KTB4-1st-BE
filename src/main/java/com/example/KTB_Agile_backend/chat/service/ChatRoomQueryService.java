@@ -136,7 +136,8 @@ public class ChatRoomQueryService {
 		ChatMessage lastMessage = latestMessages.get(room.getId());
 		ChatRoomSummary.LastMessage lastMessageResponse = lastMessage == null ? null
 				: new ChatRoomSummary.LastMessage(
-						lastMessage.getId(), lastMessage.getContent(), lastMessage.getUser().getId(),
+						lastMessage.getId(), lastMessage.getContent(),
+						lastMessage.getUser() == null ? null : lastMessage.getUser().getId(),
 						lastMessage.getCreatedAt());
 		return new ChatRoomSummary(
 				room.getId(), room.getChatRoomStatus(), request.getId(), request.getRequestedStatus(),

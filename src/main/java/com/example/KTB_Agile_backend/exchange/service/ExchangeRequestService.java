@@ -2,8 +2,10 @@ package com.example.KTB_Agile_backend.exchange.service;
 
 import com.example.KTB_Agile_backend.chat.entity.ChatMember;
 import com.example.KTB_Agile_backend.chat.entity.ChatMemberRole;
+import com.example.KTB_Agile_backend.chat.entity.ChatMessage;
 import com.example.KTB_Agile_backend.chat.entity.ChatRoom;
 import com.example.KTB_Agile_backend.chat.repository.ChatMemberRepository;
+import com.example.KTB_Agile_backend.chat.repository.ChatMessageRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatRoomRepository;
 import com.example.KTB_Agile_backend.common.exception.ApiErrorCode;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
@@ -43,6 +45,7 @@ public class ExchangeRequestService {
 	private static final int MAX_INFERRED_GROUP_COUNT = 1;
 	private final ExchangeRequestRepository exchangeRequestRepository;
 	private final ChatMemberRepository chatMemberRepository;
+	private final ChatMessageRepository chatMessageRepository;
 	private final ChatRoomRepository chatRoomRepository;
 	private final ItemRepository itemRepository;
 	private final GroupItemRepository groupItemRepository;
@@ -89,6 +92,9 @@ public class ExchangeRequestService {
 				new ChatMember(chatRoom, requester, ChatMemberRole.REQUESTER),
 				new ChatMember(chatRoom, requestedItem.getUser(), ChatMemberRole.OWNER)
 		));
+		ChatMessage systemMessage = chatMessageRepository.save(
+				ChatMessage.system(chatRoom, "교환 요청이 접수되었습니다."));
+		chatRoom.updateLastMessageAt(systemMessage.getCreatedAt());
 
 		return new ExchangeRequestCreatedResponse(
 				exchangeRequest.getId(), itemId, request.requestedQuantity(),

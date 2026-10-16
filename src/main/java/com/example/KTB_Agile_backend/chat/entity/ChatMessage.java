@@ -32,8 +32,8 @@ public class ChatMessage extends BaseEntity {
 	@JoinColumn(name = "chat_room_id", nullable = false)
 	private ChatRoom chatRoom;
 
-	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumn(name = "user_id", nullable = false)
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_id")
 	private User user;
 
 	@Column(nullable = false, columnDefinition = "TEXT")
@@ -47,5 +47,13 @@ public class ChatMessage extends BaseEntity {
 		this.chatRoom = chatRoom;
 		this.user = user;
 		this.content = content;
+	}
+
+	public static ChatMessage system(ChatRoom chatRoom, String content) {
+		ChatMessage message = new ChatMessage();
+		message.chatRoom = chatRoom;
+		message.content = content;
+		message.messageType = ChatMessageType.SYSTEM;
+		return message;
 	}
 }
