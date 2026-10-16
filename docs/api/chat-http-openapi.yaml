@@ -1,0 +1,668 @@
+openapi: 3.0.3
+info:
+  title: KTB Chat HTTP API
+  version: 1.0.0
+  description: |
+    채팅방 목록과 메시지 이력을 조회하고 채팅방에서 나가는 HTTP API입니다.
+    실시간 메시지 송수신은 WebSocket/STOMP를 사용하며 이 명세에 포함하지 않습니다.
+servers:
+  - url: /
+    description: Spring 백엔드
+tags:
+  - name: Chat
+    description: 채팅방 및 메시지 이력
+security:
+  - bearerAuth: []
+paths:
+  /chat-rooms:
+    get:
+      tags: [Chat]
+      summary: 내 채팅방 목록 조회
+      operationId: findChatRooms
+      description: |
+        최근 메시지 시각 내림차순으로 채팅방을 조회합니다. `direction`은 교환 요청 기준으로
+        내가 요청한 방(`SENT`) 또는 받은 방(`RECEIVED`)만 필터링합니다.
+        다음 페이지를 요청할 때 응답의 `nextCursor`를 그대로 전달하고 `direction`, `size`를 유지하세요.
+      parameters:
+        - name: direction
+          in: query
+          required: false
+          description: 교환 요청 방향 필터
+          schema:
+            type: string
+            enum: [SENT, RECEIVED]
+        - name: size
+          in: query
+          required: false
+          description: 페이지 크기 (기본값 20, 최소 1, 최대 100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: cursor
+          in: query
+          required: false
+          description: 이전 응답의 `nextCursor`. opaque 값이며 이 API에서만 사용합니다.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 채팅방 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatRoomPageEnvelope'
+              example:
+                data:
+                  chatRooms:
+                    - chatRoomId: 22
+                      chatRoomStatus: OPEN
+                      exchangeRequestId: 50
+                      exchangeStatus: PENDING
+                      direction: SENT
+                      group:
+                        groupId: 3
+                        groupName: 우리 동네 나눔
+                      otherUser:
+                        userId: 9
+                        nickname: 민지
+                        profileImageUrl: https://example.com/profile.png
+                        userStatus: ACTIVE
+                        groupMemberStatus: ACTIVE
+                      targetItem:
+                        itemId: 101
+                        title: 캠핑 의자
+                        thumbnailImageUrl: https://example.com/item.png
+                      lastMessage:
+                        messageId: 102
+                        content: 네, 가능합니다.
+                        senderId: 9
+                        createdAt: '2026-10-16T10:08:00'
+                      unreadMessageCount: 1
+                      lastMessageAt: '2026-10-16T10:08:00'
+                  nextCursor: null
+                  hasNext: false
+                error: null
+        '400':
+          description: direction, size 또는 cursor가 올바르지 않음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              example:
+                data: null
+                error:
+                  code: BAD_REQUEST
+                  message: direction, size 또는 cursor 값이 올바르지 않습니다.
+                  details: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /chat/rooms/{chatRoomId}/messages:
+    get:
+      tags: [Chat]
+      summary: 채팅 메시지 이력 조회
+      operationId: findChatMessages
+      description: |
+        활성 채팅 멤버만 조회할 수 있습니다. 최신 메시지부터 고정 크기 20개씩 페이지를 선택한 뒤,
+        각 페이지 안에서는 messageId 오름차순으로 반환합니다.
+        이전 메시지를 불러올 때 응답의 `nextCursor`를 그대로 전달하세요. 이 cursor는 채팅방 목록 cursor와 다릅니다.
+        cursor를 생략한 첫 페이지 조회는 해당 페이지의 최신 메시지까지 읽음 처리합니다.
+      parameters:
+        - name: chatRoomId
+          in: path
+          required: true
+          description: 채팅방 ID
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+          example: 22
+        - name: cursor
+          in: query
+          required: false
+          description: 이전 응답의 `nextCursor`. opaque 값이며 이 API에서만 사용합니다.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 메시지 이력 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessagePageEnvelope'
+              example:
+                data:
+                  messages:
+                    - messageId: 101
+                      chatRoomId: 22
+                      userId: null
+                      content: 교환 요청이 접수되었습니다.
+                      messageType: SYSTEM
+                      createdAt: '2026-10-16T10:07:00'
+                      userStatus: null
+                      groupMemberStatus: null
+                      payload:
+                        eventType: EXCHANGE_REQUEST_CREATED
+                        exchangeRequestId: 50
+                        requestedItem:
+                          itemId: 101
+                          title: 캠핑 의자
+                          availableQuantity: 2
+                          thumbnailImageUrl: https://example.com/item.png
+                        requestedQuantity: 1
+                        offeredItems:
+                          - itemId: 202
+                            title: 랜턴
+                            offeredQuantity: 1
+                            availableQuantity: 1
+                            thumbnailImageUrl: https://example.com/lantern.png
+                    - messageId: 102
+                      chatRoomId: 22
+                      userId: 9
+                      content: 네, 가능합니다.
+                      messageType: TEXT
+                      createdAt: '2026-10-16T10:08:00'
+                      userStatus: ACTIVE
+                      groupMemberStatus: ACTIVE
+                      payload: null
+                  nextCursor: null
+                  hasNext: false
+                error: null
+        '400':
+          description: cursor가 올바르지 않음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              example:
+                data: null
+                error:
+                  code: INVALID_CURSOR
+                  message: cursor가 올바르지 않습니다.
+                  details: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: 활성 채팅 멤버가 아님
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              example:
+                data: null
+                error:
+                  code: FORBIDDEN
+                  message: 접근 권한이 없습니다.
+                  details: []
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /chat-rooms/{chatRoomId}:
+    get:
+      tags: [Chat]
+      summary: 채팅방 상세 및 교환 요청 정보 조회
+      operationId: findChatRoom
+      description: 활성 채팅 멤버가 채팅방의 상태와 교환 요청 정보를 조회합니다. 메시지 페이지와 별도로 조회할 수 있습니다.
+      parameters:
+        - name: chatRoomId
+          in: path
+          required: true
+          description: 채팅방 ID
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+          example: 22
+      responses:
+        '200':
+          description: 채팅방 상세 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatRoomDetailEnvelope'
+              example:
+                data:
+                  chatRoomId: 22
+                  chatRoomStatus: OPEN
+                  direction: SENT
+                  exchangeRequest:
+                    exchangeRequestId: 50
+                    exchangeStatus: PENDING
+                    requestedItem:
+                      itemId: 101
+                      title: 캠핑 의자
+                      availableQuantity: 2
+                      thumbnailImageUrl: https://example.com/item.png
+                    requestedQuantity: 1
+                    offeredItems:
+                      - itemId: 202
+                        title: 랜턴
+                        offeredQuantity: 1
+                        availableQuantity: 1
+                        thumbnailImageUrl: https://example.com/lantern.png
+                  error: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: 활성 채팅 멤버가 아님
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              example:
+                data: null
+                error:
+                  code: FORBIDDEN
+                  message: 접근 권한이 없습니다.
+                  details: []
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /chat-rooms/{chatRoomId}/members/me:
+    delete:
+      tags: [Chat]
+      summary: 채팅방 나가기
+      operationId: leaveChatRoom
+      description: 참여 중인 채팅방에서 나갑니다. 이후 내 채팅방 목록과 메시지 이력에서 제외됩니다.
+      parameters:
+        - name: chatRoomId
+          in: path
+          required: true
+          description: 나갈 채팅방 ID
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+          example: 22
+      responses:
+        '204':
+          description: 채팅방 나가기 성공 (응답 본문 없음)
+        '400':
+          description: chatRoomId 형식이 올바르지 않음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: 참여 중인 채팅방이 아님
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: 채팅방을 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Unauthorized:
+      description: 로그인이 필요하거나 access token이 유효하지 않음
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+          example:
+            data: null
+            error:
+              code: AUTHENTICATION_REQUIRED
+              message: 로그인이 필요합니다.
+              details: []
+    ServerError:
+      description: 처리 중 서버 오류가 발생함
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+          example:
+            data: null
+            error:
+              code: INTERNAL_SERVER_ERROR
+              message: 서버 오류가 발생했습니다.
+              details: []
+  schemas:
+    ApiErrorResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          type: object
+          nullable: true
+        error:
+          $ref: '#/components/schemas/ApiError'
+    ApiError:
+      type: object
+      required: [code, message, details]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+            required: [field, reason]
+            properties:
+              field:
+                type: string
+              reason:
+                type: string
+    ChatRoomPageEnvelope:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          $ref: '#/components/schemas/ChatRoomPage'
+        error:
+          type: object
+          nullable: true
+    ChatRoomDetailEnvelope:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          $ref: '#/components/schemas/ChatRoomDetail'
+        error:
+          type: object
+          nullable: true
+    ChatRoomDetail:
+      type: object
+      required: [chatRoomId, chatRoomStatus, direction, exchangeRequest]
+      properties:
+        chatRoomId:
+          type: integer
+          format: int64
+        chatRoomStatus:
+          type: string
+          enum: [OPEN, CLOSED]
+        direction:
+          type: string
+          description: 로그인 사용자가 교환을 신청한 경우 SENT, 교환 요청을 받은 경우 RECEIVED
+          enum: [SENT, RECEIVED]
+        exchangeRequest:
+          type: object
+          required: [exchangeRequestId, exchangeStatus, requestedItem, requestedQuantity, offeredItems]
+          properties:
+            exchangeRequestId:
+              type: integer
+              format: int64
+            exchangeStatus:
+              type: string
+              enum: [PENDING, COMPLETED, REJECTED, CANCELED]
+            requestedItem:
+              $ref: '#/components/schemas/ExchangeRequestedItem'
+            requestedQuantity:
+              type: integer
+            offeredItems:
+              type: array
+              description: 전체 제공 물품. 썸네일 URL은 앞의 두 물품에만 포함될 수 있습니다.
+              items:
+                $ref: '#/components/schemas/ExchangeOfferedItem'
+    ExchangeRequestedItem:
+      type: object
+      required: [itemId, title, availableQuantity, thumbnailImageUrl]
+      properties:
+        itemId:
+          type: integer
+          format: int64
+        title:
+          type: string
+        availableQuantity:
+          type: integer
+        thumbnailImageUrl:
+          type: string
+          format: uri
+          nullable: true
+    ExchangeOfferedItem:
+      type: object
+      required: [itemId, title, offeredQuantity, availableQuantity, thumbnailImageUrl]
+      properties:
+        itemId:
+          type: integer
+          format: int64
+        title:
+          type: string
+        offeredQuantity:
+          type: integer
+        availableQuantity:
+          type: integer
+        thumbnailImageUrl:
+          type: string
+          format: uri
+          nullable: true
+    ChatRoomPage:
+      type: object
+      required: [chatRooms, nextCursor, hasNext]
+      properties:
+        chatRooms:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatRoomSummary'
+        nextCursor:
+          type: string
+          nullable: true
+        hasNext:
+          type: boolean
+    ChatRoomSummary:
+      type: object
+      required:
+        - chatRoomId
+        - chatRoomStatus
+        - exchangeRequestId
+        - exchangeStatus
+        - direction
+        - group
+        - otherUser
+        - targetItem
+        - lastMessage
+        - unreadMessageCount
+        - lastMessageAt
+      properties:
+        chatRoomId:
+          type: integer
+          format: int64
+        chatRoomStatus:
+          type: string
+          enum: [OPEN, CLOSED]
+        exchangeRequestId:
+          type: integer
+          format: int64
+        exchangeStatus:
+          type: string
+          enum: [PENDING, COMPLETED, REJECTED, CANCELED]
+        direction:
+          type: string
+          enum: [SENT, RECEIVED]
+        group:
+          type: object
+          nullable: true
+          required: [groupId, groupName]
+          properties:
+            groupId:
+              type: integer
+              format: int64
+            groupName:
+              type: string
+        otherUser:
+          type: object
+          required: [userId, nickname, profileImageUrl, userStatus, groupMemberStatus]
+          properties:
+            userId:
+              type: integer
+              format: int64
+            nickname:
+              type: string
+            profileImageUrl:
+              type: string
+              format: uri
+              nullable: true
+            userStatus:
+              type: string
+              enum: [ACTIVE, INACTIVE, WITHDRAWN]
+            groupMemberStatus:
+              type: string
+              enum: [ACTIVE, LEFT]
+              nullable: true
+        targetItem:
+          type: object
+          required: [itemId, title, thumbnailImageUrl]
+          properties:
+            itemId:
+              type: integer
+              format: int64
+            title:
+              type: string
+            thumbnailImageUrl:
+              type: string
+              format: uri
+              nullable: true
+        lastMessage:
+          type: object
+          nullable: true
+          required: [messageId, content, senderId, createdAt]
+          properties:
+            messageId:
+              type: integer
+              format: int64
+            content:
+              type: string
+            senderId:
+              type: integer
+              format: int64
+              nullable: true
+              description: SYSTEM 메시지인 경우 null입니다.
+            createdAt:
+              type: string
+              description: 시간대 정보가 없는 LocalDateTime 문자열
+        unreadMessageCount:
+          type: integer
+          format: int64
+          minimum: 0
+        lastMessageAt:
+          type: string
+          description: 시간대 정보가 없는 LocalDateTime 문자열
+    ChatMessagePageEnvelope:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          $ref: '#/components/schemas/ChatMessagePage'
+        error:
+          type: object
+          nullable: true
+    ChatMessagePage:
+      type: object
+      required: [messages, nextCursor, hasNext]
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+        nextCursor:
+          type: string
+          nullable: true
+        hasNext:
+          type: boolean
+    ChatMessage:
+      type: object
+      required:
+        - messageId
+        - chatRoomId
+        - userId
+        - content
+        - messageType
+        - createdAt
+        - userStatus
+        - groupMemberStatus
+        - payload
+      properties:
+        messageId:
+          type: integer
+          format: int64
+        chatRoomId:
+          type: integer
+          format: int64
+        userId:
+          type: integer
+          format: int64
+          nullable: true
+          description: SYSTEM 메시지인 경우 null입니다.
+        content:
+          type: string
+          description: 메시지 본문 또는 시스템 메시지 제목
+        messageType:
+          type: string
+          enum: [TEXT, SYSTEM]
+        createdAt:
+          type: string
+          description: 시간대 정보가 없는 LocalDateTime 문자열
+        userStatus:
+          type: string
+          enum: [ACTIVE, INACTIVE, WITHDRAWN]
+          nullable: true
+          description: SYSTEM 메시지인 경우 null입니다.
+        groupMemberStatus:
+          type: string
+          enum: [ACTIVE, LEFT]
+          nullable: true
+        payload:
+          type: object
+          nullable: true
+          description: SYSTEM 교환 요청 메시지 카드 정보. TEXT 메시지에서는 null입니다.
+          required: [eventType, exchangeRequestId, requestedItem, requestedQuantity, offeredItems]
+          properties:
+            eventType:
+              type: string
+              enum: [EXCHANGE_REQUEST_CREATED]
+            exchangeRequestId:
+              type: integer
+              format: int64
+            requestedItem:
+              type: object
+              required: [itemId, title, availableQuantity, thumbnailImageUrl]
+              properties:
+                itemId:
+                  type: integer
+                  format: int64
+                title:
+                  type: string
+                availableQuantity:
+                  type: integer
+                thumbnailImageUrl:
+                  type: string
+                  format: uri
+                  nullable: true
+            requestedQuantity:
+              type: integer
+            offeredItems:
+              type: array
+              description: 전체 제공 물품. 썸네일 URL은 앞의 두 물품에만 포함될 수 있습니다.
+              items:
+                type: object
+                required: [itemId, title, offeredQuantity, availableQuantity, thumbnailImageUrl]
+                properties:
+                  itemId:
+                    type: integer
+                    format: int64
+                  title:
+                    type: string
+                  offeredQuantity:
+                    type: integer
+                  availableQuantity:
+                    type: integer
+                  thumbnailImageUrl:
+                    type: string
+                    format: uri
+                    nullable: true
