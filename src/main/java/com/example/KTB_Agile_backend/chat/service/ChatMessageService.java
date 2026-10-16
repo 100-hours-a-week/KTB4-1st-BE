@@ -63,7 +63,7 @@ public class ChatMessageService {
 		return new ChatMessageResponse(
 				message.getId(), message.getChatRoom().getId(), message.getUser().getId(),
 				message.getContent(), message.getMessageType(), message.getCreatedAt(),
-				message.getUser().getUserStatus(), groupMemberStatus
+				message.getUser().getUserStatus(), groupMemberStatus, null
 		);
 	}
 }
