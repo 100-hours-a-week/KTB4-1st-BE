@@ -17,6 +17,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.Objects;
+
 @Entity
 @Table(name = "chat_messages")
 @Getter
@@ -45,7 +47,7 @@ public class ChatMessage extends BaseEntity {
 
 	public ChatMessage(ChatRoom chatRoom, User user, String content) {
 		this.chatRoom = chatRoom;
-		this.user = user;
+		this.user = Objects.requireNonNull(user, "user must not be null");
 		this.content = content;
 	}
 
