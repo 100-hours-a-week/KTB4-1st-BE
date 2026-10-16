@@ -226,6 +226,7 @@ paths:
                 data:
                   chatRoomId: 22
                   chatRoomStatus: OPEN
+                  direction: SENT
                   exchangeRequest:
                     exchangeRequestId: 50
                     exchangeStatus: PENDING
@@ -378,7 +379,7 @@ components:
           nullable: true
     ChatRoomDetail:
       type: object
-      required: [chatRoomId, chatRoomStatus, exchangeRequest]
+      required: [chatRoomId, chatRoomStatus, direction, exchangeRequest]
       properties:
         chatRoomId:
           type: integer
@@ -386,6 +387,10 @@ components:
         chatRoomStatus:
           type: string
           enum: [OPEN, CLOSED]
+        direction:
+          type: string
+          description: 로그인 사용자가 교환을 신청한 경우 SENT, 교환 요청을 받은 경우 RECEIVED
+          enum: [SENT, RECEIVED]
         exchangeRequest:
           type: object
           required: [exchangeRequestId, exchangeStatus, requestedItem, requestedQuantity, offeredItems]

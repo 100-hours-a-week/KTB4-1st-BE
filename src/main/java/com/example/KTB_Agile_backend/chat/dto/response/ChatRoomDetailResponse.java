@@ -8,6 +8,7 @@ import java.util.List;
 public record ChatRoomDetailResponse(
 		Long chatRoomId,
 		ChatRoomStatus chatRoomStatus,
+		String direction,
 		ExchangeRequestInfo exchangeRequest
 ) {
 	public record ExchangeRequestInfo(

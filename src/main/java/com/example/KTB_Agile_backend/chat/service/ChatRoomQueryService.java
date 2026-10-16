@@ -97,9 +97,10 @@ public class ChatRoomQueryService {
 		itemIds.add(requestedItem.getId());
 		offeredItems.forEach(offered -> itemIds.add(offered.getItem().getId()));
 		Map<Long, String> thumbnails = findThumbnails(itemIds);
+		String direction = request.getRequester().getId().equals(userId) ? "SENT" : "RECEIVED";
 
 		return new ChatRoomDetailResponse(
-				room.getId(), room.getChatRoomStatus(),
+				room.getId(), room.getChatRoomStatus(), direction,
 				new ChatRoomDetailResponse.ExchangeRequestInfo(
 						request.getId(), request.getRequestedStatus(),
 						new ChatRoomDetailResponse.RequestedItem(
