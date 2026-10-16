@@ -27,6 +27,25 @@ public interface ChatMemberRepository extends JpaRepository<ChatMember, Long> {
 	);
 
 	@Query("""
+		select distinct member
+		from ChatMember member
+		join fetch member.chatRoom room
+		join fetch room.exchangeRequest request
+		join fetch request.item
+		left join fetch request.offeredItems offered
+		left join fetch offered.item
+		where room.id = :chatRoomId
+		  and room.deletedAt is null
+		  and member.user.id = :memberUserId
+		  and member.user.deletedAt is null
+		  and member.leftAt is null
+		""")
+	Optional<ChatMember> findActiveMemberWithExchangeRequest(
+			@Param("chatRoomId") Long chatRoomId,
+			@Param("memberUserId") Long userId
+	);
+
+	@Query("""
 		select member
 		from ChatMember member
 		join fetch member.chatRoom room
