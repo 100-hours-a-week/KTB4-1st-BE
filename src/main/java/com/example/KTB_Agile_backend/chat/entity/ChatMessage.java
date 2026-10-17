@@ -45,17 +45,22 @@ public class ChatMessage extends BaseEntity {
 	@Column(name = "message_type", nullable = false, length = 20)
 	private ChatMessageType messageType = ChatMessageType.TEXT;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "system_event_type", length = 40)
+	private ChatSystemEventType systemEventType;
+
 	public ChatMessage(ChatRoom chatRoom, User user, String content) {
 		this.chatRoom = chatRoom;
 		this.user = Objects.requireNonNull(user, "user must not be null");
 		this.content = content;
 	}
 
-	public static ChatMessage system(ChatRoom chatRoom, String content) {
+	public static ChatMessage system(ChatRoom chatRoom, ChatSystemEventType eventType) {
 		ChatMessage message = new ChatMessage();
 		message.chatRoom = chatRoom;
-		message.content = content;
+		message.content = eventType.content();
 		message.messageType = ChatMessageType.SYSTEM;
+		message.systemEventType = eventType;
 		return message;
 	}
 }

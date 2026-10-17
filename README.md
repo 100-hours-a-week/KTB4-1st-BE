@@ -76,6 +76,8 @@ In the `dev` and `prod` profiles, Flyway applies versioned migrations before Hib
 
 ## WebSocket chat messages
 
-Connect to `/ws` with STOMP `CONNECT` header `Authorization: Bearer <jwt>`. Subscribe to `/topic/chat/rooms/{chatRoomId}` and send `{"content":"안녕하세요"}` to `/app/chat/rooms/{chatRoomId}/messages`. The server persists the message before broadcasting it to room subscribers.
+Connect to `/ws` with STOMP `CONNECT` header `Authorization: Bearer <jwt>`. Subscribe to `/topic/chat/rooms/{chatRoomId}` and send `{"content":"안녕하세요"}` to `/app/chat/rooms/{chatRoomId}/messages`. The server persists each text message before broadcasting it to room subscribers.
+
+Leaving a chat room, editing, rejecting, and canceling an exchange also persist and broadcast `SYSTEM` messages with the corresponding Korean notice as `content`. Exchange edits include the same request-card payload as request creation.
 
 Fetch the latest chat messages with `GET /chat/rooms/{chatRoomId}/messages`. Pass the returned `nextCursor` as the `cursor` query parameter to load older messages; each response contains messages in chronological order.

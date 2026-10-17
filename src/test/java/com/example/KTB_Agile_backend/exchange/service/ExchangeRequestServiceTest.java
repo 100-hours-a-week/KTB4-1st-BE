@@ -1,8 +1,16 @@
 package com.example.KTB_Agile_backend.exchange.service;
 
-import com.example.KTB_Agile_backend.chat.repository.ChatMemberRepository;
+import com.example.KTB_Agile_backend.chat.dto.response.ChatMessageResponse;
+import com.example.KTB_Agile_backend.chat.entity.ChatMessage;
+import com.example.KTB_Agile_backend.chat.entity.ChatMessageType;
 import com.example.KTB_Agile_backend.chat.entity.ChatRoomStatus;
+import com.example.KTB_Agile_backend.chat.entity.ChatSystemEventType;
+import com.example.KTB_Agile_backend.chat.messaging.ChatMessagePublisher;
+import com.example.KTB_Agile_backend.chat.repository.ChatMemberRepository;
+import com.example.KTB_Agile_backend.chat.repository.ChatMessageRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatRoomRepository;
+import com.example.KTB_Agile_backend.chat.service.ChatMessageQueryService;
+import com.example.KTB_Agile_backend.chat.service.ChatMessageService;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.exchange.dto.request.ExchangeRequestCreateRequest;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequest;
@@ -18,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.math.BigDecimal;
@@ -27,11 +36,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
-@Import({ExchangeRequestService.class, ExchangeRequestQueryService.class})
+@Import({ExchangeRequestService.class, ExchangeRequestQueryService.class, ChatMessageService.class,
+		ChatMessageQueryService.class})
 class ExchangeRequestServiceTest {
 
 	@MockitoBean
 	private ImageUrlResolver imageUrlResolver;
+
+	@MockitoBean
+	private ChatMessagePublisher chatMessagePublisher;
 
 	@Autowired
 	private ExchangeRequestService service;
@@ -47,6 +60,12 @@ class ExchangeRequestServiceTest {
 
 	@Autowired
 	private ChatRoomRepository chatRoomRepository;
+
+	@Autowired
+	private ChatMessageRepository chatMessageRepository;
+
+	@Autowired
+	private ChatMessageQueryService chatMessageQueryService;
 
 	@Autowired
 	private ItemRepository itemRepository;
@@ -70,6 +89,8 @@ class ExchangeRequestServiceTest {
 		assertThat(chatMemberRepository.countByChatRoom_Id(response.chatRoomId())).isEqualTo(2);
 		assertThat(response.offeredItems()).extracting("quantity").containsExactly(3);
 		assertThat(response.createdAt()).isNotNull();
+		assertSystemEvent(response.chatRoomId(), ChatSystemEventType.EXCHANGE_REQUEST_CREATED,
+				"교환 요청이 접수되었습니다.");
 		assertThat(itemRepository.findByIdAndDeletedAtIsNull(target.getId()).orElseThrow().getQuantity()).isEqualTo(3);
 		assertThat(itemRepository.findByIdAndDeletedAtIsNull(offered.getId()).orElseThrow().getQuantity()).isEqualTo(4);
 	}
@@ -116,6 +137,13 @@ class ExchangeRequestServiceTest {
 				.satisfies(exception -> assertThat(((ApiException) exception).code().value())
 						.isEqualTo("EXCHANGE_REQUEST_STATUS_FORBIDDEN"));
 		service.updateStatus(pending.exchangeRequestId(), owner.getId(), ExchangeRequestStatus.REJECTED);
+		assertSystemEvent(pending.chatRoomId(), ChatSystemEventType.EXCHANGE_REQUEST_REJECTED,
+				"교환이 거절 되었습니다.");
+		var messages = chatMessageQueryService.findMessages(pending.chatRoomId(), requester.getId(), null).messages();
+		assertThat(messages).extracting(ChatMessageResponse::content)
+				.containsExactly("교환 요청이 접수되었습니다.", "교환이 거절 되었습니다.");
+		assertThat(messages.get(0).payload()).isNotNull();
+		assertThat(messages.get(1).payload()).isNull();
 		var retry = service.create(requester.getId(), target.getId(), request(1, offered, 1));
 
 		assertThat(retry.requestedStatus()).isEqualTo(ExchangeRequestStatus.PENDING);
@@ -157,6 +185,8 @@ class ExchangeRequestServiceTest {
 				pending.exchangeRequestId(), requester.getId(), ExchangeRequestStatus.CANCELED);
 
 		assertThat(canceled.status()).isEqualTo(ExchangeRequestStatus.CANCELED);
+		assertSystemEvent(pending.chatRoomId(), ChatSystemEventType.EXCHANGE_REQUEST_CANCELED,
+				"교환이 취소 되었습니다.");
 		entityManager.clear();
 		assertThat(exchangeRequestRepository.findById(pending.exchangeRequestId()).orElseThrow().getRequestedStatus())
 				.isEqualTo(ExchangeRequestStatus.CANCELED);
@@ -177,6 +207,8 @@ class ExchangeRequestServiceTest {
 					.satisfies(exception -> assertThat(((ApiException) exception).code().value()).isEqualTo("FORBIDDEN"));
 		}
 		service.cancel(pending.exchangeRequestId(), requester.getId());
+		assertSystemEvent(pending.chatRoomId(), ChatSystemEventType.EXCHANGE_REQUEST_CANCELED,
+				"교환이 취소 되었습니다.");
 		entityManager.flush();
 		entityManager.clear();
 		ExchangeRequest canceled = exchangeRequestRepository.findById(pending.exchangeRequestId()).orElseThrow();
@@ -254,6 +286,15 @@ class ExchangeRequestServiceTest {
 		entityManager.persist(entity);
 		entityManager.flush();
 		return entity;
+	}
+
+	private void assertSystemEvent(Long chatRoomId, ChatSystemEventType eventType, String content) {
+		assertThat(chatMessageRepository.findAllByChatRoom_IdOrderByIdDesc(chatRoomId, PageRequest.of(0, 10)))
+				.anySatisfy(message -> {
+					assertThat(message.getMessageType()).isEqualTo(ChatMessageType.SYSTEM);
+					assertThat(message.getSystemEventType()).isEqualTo(eventType);
+					assertThat(message.getContent()).isEqualTo(content);
+				});
 	}
 
 	private static Item item(User owner, int quantity, ItemState state) {

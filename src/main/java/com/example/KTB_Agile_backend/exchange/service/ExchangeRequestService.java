@@ -4,9 +4,11 @@ import com.example.KTB_Agile_backend.chat.entity.ChatMember;
 import com.example.KTB_Agile_backend.chat.entity.ChatMemberRole;
 import com.example.KTB_Agile_backend.chat.entity.ChatMessage;
 import com.example.KTB_Agile_backend.chat.entity.ChatRoom;
+import com.example.KTB_Agile_backend.chat.entity.ChatSystemEventType;
 import com.example.KTB_Agile_backend.chat.repository.ChatMemberRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatMessageRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatRoomRepository;
+import com.example.KTB_Agile_backend.chat.service.ChatMessageService;
 import com.example.KTB_Agile_backend.common.exception.ApiErrorCode;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
@@ -47,6 +49,7 @@ public class ExchangeRequestService {
 	private final ChatMemberRepository chatMemberRepository;
 	private final ChatMessageRepository chatMessageRepository;
 	private final ChatRoomRepository chatRoomRepository;
+	private final ChatMessageService chatMessageService;
 	private final ItemRepository itemRepository;
 	private final GroupItemRepository groupItemRepository;
 	private final UserRepository userRepository;
@@ -93,7 +96,7 @@ public class ExchangeRequestService {
 				new ChatMember(chatRoom, requestedItem.getUser(), ChatMemberRole.OWNER)
 		));
 		ChatMessage systemMessage = chatMessageRepository.save(
-				ChatMessage.system(chatRoom, "교환 요청이 접수되었습니다."));
+				ChatMessage.system(chatRoom, ChatSystemEventType.EXCHANGE_REQUEST_CREATED));
 		chatRoom.updateLastMessageAt(systemMessage.getCreatedAt());
 
 		return new ExchangeRequestCreatedResponse(
@@ -126,6 +129,8 @@ public class ExchangeRequestService {
 
 		exchangeRequest.updateRequestedQuantity(request.requestedQuantity());
 		updateOfferedItems(exchangeRequest, request, items);
+		chatRoomRepository.findByExchangeRequest_Id(exchangeRequestId).ifPresent(chatRoom ->
+				chatMessageService.sendSystemMessage(chatRoom, ChatSystemEventType.EXCHANGE_REQUEST_UPDATED));
 	}
 
 	@Transactional
@@ -139,7 +144,10 @@ public class ExchangeRequestService {
 			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_CONFLICT);
 		}
 		exchangeRequest.changeStatus(ExchangeRequestStatus.CANCELED);
-		chatRoomRepository.findByExchangeRequest_Id(exchangeRequestId).ifPresent(ChatRoom::close);
+		chatRoomRepository.findByExchangeRequest_Id(exchangeRequestId).ifPresent(chatRoom -> {
+			chatRoom.close();
+			chatMessageService.sendSystemMessage(chatRoom, ChatSystemEventType.EXCHANGE_REQUEST_CANCELED);
+		});
 	}
 
 	@Transactional
@@ -182,7 +190,12 @@ public class ExchangeRequestService {
 
 		exchangeRequest.changeStatus(status);
 		if (status == ExchangeRequestStatus.REJECTED || status == ExchangeRequestStatus.CANCELED) {
-			chatRoomRepository.findByExchangeRequest_Id(exchangeRequestId).ifPresent(ChatRoom::close);
+			chatRoomRepository.findByExchangeRequest_Id(exchangeRequestId).ifPresent(chatRoom -> {
+				chatRoom.close();
+				chatMessageService.sendSystemMessage(chatRoom, status == ExchangeRequestStatus.REJECTED
+						? ChatSystemEventType.EXCHANGE_REQUEST_REJECTED
+						: ChatSystemEventType.EXCHANGE_REQUEST_CANCELED);
+			});
 		}
 		// Populate @LastModifiedDate before including it in the response.
 		exchangeRequestRepository.flush();

@@ -17,10 +17,13 @@ class ChatMessageTest {
 
 	@Test
 	void systemMessageHasNoUserAndSystemType() {
-		ChatMessage message = ChatMessage.system(mock(ChatRoom.class), "시스템 메시지");
+		ChatMessage message = ChatMessage.system(
+				mock(ChatRoom.class), ChatSystemEventType.EXCHANGE_REQUEST_REJECTED);
 
 		assertThat(message.getUser()).isNull();
 		assertThat(message.getMessageType()).isEqualTo(ChatMessageType.SYSTEM);
+		assertThat(message.getSystemEventType()).isEqualTo(ChatSystemEventType.EXCHANGE_REQUEST_REJECTED);
+		assertThat(message.getContent()).isEqualTo("교환이 거절 되었습니다.");
 	}
 
 	@Test
