@@ -7,13 +7,13 @@ public enum ChatSystemEventType {
 	EXCHANGE_REQUEST_REJECTED("교환이 거절 되었습니다."),
 	EXCHANGE_REQUEST_CANCELED("교환이 취소 되었습니다.");
 
-	private final String content;
+	private final String message;
 
 	ChatSystemEventType(String content) {
-		this.content = content;
+		this.message = content;
 	}
 
 	public String content() {
-		return content;
+		return message;
 	}
 }

@@ -83,7 +83,9 @@ public class ChatMessageService {
 				try {
 					chatMessagePublisher.publish(response);
 				} catch (RuntimeException exception) {
-					log.warn("Could not broadcast chat system message for room {}", chatRoom.getId(), exception);
+					if (log.isWarnEnabled()) {
+						log.warn("Could not broadcast chat system message for room {}", chatRoom.getId(), exception);
+					}
 				}
 			}
 		});
