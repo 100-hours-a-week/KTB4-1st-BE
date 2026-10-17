@@ -1,5 +1,6 @@
 package com.example.KTB_Agile_backend.chat.controller;
 
+import com.example.KTB_Agile_backend.chat.dto.response.ChatRoomDetailResponse;
 import com.example.KTB_Agile_backend.chat.dto.response.ChatRoomPageResponse;
 import com.example.KTB_Agile_backend.chat.service.ChatRoomQueryService;
 import com.example.KTB_Agile_backend.chat.service.ChatRoomService;
@@ -29,6 +30,16 @@ public class ChatRoomController {
 	) {
 		ChatRoomPageResponse response = chatRoomQueryService.findChatRooms(
 				Long.valueOf(authentication.getName()), direction, size, cursor);
+		return ResponseEntity.ok(new ApiResponse<>(response, null));
+	}
+
+	@GetMapping("/chat-rooms/{chatRoomId}")
+	public ResponseEntity<ApiResponse<ChatRoomDetailResponse>> findChatRoom(
+			@PathVariable Long chatRoomId,
+			Authentication authentication
+	) {
+		ChatRoomDetailResponse response = chatRoomQueryService.findChatRoom(
+				chatRoomId, Long.valueOf(authentication.getName()));
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 
