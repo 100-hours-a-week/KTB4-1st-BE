@@ -1,5 +1,6 @@
 package com.example.KTB_Agile_backend.exchange.service;
 
+import com.example.KTB_Agile_backend.chat.service.ChatMessageService;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.exchange.dto.request.ExchangeRequestCreateRequest;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -32,6 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
 @DataJpaTest
 @Import(ExchangeRequestService.class)
 class ExchangeRequestConcurrencyTest {
+
+	@MockitoBean
+	private ChatMessageService chatMessageService;
 
 	@Autowired
 	private ExchangeRequestService service;

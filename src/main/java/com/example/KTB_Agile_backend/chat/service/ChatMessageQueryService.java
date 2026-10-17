@@ -3,7 +3,7 @@ package com.example.KTB_Agile_backend.chat.service;
 import com.example.KTB_Agile_backend.chat.dto.response.ChatMessagePageResponse;
 import com.example.KTB_Agile_backend.chat.dto.response.ChatMessageResponse;
 import com.example.KTB_Agile_backend.chat.entity.ChatMessage;
-import com.example.KTB_Agile_backend.chat.entity.ChatMessageType;
+import com.example.KTB_Agile_backend.chat.entity.ChatSystemEventType;
 import com.example.KTB_Agile_backend.chat.repository.ChatMemberRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatMessageRepository;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequest;
@@ -103,7 +103,7 @@ public class ChatMessageQueryService {
 	private Map<Long, String> findSystemMessageThumbnails(List<ChatMessage> messages) {
 		Set<Long> itemIds = new HashSet<>();
 		for (ChatMessage message : messages) {
-			if (message.getMessageType() != ChatMessageType.SYSTEM) {
+			if (!hasExchangeRequestPayload(message)) {
 				continue;
 			}
 			ExchangeRequest request = message.getChatRoom().getExchangeRequest();
@@ -122,6 +122,10 @@ public class ChatMessageQueryService {
 		return thumbnails;
 	}
 
+	public ChatMessageResponse toSystemMessageResponse(ChatMessage message) {
+		return toResponse(message, null, findSystemMessageThumbnails(List.of(message)));
+	}
+
 	private static ChatMessageResponse toResponse(
 			ChatMessage message,
 			GroupMemberStatus groupMemberStatus,
@@ -132,8 +136,14 @@ public class ChatMessageQueryService {
 				message.getId(), message.getChatRoom().getId(), user == null ? null : user.getId(),
 				message.getContent(), message.getMessageType(), message.getCreatedAt(),
 				user == null ? null : user.getUserStatus(), groupMemberStatus,
-				message.getMessageType() == ChatMessageType.SYSTEM ? toPayload(message, thumbnails) : null
+				hasExchangeRequestPayload(message)
+						? toPayload(message, thumbnails) : null
 		);
+	}
+
+	private static boolean hasExchangeRequestPayload(ChatMessage message) {
+		return message.getSystemEventType() == ChatSystemEventType.EXCHANGE_REQUEST_CREATED
+				|| message.getSystemEventType() == ChatSystemEventType.EXCHANGE_REQUEST_UPDATED;
 	}
 
 	private static ChatMessageResponse.Payload toPayload(ChatMessage message, Map<Long, String> thumbnails) {
