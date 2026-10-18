@@ -95,14 +95,22 @@ class ExchangeRequestControllerTest {
 	}
 
 	@Test
-	void updatesRequestAndReturnsNoContent() throws Exception {
+	void updatesRequestAndReturnsCreatedResponse() throws Exception {
+		when(service.update(eq(301L), eq(42L), any())).thenReturn(new ExchangeRequestCreatedResponse(
+				301L, 123L, 2, List.of(new OfferedItemResponse(213L, 3)),
+				ExchangeRequestStatus.PENDING, 401L, LocalDateTime.parse("2026-09-05T11:00:00")));
+
 		mockMvc.perform(put("/exchange-requests/301")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
 					.contentType(MediaType.APPLICATION_JSON)
 					.content("""
 							{"requestedQuantity":2,"offeredItems":[{"itemId":213,"quantity":3}]}
 							"""))
-				.andExpect(status().isNoContent());
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.exchangeRequestId").value(301))
+				.andExpect(jsonPath("$.data.requestedQuantity").value(2))
+				.andExpect(jsonPath("$.data.offeredItems[0].quantity").value(3))
+				.andExpect(jsonPath("$.data.chatRoomId").value(401));
 
 		verify(service).update(eq(301L), eq(42L), any());
 	}

@@ -10,6 +10,7 @@ import com.example.KTB_Agile_backend.chat.repository.ChatMemberRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatMessageRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatRoomRepository;
 import com.example.KTB_Agile_backend.chat.service.ChatMessageQueryService;
+import com.example.KTB_Agile_backend.chat.service.ChatMessageResponseMapper;
 import com.example.KTB_Agile_backend.chat.service.ChatMessageService;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.exchange.dto.request.ExchangeRequestCreateRequest;
@@ -37,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
 @Import({ExchangeRequestService.class, ExchangeRequestQueryService.class, ChatMessageService.class,
-		ChatMessageQueryService.class})
+		ChatMessageQueryService.class, ChatMessageResponseMapper.class})
 class ExchangeRequestServiceTest {
 
 	@MockitoBean
@@ -168,7 +169,19 @@ class ExchangeRequestServiceTest {
 		Item replacementOffer = persist(item(requester, 4, ItemState.AVAILABLE));
 		var pending = service.create(requester.getId(), target.getId(), request(1, originalOffer, 1));
 
-		service.update(pending.exchangeRequestId(), requester.getId(), request(2, replacementOffer, 3));
+		var updatedResponse = service.update(
+				pending.exchangeRequestId(), requester.getId(), request(2, replacementOffer, 3));
+		assertThat(updatedResponse.exchangeRequestId()).isEqualTo(pending.exchangeRequestId());
+		assertThat(updatedResponse.itemId()).isEqualTo(target.getId());
+		assertThat(updatedResponse.requestedQuantity()).isEqualTo(2);
+		assertThat(updatedResponse.offeredItems()).extracting("itemId").containsExactly(replacementOffer.getId());
+		assertThat(updatedResponse.offeredItems()).extracting("quantity").containsExactly(3);
+		assertThat(updatedResponse.chatRoomId()).isEqualTo(pending.chatRoomId());
+		assertSystemEvent(pending.chatRoomId(), ChatSystemEventType.EXCHANGE_REQUEST_UPDATED,
+				"교환 요청이 수정되었습니다.");
+		var messages = chatMessageQueryService.findMessages(pending.chatRoomId(), requester.getId(), null).messages();
+		assertThat(messages.getLast().payload()).isNotNull();
+		assertThat(messages.getLast().payload().eventType()).isEqualTo("EXCHANGE_REQUEST_UPDATED");
 		entityManager.flush();
 		entityManager.clear();
 		ExchangeRequest updated = exchangeRequestRepository.findById(pending.exchangeRequestId()).orElseThrow();

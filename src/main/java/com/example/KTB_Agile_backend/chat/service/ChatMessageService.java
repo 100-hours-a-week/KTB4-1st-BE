@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -32,8 +34,8 @@ public class ChatMessageService {
 	private final ChatMemberRepository chatMemberRepository;
 	private final ChatMessageRepository chatMessageRepository;
 	private final GroupMemberRepository groupMemberRepository;
-	private final ChatMessageQueryService chatMessageQueryService;
 	private final ChatMessagePublisher chatMessagePublisher;
+	private final ChatMessageResponseMapper chatMessageResponseMapper;
 
 	@Transactional
 	public ChatMessageResponse send(Long chatRoomId, Long senderId, String content) {
@@ -58,7 +60,7 @@ public class ChatMessageService {
 						.map(groupMember -> groupMember.getStatus())
 						.orElse(null);
 
-		return toResponse(message, groupMemberStatus);
+		return chatMessageResponseMapper.toResponse(message, groupMemberStatus, Map.of());
 	}
 
 	@Transactional
@@ -72,11 +74,7 @@ public class ChatMessageService {
 	public void sendSystemMessage(ChatRoom chatRoom, ChatSystemEventType eventType) {
 		ChatMessage message = chatMessageRepository.save(ChatMessage.system(chatRoom, eventType));
 		chatRoom.updateLastMessageAt(message.getCreatedAt());
-		ChatMessageResponse response = eventType == ChatSystemEventType.EXCHANGE_REQUEST_UPDATED
-				? chatMessageQueryService.toSystemMessageResponse(message)
-				: new ChatMessageResponse(
-						message.getId(), chatRoom.getId(), null, message.getContent(), message.getMessageType(),
-						message.getCreatedAt(), null, null, null);
+		ChatMessageResponse response = chatMessageResponseMapper.toResponse(message, null);
 		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
 			@Override
 			public void afterCommit() {
@@ -89,13 +87,5 @@ public class ChatMessageService {
 				}
 			}
 		});
-	}
-
-	private static ChatMessageResponse toResponse(ChatMessage message, GroupMemberStatus groupMemberStatus) {
-		return new ChatMessageResponse(
-				message.getId(), message.getChatRoom().getId(), message.getUser().getId(),
-				message.getContent(), message.getMessageType(), message.getCreatedAt(),
-				message.getUser().getUserStatus(), groupMemberStatus, null
-		);
 	}
 }

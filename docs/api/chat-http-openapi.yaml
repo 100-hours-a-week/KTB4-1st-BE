@@ -141,6 +141,7 @@ paths:
                       userId: null
                       content: 교환 요청이 접수되었습니다.
                       messageType: SYSTEM
+                      systemEventType: EXCHANGE_REQUEST_CREATED
                       createdAt: '2026-10-16T10:07:00'
                       userStatus: null
                       groupMemberStatus: null
@@ -164,6 +165,7 @@ paths:
                       userId: 9
                       content: 네, 가능합니다.
                       messageType: TEXT
+                      systemEventType: null
                       createdAt: '2026-10-16T10:08:00'
                       userStatus: ACTIVE
                       groupMemberStatus: ACTIVE
@@ -264,7 +266,7 @@ paths:
       tags: [Chat]
       summary: 채팅방 나가기
       operationId: leaveChatRoom
-      description: 참여 중인 채팅방에서 나갑니다. 이후 내 채팅방 목록과 메시지 이력에서 제외됩니다.
+      description: 참여 중인 채팅방에서 나갑니다. 채팅방을 종료하고 상대방에게 시스템 메시지를 발행합니다. 나간 사용자의 채팅방 목록과 메시지 이력에서는 제외됩니다.
       parameters:
         - name: chatRoomId
           in: path
@@ -583,6 +585,7 @@ components:
         - userId
         - content
         - messageType
+        - systemEventType
         - createdAt
         - userStatus
         - groupMemberStatus
@@ -605,6 +608,15 @@ components:
         messageType:
           type: string
           enum: [TEXT, SYSTEM]
+        systemEventType:
+          type: string
+          enum:
+            - EXCHANGE_REQUEST_CREATED
+            - EXCHANGE_REQUEST_UPDATED
+            - CHAT_ROOM_MEMBER_LEFT
+            - EXCHANGE_REQUEST_REJECTED
+            - EXCHANGE_REQUEST_CANCELED
+          nullable: true
         createdAt:
           type: string
           description: 시간대 정보가 없는 LocalDateTime 문자열
@@ -625,7 +637,7 @@ components:
           properties:
             eventType:
               type: string
-              enum: [EXCHANGE_REQUEST_CREATED]
+              enum: [EXCHANGE_REQUEST_CREATED, EXCHANGE_REQUEST_UPDATED]
             exchangeRequestId:
               type: integer
               format: int64

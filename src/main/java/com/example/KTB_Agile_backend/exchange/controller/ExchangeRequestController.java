@@ -75,15 +75,16 @@ public class ExchangeRequestController {
 	}
 
 	@PutMapping("/exchange-requests/{exchangeRequestId}")
-	public ResponseEntity<Void> update(
+	public ResponseEntity<ApiResponse<ExchangeRequestCreatedResponse>> update(
 			Authentication authentication,
 			@PathVariable String exchangeRequestId,
 			@RequestBody JsonNode body
 	) {
 		long requestId = parseId(exchangeRequestId, ExchangeErrorCode.EXCHANGE_REQUEST_UPDATE_INVALID);
 		ExchangeRequestCreateRequest request = parseRequest(body, ExchangeErrorCode.EXCHANGE_REQUEST_UPDATE_INVALID);
-		exchangeRequestService.update(requestId, Long.valueOf(authentication.getName()), request);
-		return ResponseEntity.noContent().build();
+		ExchangeRequestCreatedResponse response = exchangeRequestService.update(
+				requestId, Long.valueOf(authentication.getName()), request);
+		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 
 	@DeleteMapping("/exchange-requests/{exchangeRequestId}")
