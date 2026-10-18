@@ -28,7 +28,8 @@ public class ChatRoomService {
 
 		ChatMember member = chatMemberRepository.findActiveMember(chatRoomId, userId)
 				.orElseThrow(() -> new ApiException(ErrorCode.FORBIDDEN, "참여 중인 채팅방만 나갈 수 있습니다."));
-		chatMessageService.sendSystemMessage(member.getChatRoom(), ChatSystemEventType.CHAT_ROOM_MEMBER_LEFT);
 		member.leave(LocalDateTime.now());
+		member.getChatRoom().close();
+		chatMessageService.sendSystemMessage(member.getChatRoom(), ChatSystemEventType.CHAT_ROOM_MEMBER_LEFT);
 	}
 }

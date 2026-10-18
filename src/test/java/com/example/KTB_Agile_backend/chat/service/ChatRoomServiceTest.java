@@ -48,6 +48,7 @@ class ChatRoomServiceTest {
 
 		verify(chatMessageService).sendSystemMessage(chatRoom, ChatSystemEventType.CHAT_ROOM_MEMBER_LEFT);
 		verify(member).leave(any());
+		verify(chatRoom).close();
 		assertThat(ChatSystemEventType.CHAT_ROOM_MEMBER_LEFT.content())
 				.isEqualTo("상대방이 채팅방을 나갔습니다");
 	}

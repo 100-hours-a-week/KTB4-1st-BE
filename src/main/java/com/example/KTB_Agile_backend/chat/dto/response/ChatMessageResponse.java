@@ -1,6 +1,7 @@
 package com.example.KTB_Agile_backend.chat.dto.response;
 
 import com.example.KTB_Agile_backend.chat.entity.ChatMessageType;
+import com.example.KTB_Agile_backend.chat.entity.ChatSystemEventType;
 import com.example.KTB_Agile_backend.group.entity.GroupMemberStatus;
 import com.example.KTB_Agile_backend.user.entity.UserStatus;
 
@@ -13,6 +14,7 @@ public record ChatMessageResponse(
 		Long userId,
 		String content,
 		ChatMessageType messageType,
+		ChatSystemEventType systemEventType,
 		LocalDateTime createdAt,
 		UserStatus userStatus,
 		GroupMemberStatus groupMemberStatus,
