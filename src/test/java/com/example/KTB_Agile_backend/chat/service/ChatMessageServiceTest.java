@@ -53,11 +53,7 @@ class ChatMessageServiceTest {
 		ChatMessage message = mock(ChatMessage.class);
 		ChatSystemEventType eventType = ChatSystemEventType.EXCHANGE_REQUEST_CANCELED;
 		LocalDateTime createdAt = LocalDateTime.of(2026, 10, 18, 12, 30);
-		when(chatRoom.getId()).thenReturn(22L);
 		when(chatMessageRepository.save(any(ChatMessage.class))).thenReturn(message);
-		when(message.getId()).thenReturn(301L);
-		when(message.getContent()).thenReturn(eventType.content());
-		when(message.getMessageType()).thenReturn(ChatMessageType.SYSTEM);
 		when(message.getCreatedAt()).thenReturn(createdAt);
 		ChatMessageResponse response = new ChatMessageResponse(301L, 22L, null, eventType.content(),
 				ChatMessageType.SYSTEM, eventType, createdAt, null, null, null);

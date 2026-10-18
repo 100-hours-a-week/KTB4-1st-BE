@@ -175,7 +175,7 @@ class ExchangeRequestServiceTest {
 		assertThat(updatedResponse.itemId()).isEqualTo(target.getId());
 		assertThat(updatedResponse.requestedQuantity()).isEqualTo(2);
 		assertThat(updatedResponse.offeredItems()).extracting("itemId").containsExactly(replacementOffer.getId());
-		assertThat(updatedResponse.offeredItems()).extracting("quantity").containsExactly(3);
+		assertThat(updatedResponse.offeredItems()).extracting(offer -> offer.quantity()).containsExactly(3);
 		assertThat(updatedResponse.chatRoomId()).isEqualTo(pending.chatRoomId());
 		assertSystemEvent(pending.chatRoomId(), ChatSystemEventType.EXCHANGE_REQUEST_UPDATED,
 				"교환 요청이 수정되었습니다.");
