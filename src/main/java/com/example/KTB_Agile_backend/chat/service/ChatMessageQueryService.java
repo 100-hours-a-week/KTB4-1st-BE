@@ -1,7 +1,6 @@
 package com.example.KTB_Agile_backend.chat.service;
 
 import com.example.KTB_Agile_backend.chat.dto.response.ChatMessagePageResponse;
-import com.example.KTB_Agile_backend.chat.dto.response.ChatMessageResponse;
 import com.example.KTB_Agile_backend.chat.entity.ChatMessage;
 import com.example.KTB_Agile_backend.chat.repository.ChatMemberRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatMessageRepository;
@@ -12,6 +11,7 @@ import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.common.pagination.CursorCodec;
 import com.example.KTB_Agile_backend.common.pagination.CursorPage;
+import com.example.KTB_Agile_backend.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +34,7 @@ public class ChatMessageQueryService {
 	private final ChatMemberRepository chatMemberRepository;
 	private final ChatMessageRepository chatMessageRepository;
 	private final GroupMemberRepository groupMemberRepository;
+	private final ChatMessageResponseMapper chatMessageResponseMapper;
 
 	@Transactional(readOnly = true)
 	public ChatMessagePageResponse findMessages(Long chatRoomId, Long userId, String cursor) {
@@ -51,10 +52,15 @@ public class ChatMessageQueryService {
 		List<ChatMessage> messages = new ArrayList<>(page.items());
 		Collections.reverse(messages);
 		Map<Long, GroupMemberStatus> groupMemberStatuses = findGroupMemberStatuses(messages);
+		Map<Long, String> thumbnails = chatMessageResponseMapper.findSystemMessageThumbnails(messages);
 
 		return new ChatMessagePageResponse(
 				messages.stream()
-						.map(message -> toResponse(message, groupMemberStatuses.get(message.getUser().getId())))
+						.map(message -> {
+							User user = message.getUser();
+							return chatMessageResponseMapper.toResponse(message,
+									user == null ? null : groupMemberStatuses.get(user.getId()), thumbnails);
+						})
 						.toList(),
 				page.nextCursor(),
 				page.hasNext()
@@ -69,18 +75,17 @@ public class ChatMessageQueryService {
 		if (group == null) {
 			return Map.of();
 		}
-		List<Long> userIds = messages.stream().map(message -> message.getUser().getId()).distinct().toList();
+		List<Long> userIds = messages.stream()
+				.map(ChatMessage::getUser)
+				.filter(user -> user != null)
+				.map(User::getId)
+				.distinct().toList();
+		if (userIds.isEmpty()) {
+			return Map.of();
+		}
 		Map<Long, GroupMemberStatus> statuses = new HashMap<>();
 		groupMemberRepository.findStatusesByGroupIdsAndUserIds(List.of(group.getId()), userIds)
 				.forEach(status -> statuses.put(status.getUserId(), status.getMembershipStatus()));
 		return statuses;
-	}
-
-	private static ChatMessageResponse toResponse(ChatMessage message, GroupMemberStatus groupMemberStatus) {
-		return new ChatMessageResponse(
-				message.getId(), message.getChatRoom().getId(), message.getUser().getId(),
-				message.getContent(), message.getMessageType(), message.getCreatedAt(),
-				message.getUser().getUserStatus(), groupMemberStatus
-		);
 	}
 }

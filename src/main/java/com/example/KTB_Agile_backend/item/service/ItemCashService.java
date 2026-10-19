@@ -1,13 +1,14 @@
 package com.example.KTB_Agile_backend.item.service;
 
+import com.example.KTB_Agile_backend.ai.config.AiEndpoints;
+import com.example.KTB_Agile_backend.ai.config.AiProperties;
 import com.example.KTB_Agile_backend.ai.exception.AiErrorCode;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.item.cache.ItemPriceCache;
 import com.example.KTB_Agile_backend.item.dto.ai.ItemPriceEstimationRequest;
 import com.example.KTB_Agile_backend.item.dto.ai.ItemPriceEstimationResponse;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -17,30 +18,15 @@ import java.time.Duration;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class ItemCashService {
 
 	private static final Duration CACHE_TTL = Duration.ofHours(24);
 
 	private final ItemPriceCache itemPriceCache;
 	private final ItemPriceRangeCalculator itemPriceRangeCalculator;
+	private final AiProperties aiProperties;
 	private final RestClient restClient;
-	private final String aiEndpoint;
-
-	public ItemCashService(
-			ItemPriceCache itemPriceCache,
-			ItemPriceRangeCalculator itemPriceRangeCalculator,
-			@Value("${ai.item-price-url:}") String aiEndpoint,
-			@Value("${ai.connect-timeout-seconds:5}") long connectTimeoutSeconds,
-			@Value("${ai.read-timeout-seconds:90}") long readTimeoutSeconds
-	) {
-		this.itemPriceCache = itemPriceCache;
-		this.itemPriceRangeCalculator = itemPriceRangeCalculator;
-		this.aiEndpoint = aiEndpoint;
-		SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-		requestFactory.setConnectTimeout(Duration.ofSeconds(connectTimeoutSeconds));
-		requestFactory.setReadTimeout(Duration.ofSeconds(readTimeoutSeconds));
-		this.restClient = RestClient.builder().requestFactory(requestFactory).build();
-	}
 
 	public ItemPriceRangeCalculator.PriceRange resolvePrice(
 			String title,
@@ -80,12 +66,12 @@ public class ItemCashService {
 			BigDecimal valueGapToleranceScore,
 			BigDecimal exchangeUrgencyScore
 	) {
-		if (aiEndpoint.isBlank()) {
+		if (aiProperties.baseUrl().isBlank()) {
 			throw new ApiException(AiErrorCode.AI_ITEM_PRICE_ENDPOINT_NOT_CONFIGURED);
 		}
 		try {
 			ItemPriceEstimationResponse response = restClient.post()
-					.uri(aiEndpoint)
+					.uri(AiEndpoints.ITEM_PRICE)
 					.contentType(MediaType.APPLICATION_JSON)
 					.body(new ItemPriceEstimationRequest(
 							title, content, valueGapToleranceScore, exchangeUrgencyScore))

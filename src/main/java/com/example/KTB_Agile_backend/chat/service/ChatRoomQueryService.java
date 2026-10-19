@@ -1,5 +1,6 @@
 package com.example.KTB_Agile_backend.chat.service;
 
+import com.example.KTB_Agile_backend.chat.dto.response.ChatRoomDetailResponse;
 import com.example.KTB_Agile_backend.chat.dto.response.ChatRoomPageResponse;
 import com.example.KTB_Agile_backend.chat.dto.response.ChatRoomSummary;
 import com.example.KTB_Agile_backend.chat.entity.ChatMember;
@@ -14,6 +15,7 @@ import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.common.pagination.CursorCodec;
 import com.example.KTB_Agile_backend.common.pagination.CursorPage;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequest;
+import com.example.KTB_Agile_backend.exchange.entity.OfferedItem;
 import com.example.KTB_Agile_backend.image.entity.Image;
 import com.example.KTB_Agile_backend.image.repository.ImageRepository;
 import com.example.KTB_Agile_backend.image.service.ImageUrlResolver;
@@ -25,6 +27,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -82,6 +85,41 @@ public class ChatRoomQueryService {
 		return new ChatRoomPageResponse(chatRooms, page.nextCursor(), page.hasNext());
 	}
 
+	@Transactional(readOnly = true)
+	public ChatRoomDetailResponse findChatRoom(Long chatRoomId, Long userId) {
+		ChatMember member = chatMemberRepository.findActiveMemberWithExchangeRequest(chatRoomId, userId)
+				.orElseThrow(() -> new ApiException(ErrorCode.FORBIDDEN));
+		ChatRoom room = member.getChatRoom();
+		ExchangeRequest request = room.getExchangeRequest();
+		Item requestedItem = request.getItem();
+		List<OfferedItem> offeredItems = request.getOfferedItems();
+		List<Long> itemIds = new ArrayList<>();
+		itemIds.add(requestedItem.getId());
+		offeredItems.forEach(offered -> itemIds.add(offered.getItem().getId()));
+		Map<Long, String> thumbnails = findThumbnails(itemIds);
+		String direction = request.getRequester().getId().equals(userId) ? "SENT" : "RECEIVED";
+
+		return new ChatRoomDetailResponse(
+				room.getId(), room.getChatRoomStatus(), direction,
+				new ChatRoomDetailResponse.ExchangeRequestInfo(
+						request.getId(), request.getRequestedStatus(),
+						new ChatRoomDetailResponse.RequestedItem(
+								requestedItem.getId(), requestedItem.getTitle(), requestedItem.getQuantity(),
+								thumbnails.get(requestedItem.getId())),
+						request.getRequestedQuantity(),
+						java.util.stream.IntStream.range(0, offeredItems.size())
+								.mapToObj(index -> {
+									OfferedItem offered = offeredItems.get(index);
+									Item item = offered.getItem();
+									return new ChatRoomDetailResponse.OfferedItem(
+											item.getId(), item.getTitle(), offered.getQuantity(), item.getQuantity(),
+											index < 2 ? thumbnails.get(item.getId()) : null);
+								})
+								.toList()
+				)
+		);
+	}
+
 	private Map<GroupMembershipKey, GroupMemberStatus> findOtherUserGroupStatuses(
 			Long userId,
 			List<ChatMember> members
@@ -136,10 +174,12 @@ public class ChatRoomQueryService {
 		ChatMessage lastMessage = latestMessages.get(room.getId());
 		ChatRoomSummary.LastMessage lastMessageResponse = lastMessage == null ? null
 				: new ChatRoomSummary.LastMessage(
-						lastMessage.getId(), lastMessage.getContent(), lastMessage.getUser().getId(),
+						lastMessage.getId(), lastMessage.getContent(),
+						lastMessage.getUser() == null ? null : lastMessage.getUser().getId(),
 						lastMessage.getCreatedAt());
 		return new ChatRoomSummary(
-				room.getId(), room.getChatRoomStatus(), request.getId(), sent ? "SENT" : "RECEIVED",
+				room.getId(), room.getChatRoomStatus(), request.getId(), request.getRequestedStatus(),
+				sent ? "SENT" : "RECEIVED",
 				request.getGroup() == null ? null : new ChatRoomSummary.GroupInfo(
 						request.getGroup().getId(), request.getGroup().getGroupName()),
 				new ChatRoomSummary.OtherUser(

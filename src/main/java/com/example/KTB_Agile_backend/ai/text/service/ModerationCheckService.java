@@ -1,15 +1,16 @@
 package com.example.KTB_Agile_backend.ai.text.service;
 
-import com.example.KTB_Agile_backend.common.exception.ApiException;
-import com.example.KTB_Agile_backend.common.util.Hashing;
+import com.example.KTB_Agile_backend.ai.config.AiEndpoints;
+import com.example.KTB_Agile_backend.ai.config.AiProperties;
 import com.example.KTB_Agile_backend.ai.exception.AiErrorCode;
 import com.example.KTB_Agile_backend.ai.text.dto.request.ModerationCheckRequest;
 import com.example.KTB_Agile_backend.ai.text.dto.response.ModerationCheckResponse;
 import com.example.KTB_Agile_backend.ai.text.entity.ModerationCheck;
 import com.example.KTB_Agile_backend.ai.text.repository.ModerationCheckRepository;
-import org.springframework.beans.factory.annotation.Value;
+import com.example.KTB_Agile_backend.common.exception.ApiException;
+import com.example.KTB_Agile_backend.common.util.Hashing;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
@@ -23,39 +24,26 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class ModerationCheckService {
 
 	private static final Duration CHECK_TTL = Duration.ofMinutes(5);
 	private static final int EXPECTED_CONSUMED_ROWS = 1;
 
 	private final ModerationCheckRepository moderationCheckRepository;
+	private final AiProperties aiProperties;
 	private final RestClient restClient;
-	private final String aiEndpoint;
 	private final SecureRandom secureRandom = new SecureRandom();
 
-	public ModerationCheckService(
-			ModerationCheckRepository moderationCheckRepository,
-			@Value("${ai.text-moderation-url:}") String aiEndpoint,
-			@Value("${ai.connect-timeout-seconds:5}") long connectTimeoutSeconds,
-			@Value("${ai.read-timeout-seconds:90}") long readTimeoutSeconds
-	) {
-		this.moderationCheckRepository = moderationCheckRepository;
-		this.aiEndpoint = aiEndpoint;
-		SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-		requestFactory.setConnectTimeout(Duration.ofSeconds(connectTimeoutSeconds));
-		requestFactory.setReadTimeout(Duration.ofSeconds(readTimeoutSeconds));
-		this.restClient = RestClient.builder().requestFactory(requestFactory).build();
-	}
-
 	public ModerationCheckResponse check(Long userId, ModerationCheckRequest request) {
-		if (aiEndpoint.isBlank()) {
+		if (aiProperties.baseUrl().isBlank()) {
 			throw aiFailure(null);
 		}
 
 		AiModerationResponse aiResponse;
 		try {
 			aiResponse = restClient.post()
-					.uri(aiEndpoint)
+					.uri(AiEndpoints.TEXT_MODERATION)
 					.contentType(MediaType.APPLICATION_JSON)
 					.body(Map.of("title", request.title(), "content", request.content()))
 					.retrieve()

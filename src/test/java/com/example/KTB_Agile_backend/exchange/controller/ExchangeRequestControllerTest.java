@@ -38,6 +38,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class ExchangeRequestControllerTest {
 
+	private static final String EXCHANGE_REQUEST_ID_JSON_PATH = "$.data.exchangeRequestId";
+
 	private ExchangeRequestService service;
 	private ExchangeRequestQueryService queryService;
 	private MockMvc mockMvc;
@@ -66,7 +68,7 @@ class ExchangeRequestControllerTest {
 							"""))
 				.andExpect(status().isCreated())
 				.andExpect(header().string("Location", "/exchange-requests/301"))
-				.andExpect(jsonPath("$.data.exchangeRequestId").value(301))
+				.andExpect(jsonPath(EXCHANGE_REQUEST_ID_JSON_PATH).value(301))
 				.andExpect(jsonPath("$.data.requestedStatus").value("PENDING"))
 				.andExpect(jsonPath("$.data.offeredItems[0].quantity").value(2))
 				.andExpect(jsonPath("$.data.chatRoomId").value(401));
@@ -84,7 +86,7 @@ class ExchangeRequestControllerTest {
 		mockMvc.perform(get("/exchange-requests/301")
 					.principal(new UsernamePasswordAuthenticationToken("42", null)))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.data.exchangeRequestId").value(301))
+				.andExpect(jsonPath(EXCHANGE_REQUEST_ID_JSON_PATH).value(301))
 				.andExpect(jsonPath("$.data.itemId").value(123))
 				.andExpect(jsonPath("$.data.requestedQuantity").value(2))
 				.andExpect(jsonPath("$.data.offeredItems[0].itemId").value(213))
@@ -95,14 +97,22 @@ class ExchangeRequestControllerTest {
 	}
 
 	@Test
-	void updatesRequestAndReturnsNoContent() throws Exception {
+	void updatesRequestAndReturnsCreatedResponse() throws Exception {
+		when(service.update(eq(301L), eq(42L), any())).thenReturn(new ExchangeRequestCreatedResponse(
+				301L, 123L, 2, List.of(new OfferedItemResponse(213L, 3)),
+				ExchangeRequestStatus.PENDING, 401L, LocalDateTime.parse("2026-09-05T11:00:00")));
+
 		mockMvc.perform(put("/exchange-requests/301")
 					.principal(new UsernamePasswordAuthenticationToken("42", null))
 					.contentType(MediaType.APPLICATION_JSON)
 					.content("""
 							{"requestedQuantity":2,"offeredItems":[{"itemId":213,"quantity":3}]}
 							"""))
-				.andExpect(status().isNoContent());
+				.andExpect(status().isOk())
+				.andExpect(jsonPath(EXCHANGE_REQUEST_ID_JSON_PATH).value(301))
+				.andExpect(jsonPath("$.data.requestedQuantity").value(2))
+				.andExpect(jsonPath("$.data.offeredItems[0].quantity").value(3))
+				.andExpect(jsonPath("$.data.chatRoomId").value(401));
 
 		verify(service).update(eq(301L), eq(42L), any());
 	}

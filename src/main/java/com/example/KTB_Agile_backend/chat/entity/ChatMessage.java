@@ -17,6 +17,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.Objects;
+
 @Entity
 @Table(name = "chat_messages")
 @Getter
@@ -32,8 +34,8 @@ public class ChatMessage extends BaseEntity {
 	@JoinColumn(name = "chat_room_id", nullable = false)
 	private ChatRoom chatRoom;
 
-	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumn(name = "user_id", nullable = false)
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_id")
 	private User user;
 
 	@Column(nullable = false, columnDefinition = "TEXT")
@@ -43,9 +45,22 @@ public class ChatMessage extends BaseEntity {
 	@Column(name = "message_type", nullable = false, length = 20)
 	private ChatMessageType messageType = ChatMessageType.TEXT;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "system_event_type", length = 40)
+	private ChatSystemEventType systemEventType;
+
 	public ChatMessage(ChatRoom chatRoom, User user, String content) {
 		this.chatRoom = chatRoom;
-		this.user = user;
+		this.user = Objects.requireNonNull(user, "user must not be null");
 		this.content = content;
+	}
+
+	public static ChatMessage system(ChatRoom chatRoom, ChatSystemEventType eventType) {
+		ChatMessage message = new ChatMessage();
+		message.chatRoom = chatRoom;
+		message.content = eventType.content();
+		message.messageType = ChatMessageType.SYSTEM;
+		message.systemEventType = eventType;
+		return message;
 	}
 }

@@ -1,5 +1,7 @@
 package com.example.KTB_Agile_backend.search.service;
 
+import com.example.KTB_Agile_backend.ai.config.AiEndpoints;
+import com.example.KTB_Agile_backend.ai.config.AiProperties;
 import com.example.KTB_Agile_backend.ai.exception.AiErrorCode;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
@@ -23,10 +25,9 @@ import com.example.KTB_Agile_backend.search.dto.ai.RankCandidatesResponse;
 import com.example.KTB_Agile_backend.search.dto.request.SmartSearchRequest;
 import com.example.KTB_Agile_backend.search.dto.response.SmartSearchResponse;
 import com.example.KTB_Agile_backend.user.entity.UserStatus;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -36,7 +37,6 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.Set;
 
 @Service
+@RequiredArgsConstructor
 public class SmartSearchService {
 
 	private static final int MAX_CANDIDATES = 30;
@@ -54,34 +55,8 @@ public class SmartSearchService {
 	private final ItemQueryService itemQueryService;
 	private final SmartSearchBudgetCalculator budgetCalculator;
 	private final ObjectMapper objectMapper;
+	private final AiProperties aiProperties;
 	private final RestClient restClient;
-	private final String aiEndpoint;
-
-	public SmartSearchService(
-			GroupRepository groupRepository,
-			GroupMemberRepository groupMemberRepository,
-			GroupItemRepository groupItemRepository,
-			ItemRepository itemRepository,
-			ItemQueryService itemQueryService,
-			SmartSearchBudgetCalculator budgetCalculator,
-			ObjectMapper objectMapper,
-			@Value("${ai.smart-search-url:}") String aiEndpoint,
-			@Value("${ai.connect-timeout-seconds:5}") long connectTimeoutSeconds,
-			@Value("${ai.read-timeout-seconds:90}") long readTimeoutSeconds
-	) {
-		this.groupRepository = groupRepository;
-		this.groupMemberRepository = groupMemberRepository;
-		this.groupItemRepository = groupItemRepository;
-		this.itemRepository = itemRepository;
-		this.itemQueryService = itemQueryService;
-		this.budgetCalculator = budgetCalculator;
-		this.objectMapper = objectMapper;
-		this.aiEndpoint = aiEndpoint;
-		SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-		requestFactory.setConnectTimeout(Duration.ofSeconds(connectTimeoutSeconds));
-		requestFactory.setReadTimeout(Duration.ofSeconds(readTimeoutSeconds));
-		this.restClient = RestClient.builder().requestFactory(requestFactory).build();
-	}
 
 	public SmartSearchResponse search(Long userId, SmartSearchRequest request) {
 		validateGroupMembership(userId, request.groupId());
@@ -161,7 +136,7 @@ public class SmartSearchService {
 	}
 
 	private RankCandidatesResponse rankCandidates(List<ItemSummaryProjection> candidates, String preferenceText) {
-		if (aiEndpoint.isBlank()) {
+		if (aiProperties.baseUrl().isBlank()) {
 			throw new ApiException(AiErrorCode.AI_SMART_SEARCH_ENDPOINT_NOT_CONFIGURED);
 		}
 		List<RankCandidatesRequest.Candidate> aiCandidates = candidates.stream()
@@ -169,7 +144,7 @@ public class SmartSearchService {
 				.toList();
 		try {
 			return restClient.post()
-					.uri(aiEndpoint)
+					.uri(AiEndpoints.SMART_SEARCH)
 					.contentType(MediaType.APPLICATION_JSON)
 					.body(new RankCandidatesRequest(aiCandidates, preferenceText))
 					.retrieve()

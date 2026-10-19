@@ -3,8 +3,10 @@ package com.example.KTB_Agile_backend.exchange.service;
 import com.example.KTB_Agile_backend.chat.entity.ChatMember;
 import com.example.KTB_Agile_backend.chat.entity.ChatMemberRole;
 import com.example.KTB_Agile_backend.chat.entity.ChatRoom;
+import com.example.KTB_Agile_backend.chat.entity.ChatSystemEventType;
 import com.example.KTB_Agile_backend.chat.repository.ChatMemberRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatRoomRepository;
+import com.example.KTB_Agile_backend.chat.service.ChatMessageService;
 import com.example.KTB_Agile_backend.common.exception.ApiErrorCode;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
@@ -44,6 +46,7 @@ public class ExchangeRequestService {
 	private final ExchangeRequestRepository exchangeRequestRepository;
 	private final ChatMemberRepository chatMemberRepository;
 	private final ChatRoomRepository chatRoomRepository;
+	private final ChatMessageService chatMessageService;
 	private final ItemRepository itemRepository;
 	private final GroupItemRepository groupItemRepository;
 	private final UserRepository userRepository;
@@ -89,17 +92,16 @@ public class ExchangeRequestService {
 				new ChatMember(chatRoom, requester, ChatMemberRole.REQUESTER),
 				new ChatMember(chatRoom, requestedItem.getUser(), ChatMemberRole.OWNER)
 		));
-
-		return new ExchangeRequestCreatedResponse(
-				exchangeRequest.getId(), itemId, request.requestedQuantity(),
-				request.offeredItems().stream()
-						.map(item -> new OfferedItemResponse(item.itemId(), item.quantity())).toList(),
-				exchangeRequest.getRequestedStatus(), chatRoom.getId(), exchangeRequest.getCreatedAt()
-		);
+		chatMessageService.sendSystemMessage(chatRoom, ChatSystemEventType.EXCHANGE_REQUEST_CREATED);
+		return toCreatedResponse(exchangeRequest, chatRoom);
 	}
 
 	@Transactional
-	public void update(Long exchangeRequestId, Long requesterId, ExchangeRequestCreateRequest request) {
+	public ExchangeRequestCreatedResponse update(
+			Long exchangeRequestId,
+			Long requesterId,
+			ExchangeRequestCreateRequest request
+	) {
 		ExchangeRequest exchangeRequest = exchangeRequestRepository.findByIdForUpdate(exchangeRequestId)
 				.orElseThrow(() -> new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_UPDATE_NOT_FOUND));
 		validateEditableRequest(exchangeRequest, requesterId);
@@ -120,6 +122,9 @@ public class ExchangeRequestService {
 
 		exchangeRequest.updateRequestedQuantity(request.requestedQuantity());
 		updateOfferedItems(exchangeRequest, request, items);
+		ChatRoom chatRoom = chatRoomRepository.findByExchangeRequest_Id(exchangeRequestId).orElseThrow();
+		chatMessageService.sendSystemMessage(chatRoom, ChatSystemEventType.EXCHANGE_REQUEST_UPDATED);
+		return toCreatedResponse(exchangeRequest, chatRoom);
 	}
 
 	@Transactional
@@ -133,7 +138,7 @@ public class ExchangeRequestService {
 			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_CONFLICT);
 		}
 		exchangeRequest.changeStatus(ExchangeRequestStatus.CANCELED);
-		chatRoomRepository.findByExchangeRequest_Id(exchangeRequestId).ifPresent(ChatRoom::close);
+		closeChatRoomAndSendSystemMessage(exchangeRequestId, ChatSystemEventType.EXCHANGE_REQUEST_CANCELED);
 	}
 
 	@Transactional
@@ -176,7 +181,9 @@ public class ExchangeRequestService {
 
 		exchangeRequest.changeStatus(status);
 		if (status == ExchangeRequestStatus.REJECTED || status == ExchangeRequestStatus.CANCELED) {
-			chatRoomRepository.findByExchangeRequest_Id(exchangeRequestId).ifPresent(ChatRoom::close);
+			closeChatRoomAndSendSystemMessage(exchangeRequestId, status == ExchangeRequestStatus.REJECTED
+					? ChatSystemEventType.EXCHANGE_REQUEST_REJECTED
+					: ChatSystemEventType.EXCHANGE_REQUEST_CANCELED);
 		}
 		// Populate @LastModifiedDate before including it in the response.
 		exchangeRequestRepository.flush();
@@ -190,6 +197,25 @@ public class ExchangeRequestService {
 		Map<Long, Item> items = new HashMap<>();
 		itemRepository.findAllForExchange(itemIds).forEach(item -> items.put(item.getId(), item));
 		return items;
+	}
+
+	private void closeChatRoomAndSendSystemMessage(Long exchangeRequestId, ChatSystemEventType eventType) {
+		chatRoomRepository.findByExchangeRequest_Id(exchangeRequestId).ifPresent(chatRoom -> {
+			chatRoom.close();
+			chatMessageService.sendSystemMessage(chatRoom, eventType);
+		});
+	}
+
+	private static ExchangeRequestCreatedResponse toCreatedResponse(
+			ExchangeRequest exchangeRequest,
+			ChatRoom chatRoom
+	) {
+		return new ExchangeRequestCreatedResponse(
+				exchangeRequest.getId(), exchangeRequest.getItem().getId(), exchangeRequest.getRequestedQuantity(),
+				exchangeRequest.getOfferedItems().stream()
+						.map(offered -> new OfferedItemResponse(offered.getItem().getId(), offered.getQuantity())).toList(),
+				exchangeRequest.getRequestedStatus(), chatRoom.getId(), exchangeRequest.getCreatedAt()
+		);
 	}
 
 	private static void validateEditableRequest(ExchangeRequest exchangeRequest, Long requesterId) {

@@ -31,7 +31,7 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 				g.roadAddress,
 				g.groupContent,
 				count(distinct member.id),
-				count(distinct item.id),
+				count(distinct activeItem.id),
 				max(item.createdAt),
 				case when count(distinct joinedMember.id) > 0 then true else false end
 			)
@@ -41,6 +41,7 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 				and member.status = :activeStatus
 			left join GroupItem item on item.group = g
 				and item.deletedAt is null
+			left join item.item activeItem on activeItem.deletedAt is null
 			where joinedMember.user.id = :userId
 				and joinedMember.status = :activeStatus
 				and g.deletedAt is null
@@ -60,7 +61,7 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 				g.roadAddress,
 				g.groupContent,
 				count(distinct member.id),
-				count(distinct item.id),
+				count(distinct activeItem.id),
 				max(item.createdAt),
 				case when count(distinct joinedMember.id) > 0 then true else false end
 			)
@@ -69,6 +70,7 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 				and member.status = :activeStatus
 			left join GroupItem item on item.group = g
 				and item.deletedAt is null
+			left join item.item activeItem on activeItem.deletedAt is null
 			left join GroupMember joinedMember on joinedMember.group = g
 				and joinedMember.user.id = :userId
 				and joinedMember.status = :activeStatus
@@ -91,7 +93,7 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 				g.roadAddress,
 				g.groupContent,
 				count(distinct member.id),
-				count(distinct item.id),
+				count(distinct activeItem.id),
 				max(item.createdAt),
 				case when count(distinct joinedMember.id) > 0 then true else false end
 			)
@@ -100,6 +102,7 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 				and member.status = :activeStatus
 			left join GroupItem item on item.group = g
 				and item.deletedAt is null
+			left join item.item activeItem on activeItem.deletedAt is null
 			left join GroupMember joinedMember on joinedMember.group = g
 				and joinedMember.user.id = :userId
 				and joinedMember.status = :activeStatus
@@ -124,7 +127,7 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 				g.roadAddress,
 				g.groupContent,
 				count(distinct member.id),
-				count(distinct item.id),
+				count(distinct activeItem.id),
 				max(item.createdAt),
 				case when count(distinct joinedMember.id) > 0 then true else false end
 			)
@@ -133,6 +136,7 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 				and member.status = :activeStatus
 			left join GroupItem item on item.group = g
 				and item.deletedAt is null
+			left join item.item activeItem on activeItem.deletedAt is null
 			left join GroupMember joinedMember on joinedMember.group = g
 				and joinedMember.user.id = :userId
 				and joinedMember.status = :activeStatus
@@ -153,7 +157,7 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 				g.roadAddress,
 				g.groupContent,
 				count(distinct member.id),
-				count(distinct item.id),
+				count(distinct activeItem.id),
 				max(item.createdAt),
 				case when count(distinct joinedMember.id) > 0 then true else false end
 			)
@@ -162,6 +166,7 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 				and member.status = :activeStatus
 			left join GroupItem item on item.group = g
 				and item.deletedAt is null
+			left join item.item activeItem on activeItem.deletedAt is null
 			left join GroupMember joinedMember on joinedMember.group = g
 				and joinedMember.user.id = :userId
 				and joinedMember.status = :activeStatus

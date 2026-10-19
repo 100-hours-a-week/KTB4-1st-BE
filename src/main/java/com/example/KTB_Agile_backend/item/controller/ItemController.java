@@ -112,11 +112,12 @@ public class ItemController {
 	@GetMapping("/users/me/items")
 	public ResponseEntity<ApiResponse<MyItemPageResponse>> findMyItems(
 			Authentication authentication,
+			@RequestParam(required = false) Long groupId,
 			@RequestParam(defaultValue = "10") String size,
 			@RequestParam(required = false) String cursor
 	) {
 		MyItemPageResponse response = itemQueryService.findMyItems(
-				Long.valueOf(authentication.getName()), size, cursor);
+				Long.valueOf(authentication.getName()), groupId, size, cursor);
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 

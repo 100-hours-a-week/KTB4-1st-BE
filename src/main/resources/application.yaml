@@ -71,10 +71,7 @@ cloud:
       read-url-duration-seconds: ${AWS_S3_READ_URL_DURATION_SECONDS:3600}
 
 ai:
-  image-analysis-url: ${AI_IMAGE_ANALYSIS_URL:}
-  text-moderation-url: ${AI_TEXT_MODERATION_URL:}
-  item-price-url: ${AI_ITEM_PRICE_URL:}
-  smart-search-url: ${AI_SMART_SEARCH_URL:}
+  base-url: ${AI_BASE_URL:}
   connect-timeout-seconds: ${AI_CONNECT_TIMEOUT_SECONDS:5}
   read-timeout-seconds: ${AI_READ_TIMEOUT_SECONDS:90}
 
