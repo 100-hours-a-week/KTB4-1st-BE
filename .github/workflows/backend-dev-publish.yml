@@ -164,25 +164,22 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # 기존 태스크 정리와 EC2 용량 복귀 후 다음 배포 시작
+      # 기존 태스크 세트 정리 후 다음 배포 시작, 빈 EC2의 축소는 Capacity Provider가 관리
       - name: Wait for previous deployment cleanup
         id: previous
         run: |
           service=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
             --query 'services[0]' --output json)
-          desired=$(jq -r '.desiredCount' <<< "$service")
           echo "task-definition=$(jq -r '.taskDefinition' <<< "$service")" >> "$GITHUB_OUTPUT"
           for attempt in {1..160}; do
             task_sets=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
               --query 'length(services[0].taskSets)' --output text)
-            instances=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ECS_SERVICE" \
-              --query 'length(AutoScalingGroups[0].Instances)' --output text)
-            if [[ "$task_sets" == "1" && "$instances" == "$desired" ]]; then
+            if [[ "$task_sets" == "1" ]]; then
               exit 0
             fi
             sleep 15
           done
-          echo "::error::이전 태스크 정리 또는 ASG의 평시 용량 복귀를 확인하지 못했습니다"
+          echo "::error::이전 태스크 세트 정리를 확인하지 못했습니다"
           exit 1
 
       # 등록된 실행 설정을 유지하고 이미지 주소만 교체
