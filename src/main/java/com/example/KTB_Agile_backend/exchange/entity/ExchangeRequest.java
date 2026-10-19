@@ -16,6 +16,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -55,6 +56,7 @@ public class ExchangeRequest extends UpdatableEntity {
 	private ExchangeRequestStatus requestedStatus = ExchangeRequestStatus.PENDING;
 
 	@OneToMany(mappedBy = "exchangeRequest", cascade = CascadeType.ALL, orphanRemoval = true)
+	@OrderBy("id ASC")
 	private List<OfferedItem> offeredItems = new ArrayList<>();
 
 	public ExchangeRequest(User requester, Item item, Integer requestedQuantity, Group group) {

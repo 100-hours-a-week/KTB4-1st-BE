@@ -16,6 +16,7 @@ import com.example.KTB_Agile_backend.common.pagination.CursorCodec;
 import com.example.KTB_Agile_backend.common.pagination.CursorPage;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequest;
 import com.example.KTB_Agile_backend.exchange.entity.OfferedItem;
+import com.example.KTB_Agile_backend.exchange.repository.ExchangeRequestRepository;
 import com.example.KTB_Agile_backend.image.entity.Image;
 import com.example.KTB_Agile_backend.image.repository.ImageRepository;
 import com.example.KTB_Agile_backend.image.service.ImageUrlResolver;
@@ -43,6 +44,7 @@ public class ChatRoomQueryService {
 	private final ChatMemberRepository chatMemberRepository;
 	private final ChatMessageRepository chatMessageRepository;
 	private final GroupMemberRepository groupMemberRepository;
+	private final ExchangeRequestRepository exchangeRequestRepository;
 	private final ImageRepository imageRepository;
 	private final ImageUrlResolver imageUrlResolver;
 
@@ -65,9 +67,16 @@ public class ChatRoomQueryService {
 		}
 
 		List<Long> roomIds = page.items().stream().map(member -> member.getChatRoom().getId()).toList();
-		List<Long> itemIds = page.items().stream()
-				.map(member -> member.getChatRoom().getExchangeRequest().getItem().getId())
-				.toList();
+		Map<Long, ExchangeRequest> exchangeRequests = new HashMap<>();
+		List<Long> itemIds = new ArrayList<>();
+		exchangeRequestRepository.findAllByIdIn(page.items().stream()
+				.map(member -> member.getChatRoom().getExchangeRequest().getId())
+				.toList())
+				.forEach(request -> {
+					exchangeRequests.put(request.getId(), request);
+					itemIds.add(request.getItem().getId());
+					itemIds.add(request.getOfferedItems().get(0).getItem().getId());
+				});
 		Map<Long, ChatMessage> latestMessages = new HashMap<>();
 		chatMessageRepository.findLatestByChatRoomIds(roomIds)
 				.forEach(message -> latestMessages.put(message.getChatRoom().getId(), message));
@@ -80,7 +89,8 @@ public class ChatRoomQueryService {
 
 		List<ChatRoomSummary> chatRooms = page.items().stream()
 				.map(member -> toSummary(
-						userId, member, latestMessages, unreadCounts, thumbnails, groupMemberStatuses))
+						userId, member, latestMessages, unreadCounts, thumbnails, groupMemberStatuses,
+						exchangeRequests))
 				.toList();
 		return new ChatRoomPageResponse(chatRooms, page.nextCursor(), page.hasNext());
 	}
@@ -162,7 +172,8 @@ public class ChatRoomQueryService {
 			Map<Long, ChatMessage> latestMessages,
 			Map<Long, Long> unreadCounts,
 			Map<Long, String> thumbnails,
-			Map<GroupMembershipKey, GroupMemberStatus> groupMemberStatuses
+			Map<GroupMembershipKey, GroupMemberStatus> groupMemberStatuses,
+			Map<Long, ExchangeRequest> exchangeRequests
 	) {
 		ChatRoom room = member.getChatRoom();
 		ExchangeRequest request = room.getExchangeRequest();
@@ -177,15 +188,17 @@ public class ChatRoomQueryService {
 						lastMessage.getId(), lastMessage.getContent(),
 						lastMessage.getUser() == null ? null : lastMessage.getUser().getId(),
 						lastMessage.getCreatedAt());
+		Item offeredItem = exchangeRequests.get(request.getId()).getOfferedItems().get(0).getItem();
 		return new ChatRoomSummary(
 				room.getId(), room.getChatRoomStatus(), request.getId(), request.getRequestedStatus(),
 				sent ? "SENT" : "RECEIVED",
 				request.getGroup() == null ? null : new ChatRoomSummary.GroupInfo(
 						request.getGroup().getId(), request.getGroup().getGroupName()),
 				new ChatRoomSummary.OtherUser(
-						otherUser.getId(), otherUser.getNickname(), otherUser.getProfileImageUrl(),
-						otherUser.getUserStatus(), groupMemberStatus),
+						otherUser.getId(), otherUser.getNickname(), otherUser.getUserStatus(), groupMemberStatus),
 				new ChatRoomSummary.TargetItem(item.getId(), item.getTitle(), thumbnails.get(item.getId())),
+				new ChatRoomSummary.OfferedItem(
+						offeredItem.getId(), offeredItem.getTitle(), thumbnails.get(offeredItem.getId())),
 				lastMessageResponse, unreadCounts.getOrDefault(room.getId(), 0L),
 				room.getLastMessageAt()
 		);
