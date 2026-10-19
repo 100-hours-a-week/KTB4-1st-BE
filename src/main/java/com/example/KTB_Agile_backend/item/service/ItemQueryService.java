@@ -71,6 +71,7 @@ public class ItemQueryService {
 		Item item = itemRepository.findByIdAndDeletedAtIsNull(itemId)
 				.orElseThrow(() -> new ApiException(ItemErrorCode.ITEM_NOT_FOUND));
 		ItemStats stats = itemStatsRepository.findById(itemId).orElse(null);
+		Long exchangeRequestCount = findExchangeRequestCounts(List.of(itemId)).getOrDefault(itemId, 0L);
 		Image thumbnailImage = item.getThumbnailImage();
 		List<GroupItem> activeGroupItems = groupItemRepository.findActiveGroupItemsByItemId(itemId);
 		Map<Long, GroupMemberStatus> ownerMembershipStatuses = findOwnerMembershipStatuses(
@@ -99,7 +100,7 @@ public class ItemQueryService {
 				thumbnailImage == null ? null : thumbnailImage.getId(),
 				stats == null ? 0L : stats.getLikeCount(),
 				stats == null ? 0L : stats.getViewCount(),
-				0L,
+				exchangeRequestCount,
 				itemLikeRepository.existsByItem_IdAndUser_Id(itemId, userId),
 				item.getCreatedAt(),
 				item.getUpdatedAt(),
@@ -112,10 +113,11 @@ public class ItemQueryService {
 	public List<ItemSummary> toSummariesForUser(Long userId, List<ItemSummaryProjection> summaries) {
 		List<Long> itemIds = summaries.stream().map(ItemSummaryProjection::itemId).toList();
 		Map<Long, ItemStats> statsByItemId = findStats(itemIds);
+		Map<Long, Long> exchangeRequestCounts = findExchangeRequestCounts(itemIds);
 		Set<Long> likedItemIds = findLikedItemIds(userId, itemIds);
 		Map<Long, String> thumbnails = findThumbnails(itemIds);
 		return summaries.stream()
-				.map(summary -> toSummary(summary, statsByItemId, likedItemIds, thumbnails))
+				.map(summary -> toSummary(summary, statsByItemId, exchangeRequestCounts, likedItemIds, thumbnails))
 				.toList();
 	}
 
@@ -152,12 +154,13 @@ public class ItemQueryService {
 				summaries, PAGE_SIZE, ItemSummaryProjection::itemId);
 		List<Long> itemIds = page.items().stream().map(ItemSummaryProjection::itemId).toList();
 		Map<Long, ItemStats> statsByItemId = findStats(itemIds);
+		Map<Long, Long> exchangeRequestCounts = findExchangeRequestCounts(itemIds);
 		Set<Long> likedItemIds = findLikedItemIds(userId, itemIds);
 		Map<Long, String> thumbnails = findThumbnails(itemIds);
 
 		return new ItemPageResponse(
 				page.items().stream()
-						.map(summary -> toSummary(summary, statsByItemId, likedItemIds, thumbnails))
+						.map(summary -> toSummary(summary, statsByItemId, exchangeRequestCounts, likedItemIds, thumbnails))
 						.toList(),
 				page.nextCursor(),
 				page.hasNext()
@@ -202,12 +205,13 @@ public class ItemQueryService {
 				summary -> CursorCodec.encodeIdForFilter(summary.itemId(), itemStateFilter));
 		List<Long> itemIds = page.items().stream().map(ItemSummaryProjection::itemId).toList();
 		Map<Long, ItemStats> statsByItemId = findStats(itemIds);
+		Map<Long, Long> exchangeRequestCounts = findExchangeRequestCounts(itemIds);
 		Set<Long> likedItemIds = findLikedItemIds(userId, itemIds);
 		Map<Long, String> thumbnails = findThumbnails(itemIds);
 
 		return new ItemPageResponse(
 				page.items().stream()
-						.map(summary -> toSummary(summary, statsByItemId, likedItemIds, thumbnails))
+						.map(summary -> toSummary(summary, statsByItemId, exchangeRequestCounts, likedItemIds, thumbnails))
 						.toList(),
 				page.nextCursor(),
 				page.hasNext()
@@ -406,6 +410,7 @@ public class ItemQueryService {
 	private static ItemSummary toSummary(
 			ItemSummaryProjection item,
 			Map<Long, ItemStats> statsByItemId,
+			Map<Long, Long> exchangeRequestCounts,
 			Set<Long> likedItemIds,
 			Map<Long, String> thumbnails
 	) {
@@ -420,7 +425,7 @@ public class ItemQueryService {
 				thumbnails.get(item.itemId()),
 				stats == null ? 0L : stats.getLikeCount(),
 				stats == null ? 0L : stats.getViewCount(),
-				0L,
+				exchangeRequestCounts.getOrDefault(item.itemId(), 0L),
 				likedItemIds.contains(item.itemId()),
 				item.createdAt()
 		);
