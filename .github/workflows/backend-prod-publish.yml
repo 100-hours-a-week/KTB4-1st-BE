@@ -5,6 +5,13 @@ on:
     tags:
       - 'v*.*.*'
 
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "배포할 시맨틱 버전 (예: 1.2.3, v 제외)"
+        required: true
+        type: string
+
 concurrency:
   group: backend-prod-publish
   # 운영 태그 배포 작업이 도중에 취소되어 이미지가 누락되거나 태그가 꼬이지 않도록 직렬 큐잉 처리
@@ -12,16 +19,32 @@ concurrency:
 
 jobs:
   publish-prod:
+    if: github.event_name == 'push'
     name: Build & Publish Prod Image (ARM64)
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
       packages: write
     timeout-minutes: 15
+    outputs:
+      image: ${{ steps.image.outputs.image }}
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate release tag on main
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::운영 배포 태그는 vMAJOR.MINOR.PATCH 형식이어야 합니다"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::main에 포함된 커밋의 태그만 운영에 배포할 수 있습니다"
+            exit 1
+          fi
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -47,6 +70,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Push Docker Image
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -60,6 +84,13 @@ jobs:
           cache-to: type=gha,mode=max,scope=backend
           secrets: |
             sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
+
+      # 이번 릴리즈 빌드의 digest를 운영 배포에 전달
+      - name: Export image digest
+        id: image
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}@${IMAGE_DIGEST}" >> "$GITHUB_OUTPUT"
 
       - name: Set Lowercase Package Name
         id: pkg
@@ -154,3 +185,166 @@ jobs:
                -X POST \
                -d @payload.json \
                "$WEBHOOK_URL" || echo "::warning::Failed to deliver Discord notification."
+
+  select-image:
+    name: Select Published Release Image
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - name: Validate manual release input
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::수동 버전 배포는 main 브랜치에서 실행해야 합니다"
+            exit 1
+          fi
+          if [[ ! "$RELEASE_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::버전은 v 없이 MAJOR.MINOR.PATCH 형식으로 입력해야 합니다"
+            exit 1
+          fi
+
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/v${{ inputs.version }}
+          fetch-depth: 0
+
+      - name: Verify release commit on main
+        run: |
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::main에 포함된 릴리즈 태그만 배포할 수 있습니다"
+            exit 1
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve release image digest
+        id: image
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          image_ref="ghcr.io/${GITHUB_REPOSITORY,,}:v${RELEASE_VERSION}"
+          digest=$(docker buildx imagetools inspect "$image_ref" --format '{{json .Manifest}}' | jq -er '.digest')
+          if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::이미지 digest를 확인하지 못했습니다"
+            exit 1
+          fi
+          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}@${digest}" >> "$GITHUB_OUTPUT"
+
+  # main 릴리즈 이미지를 해당 서비스의 운영 환경에 배포
+  deploy-prod:
+    name: Deploy Prod to ECS
+    needs: [publish-prod, select-image]
+    if: ${{ always() && !cancelled() && (needs.publish-prod.result == 'success' || needs.select-image.result == 'success') }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    environment: prod
+    permissions:
+      id-token: write
+    env:
+      AWS_REGION: ap-northeast-2
+      AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+      ECS_CLUSTER: bakkucca-v2-prod-be
+      ECS_SERVICE: bakkucca-v2-prod-be
+      CONTAINER_NAME: backend
+      CONTAINER_PORT: "8080"
+      IMAGE_URI: ${{ needs.publish-prod.outputs.image || needs.select-image.outputs.image }}
+      DEPLOY_VERSION: ${{ inputs.version || github.ref_name }}
+    steps:
+      - name: Check deployment settings
+        run: |
+          : "${AWS_ROLE_ARN:?prod 환경의 AWS_ROLE_ARN Variable이 필요합니다}"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # 기존 태스크 세트 정리 후 다음 배포 시작, 빈 EC2의 축소는 Capacity Provider가 관리
+      - name: Wait for previous deployment cleanup
+        id: previous
+        run: |
+          service=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+            --query 'services[0]' --output json)
+          echo "task-definition=$(jq -r '.taskDefinition' <<< "$service")" >> "$GITHUB_OUTPUT"
+          for attempt in {1..160}; do
+            task_sets=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+              --query 'length(services[0].taskSets)' --output text)
+            if [[ "$task_sets" == "1" ]]; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::이전 태스크 세트 정리를 확인하지 못했습니다"
+          exit 1
+
+      # 등록된 실행 설정을 유지하고 이미지 주소만 교체
+      - name: Render task definition
+        id: task
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition-family: ${{ env.ECS_SERVICE }}
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ env.IMAGE_URI }}
+
+      - name: Create CodeDeploy AppSpec
+        run: |
+          jq -n --arg container "$CONTAINER_NAME" --argjson port "$CONTAINER_PORT" --arg provider "$ECS_SERVICE" '
+            {version: 0.0, Resources: [{TargetService: {
+              Type: "AWS::ECS::Service",
+              Properties: {
+                TaskDefinition: "",
+                LoadBalancerInfo: {ContainerName: $container, ContainerPort: $port},
+                CapacityProviderStrategy: [{CapacityProvider: $provider, Weight: 1}]
+              }
+            }}]}' > "$RUNNER_TEMP/appspec.json"
+
+      - name: Deploy with CodeDeploy
+        id: deploy
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task.outputs.task-definition }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          service: ${{ env.ECS_SERVICE }}
+          codedeploy-appspec: ${{ runner.temp }}/appspec.json
+          codedeploy-application: ${{ env.ECS_SERVICE }}
+          codedeploy-deployment-group: ${{ env.ECS_SERVICE }}
+          codedeploy-deployment-description: ${{ inputs.version || github.ref_name }} / ${{ github.sha }} / ${{ github.run_id }}
+          wait-for-service-stability: true
+          wait-for-minutes: 20
+
+      - name: Record deployment
+        if: always()
+        env:
+          DEPLOY_STATUS: ${{ job.status }}
+          TASK_DEFINITION_ARN: ${{ steps.deploy.outputs.task-definition-arn }}
+          PREVIOUS_TASK_DEFINITION_ARN: ${{ steps.previous.outputs.task-definition }}
+          DEPLOYMENT_ID: ${{ steps.deploy.outputs.codedeploy-deployment-id }}
+        run: |
+          {
+            printf '### v2 prod 배포\n\n'
+            printf '| 항목 | 값 |\n|---|---|\n'
+            printf '| 결과 | %s |\n' "$DEPLOY_STATUS"
+            printf '| 버전 | `%s` |\n' "$DEPLOY_VERSION"
+            printf '| 워크플로 커밋 | `%s` |\n' "$GITHUB_SHA"
+            printf '| 이미지 | `%s` |\n' "$IMAGE_URI"
+            printf '| 이전 태스크 정의 | `%s` |\n' "$PREVIOUS_TASK_DEFINITION_ARN"
+            printf '| 새 태스크 정의 | `%s` |\n' "$TASK_DEFINITION_ARN"
+            printf '| 배포 ID | `%s` |\n' "$DEPLOYMENT_ID"
+          } >> "$GITHUB_STEP_SUMMARY"

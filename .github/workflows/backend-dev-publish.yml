@@ -8,7 +8,14 @@ on:
       - '**.md'
       - 'docs/**'
       - '.gitignore'
-      - '.github/**'
+
+  workflow_dispatch:
+    inputs:
+      digest:
+        description: "이미지 digest (sha256:...), 비우면 latest"
+        required: false
+        default: latest
+        type: string
 
 concurrency:
   group: backend-dev-publish
@@ -17,12 +24,15 @@ concurrency:
 
 jobs:
   build-and-publish:
+    if: github.event_name == 'push'
     name: Build & Publish Dev Image (ARM64)
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
       packages: write
     timeout-minutes: 15
+    outputs:
+      image: ${{ steps.image.outputs.image }}
 
     steps:
       - name: Checkout Repository
@@ -51,6 +61,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Push Docker Image
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -64,96 +75,163 @@ jobs:
           secrets: |
             sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
 
-      - name: Set Lowercase Package Name
-        id: pkg
+      # 이번 빌드의 digest를 개발 배포에 전달
+      - name: Export image digest
+        id: image
         env:
-          REPO_NAME: ${{ github.event.repository.name }}
-        run: |
-          # GHCR 패키지 명칭 규격(소문자)에 맞춰 패키지명 변환
-          echo "name=${REPO_NAME,,}" >> "$GITHUB_OUTPUT"
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}@${IMAGE_DIGEST}" >> "$GITHUB_OUTPUT"
 
-      - name: Prune old dev images
-        uses: actions/delete-package-versions@v5
-        with:
-          package-name: ${{ steps.pkg.outputs.name }}
-          package-type: 'container'
-          min-versions-to-keep: 3
-          ignore-versions: '^(?!dev-).*$'
-        continue-on-error: true # 초기 배포 시 이미지가 3개 미만일 경우 워크플로우 실패 방지
-
-      - name: Send Discord Notification
-        if: always()
-        continue-on-error: true
+  select-image:
+    name: Select Dev Image
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      packages: read
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - name: Validate dev image input
         env:
-          JOB_STATUS: ${{ job.status }}
-          WORKFLOW_NAME: ${{ github.workflow }}
-          REPO_NAME: ${{ github.repository }}
-          REF_NAME: ${{ github.ref_name }}
-          ACTOR: ${{ github.actor }}
-          COMMIT_MSG: ${{ github.event.head_commit.message || github.event.pull_request.title || '수동 실행' }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          REQUESTED_DIGEST: ${{ inputs.digest }}
         run: |
-          # 1. 웹훅 URL 미등록 시 에러 없이 스킵
-          if [ -z "$WEBHOOK_URL" ]; then
-            echo "::warning::DISCORD_WEBHOOK_URL is not configured. Skipping notification."
-            exit 0
+          if [[ "$GITHUB_REF" != "refs/heads/dev" ]]; then
+            echo "::error::개발 수동 배포는 dev 브랜치에서 실행해야 합니다"
+            exit 1
           fi
-          
-          # 2. 빌드 결과 상태값 분기
-          case "$JOB_STATUS" in
-            success)
-              COLOR=3066993
-              STATUS_EMOJI="✅"
-              STATUS_TEXT="성공"
-              ;;
-            failure)
-              COLOR=15158332
-              STATUS_EMOJI="🚨"
-              STATUS_TEXT="실패"
-              ;;
-            *)
-              COLOR=15105570
-              STATUS_EMOJI="⚠️"
-              STATUS_TEXT="취소됨"
-              ;;
-          esac
-          
-          # 3. 커밋 메시지 줄바꿈 처리 및 타임스탬프 생성
-          FIRST_LINE_COMMIT_MSG=$(printf '\%s\n' "$COMMIT_MSG" | head -n 1)
-          TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-          
-          # 4. jq를 통한 안전한 JSON 직렬화
-          jq -n \
-            --arg title "${STATUS_EMOJI} [${WORKFLOW_NAME}] ${STATUS_TEXT}" \
-            --argjson color "$COLOR" \
-            --arg repo "\`${REPO_NAME}\`" \
-            --arg ref "\`${REF_NAME}\`" \
-            --arg actor "$ACTOR" \
-            --arg commit "$FIRST_LINE_COMMIT_MSG" \
-            --arg run_url "[GitHub Actions 실행 로그 바로가기](${RUN_URL})" \
-            --arg time "$TIMESTAMP" \
-            '{
-              embeds: [
-                {
-                  title: $title,
-                  color: $color,
-                  fields: [
-                    { name: "저장소", value: $repo, inline: true },
-                    { name: "브랜치 / 태그", value: $ref, inline: true },
-                    { name: "트리거 유저", value: $actor, inline: true },
-                    { name: "커밋 메시지", value: $commit },
-                    { name: "상세 로그", value: $run_url }
-                  ],
-                  footer: { text: "바꾸까 배포 알림" },
-                  timestamp: $time
-                }
-              ]
-            }' > payload.json
-          
-          # 5. Webhook 전송 (실패해도 워크플로우를 중단시키지 않음)
-          curl -s -S --fail \
-               -H "Content-Type: application/json" \
-               -X POST \
-               -d @payload.json \
-               "$WEBHOOK_URL" || echo "::warning::Failed to deliver Discord notification."
+          requested="${REQUESTED_DIGEST:-latest}"
+          if [[ "$requested" != "latest" && ! "$requested" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::digest는 sha256:<64자리 소문자 16진수> 또는 latest여야 합니다"
+            exit 1
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve dev image digest
+        id: image
+        shell: bash
+        env:
+          REQUESTED_DIGEST: ${{ inputs.digest }}
+        run: |
+          requested="${REQUESTED_DIGEST:-latest}"
+          repository="ghcr.io/${GITHUB_REPOSITORY,,}"
+          if [[ "$requested" == "latest" ]]; then
+            image_ref="${repository}:latest"
+          else
+            image_ref="${repository}@${requested}"
+          fi
+          digest=$(docker buildx imagetools inspect "$image_ref" --format '{{json .Manifest}}' | jq -er '.digest')
+          if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::이미지 digest를 확인하지 못했습니다"
+            exit 1
+          fi
+          echo "image=${repository}@${digest}" >> "$GITHUB_OUTPUT"
+
+  # dev에 반영된 이미지를 해당 서비스의 개발 환경에 배포
+  deploy-dev:
+    name: Deploy Dev to ECS
+    needs: [build-and-publish, select-image]
+    if: ${{ always() && !cancelled() && (needs.build-and-publish.result == 'success' || needs.select-image.result == 'success') }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    environment: dev
+    permissions:
+      id-token: write
+    env:
+      AWS_REGION: ap-northeast-2
+      AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+      ECS_CLUSTER: bakkucca-v2-dev-be
+      ECS_SERVICE: bakkucca-v2-dev-be
+      CONTAINER_NAME: backend
+      CONTAINER_PORT: "8080"
+      IMAGE_URI: ${{ needs.build-and-publish.outputs.image || needs.select-image.outputs.image }}
+    steps:
+      - name: Check deployment settings
+        run: |
+          : "${AWS_ROLE_ARN:?dev 환경의 AWS_ROLE_ARN Variable이 필요합니다}"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # 기존 태스크 세트 정리 후 다음 배포 시작, 빈 EC2의 축소는 Capacity Provider가 관리
+      - name: Wait for previous deployment cleanup
+        id: previous
+        run: |
+          service=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+            --query 'services[0]' --output json)
+          echo "task-definition=$(jq -r '.taskDefinition' <<< "$service")" >> "$GITHUB_OUTPUT"
+          for attempt in {1..160}; do
+            task_sets=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+              --query 'length(services[0].taskSets)' --output text)
+            if [[ "$task_sets" == "1" ]]; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::이전 태스크 세트 정리를 확인하지 못했습니다"
+          exit 1
+
+      # 등록된 실행 설정을 유지하고 이미지 주소만 교체
+      - name: Render task definition
+        id: task
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition-family: ${{ env.ECS_SERVICE }}
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ env.IMAGE_URI }}
+
+      - name: Create CodeDeploy AppSpec
+        run: |
+          jq -n --arg container "$CONTAINER_NAME" --argjson port "$CONTAINER_PORT" --arg provider "$ECS_SERVICE" '
+            {version: 0.0, Resources: [{TargetService: {
+              Type: "AWS::ECS::Service",
+              Properties: {
+                TaskDefinition: "",
+                LoadBalancerInfo: {ContainerName: $container, ContainerPort: $port},
+                CapacityProviderStrategy: [{CapacityProvider: $provider, Weight: 1}]
+              }
+            }}]}' > "$RUNNER_TEMP/appspec.json"
+
+      - name: Deploy with CodeDeploy
+        id: deploy
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task.outputs.task-definition }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          service: ${{ env.ECS_SERVICE }}
+          codedeploy-appspec: ${{ runner.temp }}/appspec.json
+          codedeploy-application: ${{ env.ECS_SERVICE }}
+          codedeploy-deployment-group: ${{ env.ECS_SERVICE }}
+          codedeploy-deployment-description: ${{ github.sha }} / ${{ github.run_id }}
+          wait-for-service-stability: true
+          wait-for-minutes: 20
+
+      - name: Record deployment
+        if: always()
+        env:
+          DEPLOY_STATUS: ${{ job.status }}
+          TASK_DEFINITION_ARN: ${{ steps.deploy.outputs.task-definition-arn }}
+          PREVIOUS_TASK_DEFINITION_ARN: ${{ steps.previous.outputs.task-definition }}
+          DEPLOYMENT_ID: ${{ steps.deploy.outputs.codedeploy-deployment-id }}
+        run: |
+          {
+            printf '### v2 dev 배포\n\n'
+            printf '| 항목 | 값 |\n|---|---|\n'
+            printf '| 결과 | %s |\n' "$DEPLOY_STATUS"
+            printf '| 워크플로 커밋 | `%s` |\n' "$GITHUB_SHA"
+            printf '| 이미지 | `%s` |\n' "$IMAGE_URI"
+            printf '| 이전 태스크 정의 | `%s` |\n' "$PREVIOUS_TASK_DEFINITION_ARN"
+            printf '| 새 태스크 정의 | `%s` |\n' "$TASK_DEFINITION_ARN"
+            printf '| 배포 ID | `%s` |\n' "$DEPLOYMENT_ID"
+          } >> "$GITHUB_STEP_SUMMARY"

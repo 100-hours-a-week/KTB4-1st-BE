@@ -82,7 +82,7 @@ jobs:
     name: Quality Gate Result
     needs: [changes, validate]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: Evaluate Checks
         run: |
