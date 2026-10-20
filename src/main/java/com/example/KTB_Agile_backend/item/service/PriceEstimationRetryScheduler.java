@@ -23,6 +23,9 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class PriceEstimationRetryScheduler {
+	private static final int PAGE_SIZE = 100;
+	private static final int UPDATED_ROW_COUNT = 1;
+
 	private final PriceEstimationRetryScheduleRepository scheduleRepository;
 	private final ItemPriceEstimationOutboxEventRepository outboxRepository;
 	private final ItemRepository itemRepository;
@@ -64,7 +67,7 @@ public class PriceEstimationRetryScheduler {
 			return;
 		}
 
-		if (itemRepository.failPriceRequest(request.itemId(), request.requestId()) == 1) {
+		if (itemRepository.failPriceRequest(request.itemId(), request.requestId()) == UPDATED_ROW_COUNT) {
 			String eventId = UUID.randomUUID().toString();
 			ItemPriceEstimationFailed failed = ItemPriceEstimationFailed.from(request, failure.name(), LocalDateTime.now());
 			outboxRepository.save(new ItemPriceEstimationOutboxEvent(eventId, request.requestId(),
@@ -79,7 +82,7 @@ public class PriceEstimationRetryScheduler {
 	@Transactional
 	public void publishDueRetries() {
 		LocalDateTime now = LocalDateTime.now();
-		for (String requestId : scheduleRepository.findDueRequestIds(now, PageRequest.of(0, 100))) {
+		for (String requestId : scheduleRepository.findDueRequestIds(now, PageRequest.of(0, PAGE_SIZE))) {
 			scheduleRepository.findByRequestIdForUpdate(requestId).ifPresent(schedule -> publishIfDue(schedule, now));
 		}
 	}

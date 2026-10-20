@@ -1,12 +1,13 @@
 package com.example.KTB_Agile_backend.item.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Component
-@lombok.RequiredArgsConstructor
+@RequiredArgsConstructor
 public class PriceEstimationRetryPolicy {
 	private final PriceEstimationRetryProperties properties;
 

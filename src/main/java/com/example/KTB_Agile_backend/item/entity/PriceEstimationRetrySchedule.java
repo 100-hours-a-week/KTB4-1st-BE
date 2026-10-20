@@ -54,6 +54,7 @@ public class PriceEstimationRetrySchedule {
 		this.validationRetryUsed = validationRetryUsed;
 	}
 
+	@SuppressWarnings("PMD.NullAssignment")
 	public void markPublished() {
 		this.nextAttemptAt = null;
 	}

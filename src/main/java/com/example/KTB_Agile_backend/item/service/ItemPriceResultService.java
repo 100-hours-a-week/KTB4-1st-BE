@@ -20,6 +20,7 @@ import java.time.Duration;
 @Slf4j
 public class ItemPriceResultService {
 	private static final Duration CACHE_TTL = Duration.ofHours(24);
+	private static final int UPDATED_ROW_COUNT = 1;
 	private final ItemRepository itemRepository;
 	private final PriceEstimationRetryScheduleRepository retryScheduleRepository;
 	private final ItemPriceCache itemPriceCache;
@@ -45,7 +46,7 @@ public class ItemPriceResultService {
 		}
 		int updated = itemRepository.completePriceRequest(request.itemId(), request.requestId(), response.unitPrice(),
 				response.minUnitPrice(), response.maxUnitPrice());
-		if (updated == 1) {
+		if (updated == UPDATED_ROW_COUNT) {
 			if (schedule != null) retryScheduleRepository.delete(schedule);
 			TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
 				@Override
@@ -54,11 +55,13 @@ public class ItemPriceResultService {
 					try {
 						itemPriceCache.put(request.keyword().strip(), response.unitPrice(), CACHE_TTL);
 					} catch (RuntimeException exception) {
-						log.warn("Could not cache committed item price for request {}", request.requestId(), exception);
+						if (log.isWarnEnabled()) {
+							log.warn("Could not cache committed item price for request {}", request.requestId(), exception);
+						}
 					}
 				}
 			});
 		}
-		return updated == 1;
+		return updated == UPDATED_ROW_COUNT;
 	}
 }

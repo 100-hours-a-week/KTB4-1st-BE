@@ -6,13 +6,13 @@ public enum ItemPriceEstimationOutboxEventType {
 	PRICE_ESTIMATION_REQUESTED(KafkaTopics.ITEM_PRICE_ESTIMATION_REQUESTS),
 	PRICE_ESTIMATION_FAILED(KafkaTopics.ITEM_PRICE_ESTIMATION_FAILED);
 
-	private final String topic;
+	private final String topicName;
 
 	ItemPriceEstimationOutboxEventType(String topic) {
-		this.topic = topic;
+		this.topicName = topic;
 	}
 
 	public String topic() {
-		return topic;
+		return topicName;
 	}
 }

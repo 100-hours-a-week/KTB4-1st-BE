@@ -16,6 +16,8 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Conditional(KafkaAddressCondition.Configured.class)
 public class ItemPriceEstimationOutboxPollingRelay {
+	private static final int PAGE_SIZE = 100;
+
 	private final ItemPriceEstimationOutboxEventRepository outboxRepository;
 	private final OutboxPollingRelayStateRepository relayStateRepository;
 	private final KafkaTemplate<String, String> kafkaTemplate;
@@ -24,7 +26,7 @@ public class ItemPriceEstimationOutboxPollingRelay {
 	public void publishPending() {
 		Long afterId = 0L;
 		while (true) {
-			var events = outboxRepository.findUnpublishedAfterId(afterId, PageRequest.of(0, 100));
+			var events = outboxRepository.findUnpublishedAfterId(afterId, PageRequest.of(0, PAGE_SIZE));
 			if (events.isEmpty()) return;
 			for (var event : events) {
 				afterId = event.getId();
@@ -36,10 +38,12 @@ public class ItemPriceEstimationOutboxPollingRelay {
 					Thread.currentThread().interrupt();
 					throw new IllegalStateException("Interrupted while relaying item price estimation event", exception);
 				} catch (Exception exception) {
-					log.error("Failed to relay item price estimation event {}", event.getEventId(), exception);
+					if (log.isErrorEnabled()) {
+						log.error("Failed to relay item price estimation event {}", event.getEventId(), exception);
+					}
 				}
 			}
-			if (events.size() < 100) return;
+			if (events.size() < PAGE_SIZE) return;
 		}
 	}
 }
