@@ -26,8 +26,8 @@ import com.example.KTB_Agile_backend.item.repository.ItemViewRepository;
 import com.example.KTB_Agile_backend.ai.text.service.ModerationCheckService;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.repository.UserRepository;
-import com.example.KTB_Agile_backend.item.price.ItemCashService;
 import com.example.KTB_Agile_backend.item.price.ItemPriceRangeCalculator;
+import com.example.KTB_Agile_backend.item.price.application.ItemPriceLookupService;
 import com.example.KTB_Agile_backend.item.price.application.ItemPriceEstimationRequestPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -59,7 +59,7 @@ public class ItemService {
 	private final S3ImageObjectService s3ImageObjectService;
 	private final UserRepository userRepository;
 	private final ModerationCheckService moderationCheckService;
-	private final ItemCashService itemCashService;
+	private final ItemPriceLookupService itemPriceLookupService;
 	private final ItemPriceRangeCalculator itemPriceRangeCalculator;
 	private final ItemPriceEstimationRequestPublisher priceEstimationRequestPublisher;
 
@@ -83,7 +83,7 @@ public class ItemService {
 				request.content()
 		);
 		String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.strip();
-		var cachedPrice = itemCashService.cachedPrice(
+		var cachedPrice = itemPriceLookupService.cachedPrice(
 				normalizedKeyword,
 				request.valueGapToleranceScore(),
 				request.exchangeUrgencyScore()
