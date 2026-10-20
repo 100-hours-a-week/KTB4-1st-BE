@@ -20,6 +20,8 @@ import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.entity.ItemStats;
 import com.example.KTB_Agile_backend.item.entity.ItemView;
+import com.example.KTB_Agile_backend.item.event.ItemPriceEstimationRequested;
+import com.example.KTB_Agile_backend.item.service.ItemPriceEstimationRequestPublisher;
 import com.example.KTB_Agile_backend.item.repository.ItemLikeRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemStatsRepository;
@@ -59,6 +61,56 @@ import static org.mockito.Mockito.when;
 class ItemServiceTest {
 
 	@Test
+	void retryEventKeepsRequestIdentityAndGetsItsOwnEventIdentity() {
+		var first = new ItemPriceEstimationRequested("event-1", "request-1", "event-1", 10L, "keyword",
+				"title", "content", new BigDecimal("0.30"), new BigDecimal("0.50"), 1);
+		var retry = first.retry("event-2", 2);
+
+		assertThat(retry.eventId()).isNotEqualTo(first.eventId());
+		assertThat(retry.requestId()).isEqualTo(first.requestId());
+		assertThat(retry.originalRequestEventId()).isEqualTo(first.eventId());
+		assertThat(retry.attemptCount()).isEqualTo(2);
+	}
+
+	@Test
+	void createsPendingItemAndSnapshotOutboxOnPriceCacheMiss() {
+		ItemRepository itemRepository = mock(ItemRepository.class);
+		var requestPublisher = mock(ItemPriceEstimationRequestPublisher.class);
+		var cashService = mock(ItemCashService.class);
+		when(cashService.cachedPrice(any(), any(), any())).thenReturn(Optional.empty());
+		var groupRepository = mock(GroupRepository.class);
+		var groupMemberRepository = mock(GroupMemberRepository.class);
+		var imageRepository = mock(ImageRepository.class);
+		var userRepository = mock(UserRepository.class);
+		var moderationCheckService = mock(ModerationCheckService.class);
+		when(moderationCheckService.consumeForItem(42L, "test-check-id", "제목", "내용")).thenReturn("책");
+		ItemService service = new ItemService(itemRepository, mock(ItemStatsRepository.class),
+				mock(ItemViewRepository.class), groupRepository, groupMemberRepository,
+				mock(GroupItemRepository.class), imageRepository, mock(S3ImageObjectService.class),
+				userRepository, moderationCheckService, cashService,
+				new ItemPriceRangeCalculator(), requestPublisher);
+		User owner = user(42L);
+		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(owner));
+		when(groupRepository.findAllByIdInAndDeletedAtIsNull(List.of(101L))).thenReturn(List.of(group("그룹")));
+		when(groupMemberRepository.countByGroup_IdInAndUser_IdAndStatus(eq(List.of(101L)), eq(42L), any()))
+				.thenReturn(1L);
+		when(imageRepository.existsByObjectKeyIn(List.of("images/42/1001.jpg"))).thenReturn(false);
+		when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		service.create(42L, request(List.of(101L), List.of("images/42/1001.jpg")));
+
+		ArgumentCaptor<Item> itemCaptor = ArgumentCaptor.forClass(Item.class);
+		verify(itemRepository).save(itemCaptor.capture());
+		assertThat(itemCaptor.getValue().getUnitPrice()).isZero();
+		assertThat(itemCaptor.getValue().getMinUnitPrice()).isZero();
+		assertThat(itemCaptor.getValue().getMaxUnitPrice()).isZero();
+		assertThat(itemCaptor.getValue().getPriceStatus())
+				.isEqualTo(com.example.KTB_Agile_backend.item.entity.ItemPriceStatus.PENDING);
+		assertThat(itemCaptor.getValue().getPriceRequestId()).isNotBlank();
+		verify(requestPublisher).request(itemCaptor.getValue(), "책");
+	}
+
+	@Test
 	void createsItemWithAllGroupsAndImagesInOneTransaction() {
 		ItemRepository itemRepository = mock(ItemRepository.class);
 		ItemStatsRepository itemStatsRepository = mock(ItemStatsRepository.class);
@@ -69,6 +121,7 @@ class ItemServiceTest {
 		ImageRepository imageRepository = mock(ImageRepository.class);
 		S3ImageObjectService s3ImageObjectService = mock(S3ImageObjectService.class);
 		UserRepository userRepository = mock(UserRepository.class);
+		var requestPublisher = mock(ItemPriceEstimationRequestPublisher.class);
 		ItemService service = new ItemService(
 				itemRepository,
 				itemStatsRepository,
@@ -79,7 +132,8 @@ class ItemServiceTest {
 				imageRepository,
 				s3ImageObjectService,
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator()
+				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
+				requestPublisher
 		);
 		User user = mock(User.class);
 		Group firstGroup = group("첫 그룹");
@@ -96,6 +150,12 @@ class ItemServiceTest {
 		var response = service.create(42L, request(List.of(101L, 205L), List.of("images/42/1001.jpg")));
 
 		assertThat(response.itemId()).isNull();
+		ArgumentCaptor<Item> itemCaptor = ArgumentCaptor.forClass(Item.class);
+		verify(itemRepository).save(itemCaptor.capture());
+		assertThat(itemCaptor.getValue().getUnitPrice()).isEqualTo(1L);
+		assertThat(itemCaptor.getValue().getPriceStatus()).isEqualTo(
+				com.example.KTB_Agile_backend.item.entity.ItemPriceStatus.SUCCESS);
+		verify(requestPublisher, never()).request(any(), any());
 		verify(itemStatsRepository).save(any());
 		ArgumentCaptor<Iterable<com.example.KTB_Agile_backend.group.entity.GroupItem>> groupItemsCaptor =
 				ArgumentCaptor.forClass(Iterable.class);
@@ -125,7 +185,8 @@ class ItemServiceTest {
 				imageRepository,
 				mock(S3ImageObjectService.class),
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator()
+				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
+				mock(ItemPriceEstimationRequestPublisher.class)
 		);
 		User owner = user(42L);
 		Item item = spy(new Item(owner, "기존 제목", "기존 내용"));
@@ -204,7 +265,8 @@ class ItemServiceTest {
 				mock(ImageRepository.class),
 				s3ImageObjectService,
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator()
+				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
+				mock(ItemPriceEstimationRequestPublisher.class)
 		);
 		User requester = user(42L);
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(requester));
@@ -374,7 +436,8 @@ class ItemServiceTest {
 				mock(ImageRepository.class),
 				mock(S3ImageObjectService.class),
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator()
+				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
+				mock(ItemPriceEstimationRequestPublisher.class)
 		);
 
 		User viewer = user(42L);
@@ -394,8 +457,8 @@ class ItemServiceTest {
 
 	private static ItemCashService itemCashService() {
 		ItemCashService itemCashService = mock(ItemCashService.class);
-		lenient().when(itemCashService.resolvePrice(any(), any(), any(), any(), any()))
-				.thenReturn(new ItemPriceRangeCalculator.PriceRange(1L, 1L, 1L));
+		lenient().when(itemCashService.cachedPrice(any(), any(), any()))
+				.thenReturn(Optional.of(new ItemPriceRangeCalculator.PriceRange(1L, 1L, 1L)));
 		return itemCashService;
 	}
 
@@ -467,7 +530,8 @@ class ItemServiceTest {
 				imageRepository,
 				mock(S3ImageObjectService.class),
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator()
+				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
+				mock(ItemPriceEstimationRequestPublisher.class)
 		);
 	}
 

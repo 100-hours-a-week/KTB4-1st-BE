@@ -37,6 +37,16 @@ app:
         backoff: ${KAFKA_SEARCH_HISTORY_RETRY_BACKOFF:1s}
         multiplier: ${KAFKA_SEARCH_HISTORY_RETRY_MULTIPLIER:2.0}
         max-backoff: ${KAFKA_SEARCH_HISTORY_RETRY_MAX_BACKOFF:5s}
+  item-price-estimation:
+    retry:
+      enabled: ${ITEM_PRICE_ESTIMATION_RETRY_ENABLED:true}
+      max-attempts: ${ITEM_PRICE_ESTIMATION_RETRY_MAX_ATTEMPTS:4}
+      retry-response-validation: ${ITEM_PRICE_ESTIMATION_RETRY_RESPONSE_VALIDATION:true}
+      base-delay: ${ITEM_PRICE_ESTIMATION_RETRY_BASE_DELAY:1s}
+      multiplier: ${ITEM_PRICE_ESTIMATION_RETRY_MULTIPLIER:2.0}
+      max-delay: ${ITEM_PRICE_ESTIMATION_RETRY_MAX_DELAY:5s}
+      full-jitter: ${ITEM_PRICE_ESTIMATION_RETRY_FULL_JITTER:true}
+      poll-interval: ${ITEM_PRICE_ESTIMATION_RETRY_POLL_INTERVAL:500ms}
 
 sentry:
   dsn: https://229674fc538ca9111da07811ffe4537c@o4512173324500992.ingest.us.sentry.io/4512174894481408

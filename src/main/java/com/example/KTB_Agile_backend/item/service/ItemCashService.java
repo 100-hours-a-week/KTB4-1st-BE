@@ -2,35 +2,33 @@ package com.example.KTB_Agile_backend.item.service;
 
 import com.example.KTB_Agile_backend.ai.config.AiEndpoints;
 import com.example.KTB_Agile_backend.ai.config.AiProperties;
-import com.example.KTB_Agile_backend.ai.exception.AiErrorCode;
-import com.example.KTB_Agile_backend.common.exception.ApiException;
-import com.example.KTB_Agile_backend.item.cache.ItemPriceCache;
 import com.example.KTB_Agile_backend.item.dto.ai.ItemPriceEstimationRequest;
 import com.example.KTB_Agile_backend.item.dto.ai.ItemPriceEstimationResponse;
+import com.example.KTB_Agile_backend.item.cache.ItemPriceCache;
+import com.example.KTB_Agile_backend.item.event.ItemPriceEstimationRequested;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
-import java.time.Duration;
-import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class ItemCashService {
 
-	private static final Duration CACHE_TTL = Duration.ofHours(24);
-
 	private final ItemPriceCache itemPriceCache;
 	private final ItemPriceRangeCalculator itemPriceRangeCalculator;
 	private final AiProperties aiProperties;
 	private final RestClient restClient;
+	private final ObjectMapper objectMapper;
 
-	public ItemPriceRangeCalculator.PriceRange resolvePrice(
-			String title,
-			String content,
+	public Optional<ItemPriceRangeCalculator.PriceRange> cachedPrice(
 			String keyword,
 			BigDecimal valueGapToleranceScore,
 			BigDecimal exchangeUrgencyScore
@@ -39,54 +37,44 @@ public class ItemCashService {
 		if (normalizedKeyword != null) {
 			var cachedUnitPrice = itemPriceCache.get(normalizedKeyword);
 			if (cachedUnitPrice.isPresent()) {
-				return itemPriceRangeCalculator.calculate(
-						cachedUnitPrice.get(), valueGapToleranceScore, exchangeUrgencyScore);
+				return Optional.of(itemPriceRangeCalculator.calculate(
+						cachedUnitPrice.get(), valueGapToleranceScore, exchangeUrgencyScore));
 			}
 		}
-		ItemPriceEstimationResponse response = estimatePrice(
-				title, content, valueGapToleranceScore, exchangeUrgencyScore);
-		if (response.keyword() == null || response.keyword().isBlank()
-				|| response.unitPrice() == null || response.unitPrice() < 0
-				|| response.minUnitPrice() == null || response.minUnitPrice() < 0
-				|| response.maxUnitPrice() == null || response.maxUnitPrice() < response.unitPrice()
-				|| response.minUnitPrice() > response.unitPrice()) {
-			throw estimationFailed(null);
-		}
-
-		if (normalizedKeyword != null) {
-			itemPriceCache.put(normalizedKeyword, response.unitPrice(), CACHE_TTL);
-		}
-		return new ItemPriceRangeCalculator.PriceRange(
-				response.unitPrice(), response.minUnitPrice(), response.maxUnitPrice());
+		return Optional.empty();
 	}
 
-	private ItemPriceEstimationResponse estimatePrice(
-			String title,
-			String content,
-			BigDecimal valueGapToleranceScore,
-			BigDecimal exchangeUrgencyScore
-	) {
+	public ItemPriceEstimationResponse estimatePrice(ItemPriceEstimationRequested request) {
 		if (aiProperties.baseUrl().isBlank()) {
-			throw new ApiException(AiErrorCode.AI_ITEM_PRICE_ENDPOINT_NOT_CONFIGURED);
+			throw new PriceEstimationException(PriceEstimationRetryPolicy.Failure.CONFIGURATION);
 		}
+		String body;
 		try {
-			ItemPriceEstimationResponse response = restClient.post()
+			body = restClient.post()
 					.uri(AiEndpoints.ITEM_PRICE)
 					.contentType(MediaType.APPLICATION_JSON)
-					.body(new ItemPriceEstimationRequest(
-							title, content, valueGapToleranceScore, exchangeUrgencyScore))
+					.body(new ItemPriceEstimationRequest(request.title(), request.content(),
+							request.valueGapToleranceScore(), request.exchangeUrgencyScore()))
 					.retrieve()
-					.body(ItemPriceEstimationResponse.class);
-			if (response == null) {
-				throw estimationFailed(null);
-			}
-			return response;
+					.body(String.class);
+		} catch (RestClientResponseException exception) {
+			int status = exception.getStatusCode().value();
+			var failure = status == 408 || status == 429 || status >= 500
+					? PriceEstimationRetryPolicy.Failure.TRANSIENT
+					: PriceEstimationRetryPolicy.Failure.INPUT;
+			throw new PriceEstimationException(failure, exception);
+		} catch (IllegalArgumentException exception) {
+			throw new PriceEstimationException(PriceEstimationRetryPolicy.Failure.CONFIGURATION, exception);
 		} catch (RestClientException exception) {
-			throw estimationFailed(exception);
+			throw new PriceEstimationException(PriceEstimationRetryPolicy.Failure.TRANSIENT, exception);
 		}
-	}
-
-	private static ApiException estimationFailed(Throwable cause) {
-		return new ApiException(AiErrorCode.AI_ITEM_PRICE_ESTIMATION_FAILED, List.of(), cause);
+		if (body == null || body.isBlank()) {
+			throw new PriceEstimationException(PriceEstimationRetryPolicy.Failure.RESPONSE_VALIDATION);
+		}
+		try {
+			return objectMapper.readValue(body, ItemPriceEstimationResponse.class);
+		} catch (JacksonException exception) {
+			throw new PriceEstimationException(PriceEstimationRetryPolicy.Failure.RESPONSE_VALIDATION, exception);
+		}
 	}
 }

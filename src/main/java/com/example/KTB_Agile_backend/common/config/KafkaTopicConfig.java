@@ -30,4 +30,16 @@ public class KafkaTopicConfig {
 				.config(TopicConfig.RETENTION_MS_CONFIG, EVENT_RETENTION_MS)
 				.build();
 	}
+
+	@Bean
+	NewTopic itemPriceEstimationRequestsTopic() {
+		return TopicBuilder.name(KafkaTopics.ITEM_PRICE_ESTIMATION_REQUESTS)
+				.partitions(1).replicas(1).config(TopicConfig.RETENTION_MS_CONFIG, EVENT_RETENTION_MS).build();
+	}
+
+	@Bean
+	NewTopic itemPriceEstimationFailedTopic() {
+		return TopicBuilder.name(KafkaTopics.ITEM_PRICE_ESTIMATION_FAILED)
+				.partitions(1).replicas(1).config(TopicConfig.RETENTION_MS_CONFIG, EVENT_RETENTION_MS).build();
+	}
 }

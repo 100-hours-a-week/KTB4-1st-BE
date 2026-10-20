@@ -71,6 +71,13 @@ public class Item extends SoftDeletableEntity {
 	@Column(name = "unit_price", nullable = false)
 	private Long unitPrice = 0L;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "price_status", nullable = false, length = 20)
+	private ItemPriceStatus priceStatus = ItemPriceStatus.PENDING;
+
+	@Column(name = "price_request_id", length = 36)
+	private String priceRequestId;
+
 	@Column(name = "exchange_urgency_score", nullable = false, precision = 3, scale = 2)
 	private BigDecimal exchangeUrgencyScore = new BigDecimal("0.50");
 
@@ -143,6 +150,16 @@ public class Item extends SoftDeletableEntity {
 		this.unitPrice = requireNonNull(unitPrice, "unitPrice must not be null");
 		this.minUnitPrice = requireNonNull(minUnitPrice, "minUnitPrice must not be null");
 		this.maxUnitPrice = requireNonNull(maxUnitPrice, "maxUnitPrice must not be null");
+	}
+
+	public void setPriceResult(Long unitPrice, Long minUnitPrice, Long maxUnitPrice) {
+		setUnitPrices(unitPrice, minUnitPrice, maxUnitPrice);
+		this.priceStatus = ItemPriceStatus.SUCCESS;
+	}
+
+	public void requestPrice(String requestId) {
+		this.priceRequestId = requireNonNull(requestId, "requestId must not be null");
+		this.priceStatus = ItemPriceStatus.PENDING;
 	}
 
 	public void setThumbnailImage(Image thumbnailImage) {
