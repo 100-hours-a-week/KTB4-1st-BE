@@ -24,6 +24,8 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class PriceEstimationRetryScheduler {
+	private static final int UPDATED_ROW_COUNT = 1;
+
 	private final PriceEstimationRetryScheduleRepository scheduleRepository;
 	private final ItemPriceEstimationOutboxEventRepository outboxRepository;
 	private final ItemRepository itemRepository;
@@ -65,7 +67,7 @@ public class PriceEstimationRetryScheduler {
 			return;
 		}
 
-		if (itemRepository.failPriceRequest(request.itemId(), request.requestId()) == 1) {
+		if (itemRepository.failPriceRequest(request.itemId(), request.requestId()) == UPDATED_ROW_COUNT) {
 			String eventId = UUID.randomUUID().toString();
 			ItemPriceEstimationFailed failed = ItemPriceEstimationFailed.from(request, failure.name(), LocalDateTime.now());
 			outboxRepository.save(new ItemPriceEstimationOutboxEvent(eventId, request.requestId(),
