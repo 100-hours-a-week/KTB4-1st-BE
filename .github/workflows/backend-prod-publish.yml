@@ -14,7 +14,7 @@ on:
 
 concurrency:
   group: backend-prod-publish
-  # 운영 태그 배포 작업이 도중에 취소되어 이미지가 누락되거나 태그가 꼬이지 않도록 직렬 큐잉 처리
+  # 이미지 게시와 수동 운영 배포가 도중에 취소되지 않도록 직렬 큐잉 처리
   cancel-in-progress: false
 
 jobs:
@@ -26,9 +26,6 @@ jobs:
       contents: read
       packages: write
     timeout-minutes: 15
-    outputs:
-      image: ${{ steps.image.outputs.image }}
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
@@ -70,7 +67,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Push Docker Image
-        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -84,13 +80,6 @@ jobs:
           cache-to: type=gha,mode=max,scope=backend
           secrets: |
             sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
-
-      # 이번 릴리즈 빌드의 digest를 운영 배포에 전달
-      - name: Export image digest
-        id: image
-        env:
-          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
-        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}@${IMAGE_DIGEST}" >> "$GITHUB_OUTPUT"
 
       - name: Set Lowercase Package Name
         id: pkg
@@ -246,11 +235,11 @@ jobs:
           fi
           echo "image=ghcr.io/${GITHUB_REPOSITORY,,}@${digest}" >> "$GITHUB_OUTPUT"
 
-  # main 릴리즈 이미지를 해당 서비스의 운영 환경에 배포
+  # 마이그레이션 기간에는 수동으로 선택한 main 릴리즈 이미지만 운영에 배포
   deploy-prod:
     name: Deploy Prod to ECS
-    needs: [publish-prod, select-image]
-    if: ${{ always() && !cancelled() && (needs.publish-prod.result == 'success' || needs.select-image.result == 'success') }}
+    needs: [select-image]
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 90
     environment: prod
@@ -263,8 +252,8 @@ jobs:
       ECS_SERVICE: bakkucca-v2-prod-be
       CONTAINER_NAME: backend
       CONTAINER_PORT: "8080"
-      IMAGE_URI: ${{ needs.publish-prod.outputs.image || needs.select-image.outputs.image }}
-      DEPLOY_VERSION: ${{ inputs.version || github.ref_name }}
+      IMAGE_URI: ${{ needs.select-image.outputs.image }}
+      DEPLOY_VERSION: ${{ inputs.version }}
     steps:
       - name: Check deployment settings
         run: |
@@ -325,7 +314,7 @@ jobs:
           codedeploy-appspec: ${{ runner.temp }}/appspec.json
           codedeploy-application: ${{ env.ECS_SERVICE }}
           codedeploy-deployment-group: ${{ env.ECS_SERVICE }}
-          codedeploy-deployment-description: ${{ inputs.version || github.ref_name }} / ${{ github.sha }} / ${{ github.run_id }}
+          codedeploy-deployment-description: ${{ inputs.version }} / ${{ github.sha }} / ${{ github.run_id }}
           wait-for-service-stability: true
           wait-for-minutes: 20
 
