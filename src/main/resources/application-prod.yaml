@@ -1,4 +1,12 @@
 spring:
+  data:
+    redis:
+      cluster:
+        nodes: ${SPRING_DATA_REDIS_CLUSTER_NODES}
+      ssl:
+        enabled: ${SPRING_DATA_REDIS_SSL_ENABLED}
+      username: ${SPRING_DATA_REDIS_USERNAME}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
   flyway:
     enabled: true
   datasource:
