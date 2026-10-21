@@ -20,8 +20,9 @@ import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.entity.ItemStats;
 import com.example.KTB_Agile_backend.item.entity.ItemView;
-import com.example.KTB_Agile_backend.item.price.messaging.ItemPriceEstimationRequested;
 import com.example.KTB_Agile_backend.item.price.application.ItemPriceEstimationRequestPublisher;
+import com.example.KTB_Agile_backend.item.price.application.ItemPriceLookupService;
+import com.example.KTB_Agile_backend.item.price.messaging.ItemPriceEstimationRequested;
 import com.example.KTB_Agile_backend.item.repository.ItemLikeRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemStatsRepository;
@@ -31,7 +32,6 @@ import com.example.KTB_Agile_backend.ai.text.service.ModerationCheckService;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.entity.UserStatus;
 import com.example.KTB_Agile_backend.user.repository.UserRepository;
-import com.example.KTB_Agile_backend.item.price.ItemCashService;
 import com.example.KTB_Agile_backend.item.price.ItemPriceRangeCalculator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -78,8 +78,8 @@ class ItemServiceTest {
 	void createsPendingItemAndSnapshotOutboxOnPriceCacheMiss() {
 		ItemRepository itemRepository = mock(ItemRepository.class);
 		var requestPublisher = mock(ItemPriceEstimationRequestPublisher.class);
-		var cashService = mock(ItemCashService.class);
-		when(cashService.cachedPrice(any(), any(), any())).thenReturn(Optional.empty());
+		var priceLookupService = mock(ItemPriceLookupService.class);
+		when(priceLookupService.cachedPrice(any(), any(), any())).thenReturn(Optional.empty());
 		var groupRepository = mock(GroupRepository.class);
 		var groupMemberRepository = mock(GroupMemberRepository.class);
 		var imageRepository = mock(ImageRepository.class);
@@ -89,7 +89,7 @@ class ItemServiceTest {
 		ItemService service = new ItemService(itemRepository, mock(ItemStatsRepository.class),
 				mock(ItemViewRepository.class), groupRepository, groupMemberRepository,
 				mock(GroupItemRepository.class), imageRepository, mock(S3ImageObjectService.class),
-				userRepository, moderationCheckService, cashService,
+				userRepository, moderationCheckService, priceLookupService,
 				new ItemPriceRangeCalculator(), requestPublisher);
 		User owner = user(42L);
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(owner));
@@ -134,7 +134,7 @@ class ItemServiceTest {
 				imageRepository,
 				s3ImageObjectService,
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
+				mock(ModerationCheckService.class), itemPriceLookupService(), new ItemPriceRangeCalculator(),
 				requestPublisher
 		);
 		User user = mock(User.class);
@@ -187,7 +187,7 @@ class ItemServiceTest {
 				imageRepository,
 				mock(S3ImageObjectService.class),
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
+				mock(ModerationCheckService.class), itemPriceLookupService(), new ItemPriceRangeCalculator(),
 				mock(ItemPriceEstimationRequestPublisher.class)
 		);
 		User owner = user(42L);
@@ -267,7 +267,7 @@ class ItemServiceTest {
 				mock(ImageRepository.class),
 				s3ImageObjectService,
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
+				mock(ModerationCheckService.class), itemPriceLookupService(), new ItemPriceRangeCalculator(),
 				mock(ItemPriceEstimationRequestPublisher.class)
 		);
 		User requester = user(42L);
@@ -438,7 +438,7 @@ class ItemServiceTest {
 				mock(ImageRepository.class),
 				mock(S3ImageObjectService.class),
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
+				mock(ModerationCheckService.class), itemPriceLookupService(), new ItemPriceRangeCalculator(),
 				mock(ItemPriceEstimationRequestPublisher.class)
 		);
 
@@ -457,11 +457,11 @@ class ItemServiceTest {
 		verify(itemStatsRepository).incrementViewCount(123L);
 	}
 
-	private static ItemCashService itemCashService() {
-		ItemCashService itemCashService = mock(ItemCashService.class);
-		lenient().when(itemCashService.cachedPrice(any(), any(), any()))
+	private static ItemPriceLookupService itemPriceLookupService() {
+		ItemPriceLookupService itemPriceLookupService = mock(ItemPriceLookupService.class);
+		lenient().when(itemPriceLookupService.cachedPrice(any(), any(), any()))
 				.thenReturn(Optional.of(new ItemPriceRangeCalculator.PriceRange(1L, 1L, 1L)));
-		return itemCashService;
+		return itemPriceLookupService;
 	}
 
 	private static CreateItemRequest request(List<Long> groupIds, List<String> objectKeys) {
@@ -532,7 +532,7 @@ class ItemServiceTest {
 				imageRepository,
 				mock(S3ImageObjectService.class),
 				userRepository,
-				mock(ModerationCheckService.class), itemCashService(), new ItemPriceRangeCalculator(),
+				mock(ModerationCheckService.class), itemPriceLookupService(), new ItemPriceRangeCalculator(),
 				mock(ItemPriceEstimationRequestPublisher.class)
 		);
 	}
