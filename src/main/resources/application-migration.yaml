@@ -2,6 +2,14 @@ spring:
   config:
     activate:
       on-profile: migration
+  flyway:
+    enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    properties:
+      hibernate:
+        show_sql: false
 
 migration:
   enabled: true
@@ -19,6 +27,31 @@ migration:
     connection-timeout-ms: ${MIGRATION_DB_CONNECTION_TIMEOUT_MS:5000}
   barrier:
     timeout-ms: ${MIGRATION_BARRIER_TIMEOUT_MS:30000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  metrics:
+    distribution:
+      percentiles-histogram:
+        "http.server.requests": true
+        "item.price.ai.request": true
+
+monitoring:
+  prometheus:
+    auth:
+      username: ${PROMETHEUS_AUTH_USERNAME}
+      password: ${PROMETHEUS_AUTH_PASSWORD}
+
+cloud:
+  aws:
+    s3:
+      bucket: ${AWS_S3_BUCKET}
+
+cors:
+  allowed-origins: "https://bakkucca.com,${CORS_ALLOWED_ORIGINS}"
 
 auth:
   jwt:
