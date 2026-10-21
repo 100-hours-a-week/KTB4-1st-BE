@@ -2,6 +2,7 @@ package com.example.KTB_Agile_backend.common.exception;
 
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
 import com.example.KTB_Agile_backend.common.response.ErrorResponse;
+import com.example.KTB_Agile_backend.migration.MigrationBarrierException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +37,16 @@ public class GlobalExceptionHandler {
 						.toList()
 		);
 		return response(exception.status(), error);
+	}
+
+	@ExceptionHandler(MigrationBarrierException.class)
+	public ResponseEntity<ApiResponse<Void>> handleMigrationBarrier(MigrationBarrierException exception) {
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(new ApiResponse<>(null, new ErrorResponse(
+						"MIGRATION_BARRIER_BLOCKED",
+						exception.getMessage(),
+						List.of()
+				)));
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
