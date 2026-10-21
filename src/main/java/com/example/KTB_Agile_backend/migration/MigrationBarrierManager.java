@@ -24,11 +24,11 @@ public class MigrationBarrierManager {
 	private final HikariDataSource rdsDataSource;
 	private final ReentrantReadWriteLock databaseLock = new ReentrantReadWriteLock(true);
 	private final long timeoutMillis;
-	private final AtomicReference<MigrationRoutingDataSource> routingDataSource = new AtomicReference<>();
+	private final AtomicReference<MigrationRoutingDataSource> routingDataSourceRef = new AtomicReference<>();
 
 	private BarrierState state = BarrierState.OPEN;
-	private MigrationTarget currentTarget = MigrationTarget.EC2;
-	private MigrationTarget preparedTarget;
+	private MigrationTarget currentTargetValue = MigrationTarget.EC2;
+	private MigrationTarget preparedTarget = MigrationTarget.EC2;
 
 	public MigrationBarrierManager(
 			@Qualifier("migrationEc2DataSource")
@@ -43,7 +43,7 @@ public class MigrationBarrierManager {
 	}
 
 	void attachRoutingDataSource(MigrationRoutingDataSource routingDataSource) {
-		if (!this.routingDataSource.compareAndSet(null, routingDataSource)) {
+		if (!this.routingDataSourceRef.compareAndSet(null, routingDataSource)) {
 			throw new IllegalStateException("migration routing datasource is already attached");
 		}
 	}
@@ -75,7 +75,7 @@ public class MigrationBarrierManager {
 			}
 		} catch (InterruptedException exception) {
 			Thread.currentThread().interrupt();
-			throw new MigrationBarrierException("database migration barrier interrupted");
+			throw new MigrationBarrierException("database migration barrier interrupted", exception);
 		}
 	}
 
@@ -84,11 +84,11 @@ public class MigrationBarrierManager {
 	}
 
 	public synchronized MigrationTarget currentTarget() {
-		return currentTarget;
+		return currentTargetValue;
 	}
 
 	synchronized void setCurrentTarget(MigrationTarget target) {
-		currentTarget = target;
+		currentTargetValue = target;
 	}
 
 	public void prepare(MigrationTarget target) {
@@ -99,7 +99,7 @@ public class MigrationBarrierManager {
 				}
 				return;
 			}
-			if (currentTarget == target) {
+			if (currentTargetValue == target) {
 				return;
 			}
 			state = BarrierState.PREPARING;
@@ -109,7 +109,7 @@ public class MigrationBarrierManager {
 			if (!databaseLock.writeLock().tryLock(timeoutMillis, TimeUnit.MILLISECONDS)) {
 				synchronized (this) {
 					state = BarrierState.OPEN;
-					preparedTarget = null;
+					preparedTarget = MigrationTarget.EC2;
 					notifyAll();
 				}
 				throw new MigrationBarrierException("database migration barrier timeout");
@@ -119,15 +119,15 @@ public class MigrationBarrierManager {
 			Thread.currentThread().interrupt();
 			synchronized (this) {
 				state = BarrierState.OPEN;
-				preparedTarget = null;
+				preparedTarget = MigrationTarget.EC2;
 				notifyAll();
 			}
-			throw new MigrationBarrierException("database migration barrier interrupted");
+			throw new MigrationBarrierException("database migration barrier interrupted", exception);
 		}
 	}
 
 	public synchronized void commit(MigrationTarget target) {
-		if (state == BarrierState.OPEN && currentTarget == target) {
+		if (state == BarrierState.OPEN && currentTargetValue == target) {
 			return;
 		}
 		if (state != BarrierState.PREPARING || preparedTarget != target) {
@@ -141,16 +141,16 @@ public class MigrationBarrierManager {
 		try {
 			synchronized (this) {
 				if (state == BarrierState.OPEN) {
-					if (currentTarget != target) {
-						throw new MigrationBarrierException("database is already routed to " + currentTarget);
+					if (currentTargetValue != target) {
+						throw new MigrationBarrierException("database is already routed to " + currentTargetValue);
 					}
 					return;
 				}
-				if (preparedTarget != target || currentTarget != target) {
+				if (preparedTarget != target || currentTargetValue != target) {
 					throw new MigrationBarrierException("migration barrier target does not match " + target);
 				}
 				state = BarrierState.OPEN;
-				preparedTarget = null;
+				preparedTarget = MigrationTarget.EC2;
 				notifyAll();
 			}
 		} finally {
@@ -163,8 +163,8 @@ public class MigrationBarrierManager {
 		try {
 			synchronized (this) {
 				if (state == BarrierState.OPEN) {
-					if (currentTarget != MigrationTarget.EC2) {
-						throw new MigrationBarrierException("cannot abort after routing to " + currentTarget);
+					if (currentTargetValue != MigrationTarget.EC2) {
+						throw new MigrationBarrierException("cannot abort after routing to " + currentTargetValue);
 					}
 					return;
 				}
@@ -173,7 +173,7 @@ public class MigrationBarrierManager {
 				}
 				routingDataSource().switchTarget(MigrationTarget.EC2);
 				state = BarrierState.OPEN;
-				preparedTarget = null;
+				preparedTarget = MigrationTarget.EC2;
 				notifyAll();
 			}
 		} finally {
@@ -195,7 +195,7 @@ public class MigrationBarrierManager {
 				throw new MigrationBarrierException("RDS is not writable");
 			}
 		} catch (SQLException exception) {
-			throw new MigrationBarrierException(target + " health probe failed: " + exception.getMessage());
+			throw new MigrationBarrierException(target + " health probe failed: " + exception.getMessage(), exception);
 		}
 	}
 
@@ -204,7 +204,7 @@ public class MigrationBarrierManager {
 	}
 
 	private MigrationRoutingDataSource routingDataSource() {
-		MigrationRoutingDataSource dataSource = routingDataSource.get();
+		MigrationRoutingDataSource dataSource = routingDataSourceRef.get();
 		if (dataSource == null) {
 			throw new IllegalStateException("migration routing datasource is not initialized");
 		}
