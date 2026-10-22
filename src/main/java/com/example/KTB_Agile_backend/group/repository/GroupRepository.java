@@ -75,7 +75,7 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 				and joinedMember.user.id = :userId
 				and joinedMember.status = :activeStatus
 			where g.deletedAt is null
-				and g.groupName like concat('%', :keyword, '%')
+				and g.groupName like concat('%', :keyword, '%') escape '!'
 			group by g.id, g.groupName, g.roadAddress, g.groupContent
 			order by g.id desc
 			""")
@@ -107,7 +107,7 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 				and joinedMember.user.id = :userId
 				and joinedMember.status = :activeStatus
 			where g.deletedAt is null
-				and g.groupName like concat('%', :keyword, '%')
+				and g.groupName like concat('%', :keyword, '%') escape '!'
 				and g.id < :cursorId
 			group by g.id, g.groupName, g.roadAddress, g.groupContent
 			order by g.id desc
