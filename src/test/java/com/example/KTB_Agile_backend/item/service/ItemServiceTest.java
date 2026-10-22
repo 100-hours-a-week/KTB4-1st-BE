@@ -354,8 +354,9 @@ class ItemServiceTest {
 		ItemLikeRepository itemLikeRepository = mock(ItemLikeRepository.class);
 		GroupItemRepository groupItemRepository = mock(GroupItemRepository.class);
 		ImageRepository imageRepository = mock(ImageRepository.class);
+		GroupMemberRepository groupMemberRepository = mock(GroupMemberRepository.class);
 		ItemQueryService service = queryService(itemRepository, itemStatsRepository, itemLikeRepository,
-				mock(GroupRepository.class), mock(GroupMemberRepository.class), groupItemRepository, imageRepository);
+				mock(GroupRepository.class), groupMemberRepository, groupItemRepository, imageRepository);
 
 		User owner = mock(User.class);
 		when(owner.getId()).thenReturn(10L);
@@ -375,8 +376,23 @@ class ItemServiceTest {
 		Group group = mock(Group.class);
 		when(group.getId()).thenReturn(101L);
 		when(group.getGroupName()).thenReturn("카테뷰");
+		Group leftGroup = mock(Group.class);
+		when(leftGroup.getId()).thenReturn(102L);
 		GroupItem groupItem = mock(GroupItem.class);
 		when(groupItem.getGroup()).thenReturn(group);
+		GroupItem leftGroupItem = mock(GroupItem.class);
+		when(leftGroupItem.getGroup()).thenReturn(leftGroup);
+		GroupMemberRepository.GroupMemberStatusProjection membership =
+				mock(GroupMemberRepository.GroupMemberStatusProjection.class);
+		when(membership.getGroupId()).thenReturn(101L);
+		when(membership.getMembershipStatus()).thenReturn(GroupMemberStatus.ACTIVE);
+		GroupMemberRepository.GroupMemberStatusProjection leftMembership =
+				mock(GroupMemberRepository.GroupMemberStatusProjection.class);
+		when(leftMembership.getGroupId()).thenReturn(102L);
+		when(leftMembership.getMembershipStatus()).thenReturn(GroupMemberStatus.LEFT);
+		when(groupItemRepository.findActiveGroupItemsByItemId(123L)).thenReturn(List.of(groupItem, leftGroupItem));
+		when(groupMemberRepository.findStatusesByGroupIdsAndUserIds(List.of(101L, 102L), List.of(10L)))
+				.thenReturn(List.of(membership, leftMembership));
 
 		Image firstImage = mock(Image.class);
 		when(firstImage.getId()).thenReturn(501L);
@@ -390,7 +406,6 @@ class ItemServiceTest {
 		when(stats.getViewCount()).thenReturn(128L);
 		when(itemRepository.findByIdAndDeletedAtIsNull(123L)).thenReturn(Optional.of(item));
 		when(itemStatsRepository.findById(123L)).thenReturn(Optional.of(stats));
-		when(groupItemRepository.findActiveGroupItemsByItemId(123L)).thenReturn(List.of(groupItem));
 		when(imageRepository.findAllByItem_IdOrderByIdAsc(123L))
 				.thenReturn(List.of(firstImage, secondImage));
 		when(itemLikeRepository.existsByItem_IdAndUser_Id(123L, 42L)).thenReturn(false);
@@ -399,7 +414,7 @@ class ItemServiceTest {
 
 		assertThat(response).usingRecursiveComparison().isEqualTo(new ItemDetailResponse(
 				123L,
-				List.of(new ItemDetailResponse.GroupInfo(101L, "카테뷰", null)),
+				List.of(new ItemDetailResponse.GroupInfo(101L, "카테뷰", GroupMemberStatus.ACTIVE)),
 				"게시글 제목1",
 				"게시글 내용입니다.",
 				1,
