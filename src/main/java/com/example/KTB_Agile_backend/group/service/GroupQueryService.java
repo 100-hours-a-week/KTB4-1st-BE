@@ -41,12 +41,13 @@ public class GroupQueryService {
 		Long cursorId = CursorCodec.decodeId(cursor);
 		int size = cursorId == null ? INITIAL_PAGE_SIZE : CURSOR_PAGE_SIZE;
 		String normalizedKeyword = keyword == null ? "" : keyword.strip();
+		String escapedKeyword = normalizedKeyword.replace("!", "!!").replace("%", "!%").replace("_", "!_");
 		Pageable pageable = PageRequest.of(0, size + 1, Sort.by(Sort.Direction.DESC, "id"));
 		List<GroupSummary> groups = cursorId == null
 				? groupRepository.findSearchSummaries(
-						userId, GroupMemberStatus.ACTIVE, normalizedKeyword, pageable)
+						userId, GroupMemberStatus.ACTIVE, escapedKeyword, pageable)
 				: groupRepository.findSearchSummariesAfter(
-						userId, GroupMemberStatus.ACTIVE, normalizedKeyword, cursorId, pageable);
+						userId, GroupMemberStatus.ACTIVE, escapedKeyword, cursorId, pageable);
 
 		CursorPage<GroupSummary> page = CursorPage.fromIds(groups, size, GroupSummary::groupId);
 		return new GroupPageResponse(page.items(), page.nextCursor(), page.hasNext());
