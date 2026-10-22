@@ -93,10 +93,14 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 			from GroupItem groupItem
 			join groupItem.item item
 			join item.user owner
+			join GroupMember membership on membership.group = groupItem.group
+				and membership.user = owner
 			where groupItem.deletedAt is null
 				and groupItem.group.deletedAt is null
 				and groupItem.group.id = :searchGroupId
 				and item.deletedAt is null
+				and owner.userStatus = :activeUserStatus
+				and membership.status = :activeMemberStatus
 				and (:itemState is null or item.itemState = :itemState)
 				and (
 					:keyword = ''
@@ -109,6 +113,8 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 			@Param("searchGroupId") Long groupId,
 			@Param("keyword") String keyword,
 			@Param("itemState") ItemState itemState,
+			@Param("activeUserStatus") UserStatus activeUserStatus,
+			@Param("activeMemberStatus") GroupMemberStatus activeMemberStatus,
 			Pageable pageable
 	);
 
@@ -126,10 +132,14 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 			from GroupItem groupItem
 			join groupItem.item item
 			join item.user owner
+			join GroupMember membership on membership.group = groupItem.group
+				and membership.user = owner
 			where groupItem.deletedAt is null
 				and groupItem.group.deletedAt is null
 				and groupItem.group.id = :searchGroupId
 				and item.deletedAt is null
+				and owner.userStatus = :activeUserStatus
+				and membership.status = :activeMemberStatus
 				and (:itemState is null or item.itemState = :itemState)
 				and (
 					:keyword = ''
@@ -144,6 +154,8 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 			@Param("keyword") String keyword,
 			@Param("cursorId") Long cursorId,
 			@Param("itemState") ItemState itemState,
+			@Param("activeUserStatus") UserStatus activeUserStatus,
+			@Param("activeMemberStatus") GroupMemberStatus activeMemberStatus,
 			Pageable pageable
 	);
 

@@ -80,6 +80,8 @@ public class ItemQueryService {
 		return new ItemDetailResponse(
 				item.getId(),
 				activeGroupItems.stream()
+						.filter(groupItem -> item.getUser().getUserStatus() == UserStatus.ACTIVE
+								&& ownerMembershipStatuses.get(groupItem.getGroup().getId()) == GroupMemberStatus.ACTIVE)
 						.map(groupItem -> new ItemDetailResponse.GroupInfo(
 								groupItem.getGroup().getId(),
 								groupItem.getGroup().getGroupName(),
@@ -197,9 +199,9 @@ public class ItemQueryService {
 		String escapedKeyword = escapeLikeWildcards(keyword);
 		List<ItemSummaryProjection> summaries = cursorId == null
 				? groupItemRepository.findActiveItemSummariesForSearch(
-						groupId, escapedKeyword, itemState, pageable)
+						groupId, escapedKeyword, itemState, UserStatus.ACTIVE, GroupMemberStatus.ACTIVE, pageable)
 				: groupItemRepository.findActiveItemSummariesForSearchAfter(
-						groupId, escapedKeyword, cursorId, itemState, pageable);
+						groupId, escapedKeyword, cursorId, itemState, UserStatus.ACTIVE, GroupMemberStatus.ACTIVE, pageable);
 		CursorPage<ItemSummaryProjection> page = CursorPage.from(
 				summaries, PAGE_SIZE,
 				summary -> CursorCodec.encodeIdForFilter(summary.itemId(), itemStateFilter));
