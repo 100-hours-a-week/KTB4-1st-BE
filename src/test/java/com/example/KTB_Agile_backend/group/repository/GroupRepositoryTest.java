@@ -130,6 +130,27 @@ class GroupRepositoryTest {
 		assertThat(searchResults.get(0).isJoined()).isTrue();
 	}
 
+	@Test
+	void treatsLikeWildcardsAsLiteralCharactersOnBothSearchPages() {
+		User viewer = new User("viewer");
+		entityManager.persist(viewer);
+		Group percentGroup = groupRepository.saveAndFlush(createGroup("퍼센트 % 그룹"));
+		Group underscoreGroup = groupRepository.saveAndFlush(createGroup("밑줄 _ 그룹"));
+		Group escapeGroup = groupRepository.saveAndFlush(createGroup("느낌표 ! 그룹"));
+		groupRepository.saveAndFlush(createGroup("일반 그룹"));
+
+		var percentResults = groupRepository.findSearchSummaries(
+				viewer.getId(), GroupMemberStatus.ACTIVE, "!%", PageRequest.of(0, 10));
+		var underscoreResults = groupRepository.findSearchSummaries(
+				viewer.getId(), GroupMemberStatus.ACTIVE, "!_", PageRequest.of(0, 10));
+		var escapeResults = groupRepository.findSearchSummariesAfter(
+				viewer.getId(), GroupMemberStatus.ACTIVE, "!!", Long.MAX_VALUE, PageRequest.of(0, 10));
+
+		assertThat(percentResults).extracting(result -> result.groupId()).containsExactly(percentGroup.getId());
+		assertThat(underscoreResults).extracting(result -> result.groupId()).containsExactly(underscoreGroup.getId());
+		assertThat(escapeResults).extracting(result -> result.groupId()).containsExactly(escapeGroup.getId());
+	}
+
 	private static Group createGroup(String name) {
 		return Group.create(
 				name,

@@ -100,4 +100,54 @@ class GroupItemRepositoryTest {
 				.containsExactly(third.getId(), second.getId());
 		assertThat(statistics.getPrepareStatementCount()).isEqualTo(1L);
 	}
+
+	@Test
+	void searchFiltersOwnersByActiveUserAndMembershipStatusOnBothPages() {
+		User olderActiveSeller = new User("active-older");
+		User leftSeller = new User("left-seller");
+		User withdrawnSeller = new User("withdrawn-seller");
+		withdrawnSeller.withdraw(LocalDateTime.now());
+		User newestActiveSeller = new User("active-newest");
+		entityManager.persist(olderActiveSeller);
+		entityManager.persist(leftSeller);
+		entityManager.persist(withdrawnSeller);
+		entityManager.persist(newestActiveSeller);
+
+		Group group = Group.create("검색 그룹", "주소", BigDecimal.ZERO, BigDecimal.ZERO, "");
+		entityManager.persist(group);
+		entityManager.persist(new GroupMember(group, olderActiveSeller));
+		GroupMember leftMembership = new GroupMember(group, leftSeller);
+		leftMembership.leave(LocalDateTime.now());
+		entityManager.persist(leftMembership);
+		entityManager.persist(new GroupMember(group, withdrawnSeller));
+		entityManager.persist(new GroupMember(group, newestActiveSeller));
+
+		Item olderActiveItem = new Item(olderActiveSeller, "검색 오래된 물품", "설명");
+		Item leftItem = new Item(leftSeller, "검색 탈퇴 물품", "설명");
+		Item withdrawnItem = new Item(withdrawnSeller, "검색 탈퇴 계정 물품", "설명");
+		Item newestActiveItem = new Item(newestActiveSeller, "검색 최신 물품", "설명");
+		entityManager.persist(olderActiveItem);
+		entityManager.persist(leftItem);
+		entityManager.persist(withdrawnItem);
+		entityManager.persist(newestActiveItem);
+		entityManager.flush();
+
+		entityManager.persist(new GroupItem(group, olderActiveItem));
+		entityManager.persist(new GroupItem(group, leftItem));
+		entityManager.persist(new GroupItem(group, withdrawnItem));
+		entityManager.persist(new GroupItem(group, newestActiveItem));
+		entityManager.flush();
+		entityManager.clear();
+
+		List<ItemSummaryProjection> firstPage = groupItemRepository.findActiveItemSummariesForSearch(
+				group.getId(), "검색", null, UserStatus.ACTIVE, GroupMemberStatus.ACTIVE, PageRequest.of(0, 10));
+		List<ItemSummaryProjection> nextPage = groupItemRepository.findActiveItemSummariesForSearchAfter(
+				group.getId(), "검색", newestActiveItem.getId(), null,
+				UserStatus.ACTIVE, GroupMemberStatus.ACTIVE, PageRequest.of(0, 10));
+
+		assertThat(firstPage).extracting(ItemSummaryProjection::itemId)
+				.containsExactly(newestActiveItem.getId(), olderActiveItem.getId());
+		assertThat(nextPage).extracting(ItemSummaryProjection::itemId)
+				.containsExactly(olderActiveItem.getId());
+	}
 }

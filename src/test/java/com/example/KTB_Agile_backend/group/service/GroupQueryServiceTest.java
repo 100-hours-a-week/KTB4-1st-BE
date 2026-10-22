@@ -85,6 +85,20 @@ class GroupQueryServiceTest {
 		).status()).isEqualTo(org.springframework.http.HttpStatus.BAD_REQUEST);
 	}
 
+	@Test
+	void escapesLikeWildcardsBeforeSearching() {
+		GroupRepository groupRepository = mock(GroupRepository.class);
+		GroupQueryService service = new GroupQueryService(groupRepository);
+
+		service.search(42L, " %_! ", null);
+
+		verify(groupRepository).findSearchSummaries(
+				eq(42L), eq(GroupMemberStatus.ACTIVE), eq("!%!_!!"), any());
+		service.search(42L, " %_! ", "Mg");
+		verify(groupRepository).findSearchSummariesAfter(
+				eq(42L), eq(GroupMemberStatus.ACTIVE), eq("!%!_!!"), eq(2L), any());
+	}
+
 	private static GroupSummary summary(int groupId) {
 		return new GroupSummary(
 				(long) groupId,

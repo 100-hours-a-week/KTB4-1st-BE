@@ -1,4 +1,4 @@
-package com.example.KTB_Agile_backend.item.dto.ai;
+package com.example.KTB_Agile_backend.item.price.dto;
 
 import java.math.BigDecimal;
 

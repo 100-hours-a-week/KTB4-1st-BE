@@ -81,6 +81,7 @@ public class SecurityConfig {
 								"/actuator/health/liveness",
 								"/actuator/health/readiness",
 								"/health/ping/**",
+								"/internal/admin/migration/**",
 								"/auth/oauth/**",
 								"/auth/kakao/callback",
 								"/auth/refresh",

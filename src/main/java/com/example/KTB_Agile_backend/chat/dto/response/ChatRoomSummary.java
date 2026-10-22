@@ -6,6 +6,7 @@ import com.example.KTB_Agile_backend.group.entity.GroupMemberStatus;
 import com.example.KTB_Agile_backend.user.entity.UserStatus;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record ChatRoomSummary(
 		Long chatRoomId,
@@ -16,6 +17,7 @@ public record ChatRoomSummary(
 		GroupInfo group,
 		OtherUser otherUser,
 		TargetItem targetItem,
+		OfferedItem offeredItem,
 		LastMessage lastMessage,
 		long unreadMessageCount,
 		LocalDateTime lastMessageAt
@@ -26,13 +28,15 @@ public record ChatRoomSummary(
 	public record OtherUser(
 			Long userId,
 			String nickname,
-			String profileImageUrl,
 			UserStatus userStatus,
 			GroupMemberStatus groupMemberStatus
 	) {
 	}
 
 	public record TargetItem(Long itemId, String title, String thumbnailImageUrl) {
+	}
+
+	public record OfferedItem(Long itemId, String title, String thumbnailImageUrl) {
 	}
 
 	public record LastMessage(Long messageId, String content, Long senderId, LocalDateTime createdAt) {

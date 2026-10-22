@@ -67,13 +67,16 @@ paths:
                       otherUser:
                         userId: 9
                         nickname: 민지
-                        profileImageUrl: https://example.com/profile.png
                         userStatus: ACTIVE
                         groupMemberStatus: ACTIVE
                       targetItem:
                         itemId: 101
                         title: 캠핑 의자
                         thumbnailImageUrl: https://example.com/item.png
+                      offeredItem:
+                        itemId: 202
+                        title: 캠핑 랜턴
+                        thumbnailImageUrl: https://example.com/lantern.png
                       lastMessage:
                         messageId: 102
                         content: 네, 가능합니다.
@@ -468,6 +471,7 @@ components:
         - group
         - otherUser
         - targetItem
+        - offeredItem
         - lastMessage
         - unreadMessageCount
         - lastMessageAt
@@ -499,17 +503,13 @@ components:
               type: string
         otherUser:
           type: object
-          required: [userId, nickname, profileImageUrl, userStatus, groupMemberStatus]
+          required: [userId, nickname, userStatus, groupMemberStatus]
           properties:
             userId:
               type: integer
               format: int64
             nickname:
               type: string
-            profileImageUrl:
-              type: string
-              format: uri
-              nullable: true
             userStatus:
               type: string
               enum: [ACTIVE, INACTIVE, WITHDRAWN]
@@ -519,6 +519,20 @@ components:
               nullable: true
         targetItem:
           type: object
+          required: [itemId, title, thumbnailImageUrl]
+          properties:
+            itemId:
+              type: integer
+              format: int64
+            title:
+              type: string
+            thumbnailImageUrl:
+              type: string
+              format: uri
+              nullable: true
+        offeredItem:
+          type: object
+          description: 요청자가 제안한 첫 번째 물품과 대표 썸네일
           required: [itemId, title, thumbnailImageUrl]
           properties:
             itemId:

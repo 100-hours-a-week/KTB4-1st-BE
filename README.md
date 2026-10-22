@@ -16,7 +16,7 @@ To select the production profile, set `SPRING_PROFILES_ACTIVE=prod`.
 
 The database must be empty on its first Flyway startup; migrations create the schema.
 
-The `prod` profile requires `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `AWS_S3_BUCKET`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS`, `FRONTEND_REDIRECT_URI`, `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, and `KAKAO_REDIRECT_URI`. Its schema mode defaults to `validate`.
+The `prod` profile requires `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `AWS_S3_BUCKET`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS`, `FRONTEND_REDIRECT_URI`, `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, and `KAKAO_REDIRECT_URI`. Its schema mode defaults to `validate`. Item-price caching uses Redis in every profile. Development defaults to standalone Redis at `localhost:6379`; override it with `SPRING_DATA_REDIS_HOST` and `SPRING_DATA_REDIS_PORT`, or supply the standard Redis cluster, SSL, and authentication environment variables for a remote development Redis. Production uses `SPRING_DATA_REDIS_CLUSTER_NODES`, `SPRING_DATA_REDIS_SSL_ENABLED`, and `SPRING_DATA_REDIS_USERNAME`, plus `SPRING_DATA_REDIS_PASSWORD` when the Redis user has a password.
 
 ## Test
 

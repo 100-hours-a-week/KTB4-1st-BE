@@ -1,4 +1,4 @@
-package com.example.KTB_Agile_backend.item.service;
+package com.example.KTB_Agile_backend.item.price;
 
 import org.springframework.stereotype.Component;
 

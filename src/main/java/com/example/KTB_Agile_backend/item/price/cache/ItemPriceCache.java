@@ -1,4 +1,4 @@
-package com.example.KTB_Agile_backend.item.cache;
+package com.example.KTB_Agile_backend.item.price.cache;
 
 import java.time.Duration;
 import java.util.Optional;
