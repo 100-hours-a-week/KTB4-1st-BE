@@ -12,6 +12,7 @@ import com.example.KTB_Agile_backend.chat.repository.ChatRoomRepository;
 import com.example.KTB_Agile_backend.chat.service.ChatMessageQueryService;
 import com.example.KTB_Agile_backend.chat.service.ChatMessageResponseMapper;
 import com.example.KTB_Agile_backend.chat.service.ChatMessageService;
+import com.example.KTB_Agile_backend.chat.service.ChatRoomQueryService;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.exchange.dto.request.ExchangeRequestCreateRequest;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequest;
@@ -38,7 +39,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
 @Import({ExchangeRequestService.class, ExchangeRequestQueryService.class, ChatMessageService.class,
-		ChatMessageQueryService.class, ChatMessageResponseMapper.class})
+		ChatMessageQueryService.class, ChatRoomQueryService.class, ChatMessageResponseMapper.class})
 class ExchangeRequestServiceTest {
 
 	@MockitoBean
@@ -69,6 +70,9 @@ class ExchangeRequestServiceTest {
 	private ChatMessageQueryService chatMessageQueryService;
 
 	@Autowired
+	private ChatRoomQueryService chatRoomQueryService;
+
+	@Autowired
 	private ItemRepository itemRepository;
 
 	@Autowired
@@ -86,12 +90,17 @@ class ExchangeRequestServiceTest {
 		assertThat(response.exchangeRequestId()).isNotNull();
 		assertThat(response.requestedStatus()).isEqualTo(ExchangeRequestStatus.PENDING);
 		assertThat(response.chatRoomId()).isNotNull();
-		assertThat(chatRoomRepository.countByExchangeRequest_Id(response.exchangeRequestId())).isEqualTo(1);
-		assertThat(chatMemberRepository.countByChatRoom_Id(response.chatRoomId())).isEqualTo(2);
+		assertThat(chatRoomRepository.countByExchangeRequestId(response.exchangeRequestId())).isEqualTo(1);
+		assertThat(chatMemberRepository.countByChatRoomId(response.chatRoomId())).isEqualTo(2);
 		assertThat(response.offeredItems()).extracting("quantity").containsExactly(3);
 		assertThat(response.createdAt()).isNotNull();
 		assertSystemEvent(response.chatRoomId(), ChatSystemEventType.EXCHANGE_REQUEST_CREATED,
 				"교환 요청이 접수되었습니다.");
+		var chatRooms = chatRoomQueryService.findChatRooms(requester.getId(), "SENT", "10", null);
+		assertThat(chatRooms.chatRooms()).hasSize(1);
+		assertThat(chatRooms.chatRooms().get(0).chatRoomId()).isEqualTo(response.chatRoomId());
+		assertThat(chatRoomQueryService.findChatRoom(response.chatRoomId(), requester.getId()).chatRoomId())
+				.isEqualTo(response.chatRoomId());
 		assertThat(itemRepository.findByIdAndDeletedAtIsNull(target.getId()).orElseThrow().getQuantity()).isEqualTo(3);
 		assertThat(itemRepository.findByIdAndDeletedAtIsNull(offered.getId()).orElseThrow().getQuantity()).isEqualTo(4);
 	}
@@ -302,7 +311,7 @@ class ExchangeRequestServiceTest {
 	}
 
 	private void assertSystemEvent(Long chatRoomId, ChatSystemEventType eventType, String content) {
-		assertThat(chatMessageRepository.findAllByChatRoom_IdOrderByIdDesc(chatRoomId, PageRequest.of(0, 10)))
+		assertThat(chatMessageRepository.findAllByChatRoomIdOrderByIdDesc(chatRoomId, PageRequest.of(0, 10)))
 				.anySatisfy(message -> {
 					assertThat(message.getMessageType()).isEqualTo(ChatMessageType.SYSTEM);
 					assertThat(message.getSystemEventType()).isEqualTo(eventType);

@@ -62,6 +62,10 @@ public interface ExchangeRequestRepository extends JpaRepository<ExchangeRequest
 	@EntityGraph(attributePaths = {"item.user", "offeredItems.item.user"})
 	List<ExchangeRequest> findAllByIdIn(Collection<Long> ids);
 
+	@EntityGraph(attributePaths = {"item.user", "offeredItems.item.user", "requester", "group"})
+	@Query("select distinct request from ExchangeRequest request where request.id in :ids")
+	List<ExchangeRequest> findChatDetailsByIdIn(@Param("ids") Collection<Long> ids);
+
 	@Query("""
 		select request.item.id as itemId, count(request.id) as exchangeRequestCount
 		from ExchangeRequest request

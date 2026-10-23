@@ -22,14 +22,13 @@ public class ChatRoomService {
 
 	@Transactional
 	public void leave(Long chatRoomId, Long userId) {
-		if (!chatRoomRepository.existsById(chatRoomId)) {
-			throw new ApiException(ErrorCode.NOT_FOUND, "채팅방을 찾을 수 없습니다.");
-		}
+		var room = chatRoomRepository.findById(chatRoomId)
+				.orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "채팅방을 찾을 수 없습니다."));
 
 		ChatMember member = chatMemberRepository.findActiveMember(chatRoomId, userId)
 				.orElseThrow(() -> new ApiException(ErrorCode.FORBIDDEN, "참여 중인 채팅방만 나갈 수 있습니다."));
 		member.leave(LocalDateTime.now());
-		member.getChatRoom().close();
-		chatMessageService.sendSystemMessage(member.getChatRoom(), ChatSystemEventType.CHAT_ROOM_MEMBER_LEFT);
+		room.close();
+		chatMessageService.sendSystemMessage(room, ChatSystemEventType.CHAT_ROOM_MEMBER_LEFT);
 	}
 }

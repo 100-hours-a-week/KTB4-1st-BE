@@ -29,41 +29,36 @@ public class ChatMessageResponseMapper {
 	private final ImageRepository imageRepository;
 	private final ImageUrlResolver imageUrlResolver;
 
-	public ChatMessageResponse toResponse(ChatMessage message, GroupMemberStatus groupMemberStatus) {
-		return toResponse(message, groupMemberStatus, findSystemMessageThumbnails(List.of(message)));
-	}
-
 	public ChatMessageResponse toResponse(
 			ChatMessage message,
+			User user,
 			GroupMemberStatus groupMemberStatus,
+			ExchangeRequest request,
 			Map<Long, String> thumbnails
 	) {
-		User user = message.getUser();
 		ChatSystemEventType eventType = message.getSystemEventType();
 		return new ChatMessageResponse(
-				message.getId(), message.getChatRoom().getId(), user == null ? null : user.getId(),
+				message.getId(), message.getChatRoomId(), message.getUserId(),
 				message.getContent(), message.getMessageType(), eventType, message.getCreatedAt(),
 				user == null ? null : user.getUserStatus(), groupMemberStatus,
-				isExchangeRequestEvent(eventType) ? toPayload(message, thumbnails) : null
+				isExchangeRequestEvent(eventType) && request != null ? toPayload(request, eventType, thumbnails) : null
 		);
 	}
 
-	public Map<Long, String> findSystemMessageThumbnails(List<ChatMessage> messages) {
-		Set<Long> itemIds = new HashSet<>();
-		for (ChatMessage message : messages) {
-			if (message.getMessageType() != ChatMessageType.SYSTEM
-					|| !isExchangeRequestEvent(message.getSystemEventType())) {
-				continue;
-			}
-			ExchangeRequest request = message.getChatRoom().getExchangeRequest();
-			itemIds.add(request.getItem().getId());
-			request.getOfferedItems().stream().limit(2)
-					.map(offered -> offered.getItem().getId())
-					.forEach(itemIds::add);
-		}
-		if (itemIds.isEmpty()) {
+	public Map<Long, String> findSystemMessageThumbnails(
+			List<ChatMessage> messages,
+			ExchangeRequest request
+	) {
+		if (request == null || messages.stream().noneMatch(message ->
+				message.getMessageType() == ChatMessageType.SYSTEM
+						&& isExchangeRequestEvent(message.getSystemEventType()))) {
 			return Map.of();
 		}
+		Set<Long> itemIds = new HashSet<>();
+		itemIds.add(request.getItem().getId());
+		request.getOfferedItems().stream().limit(2)
+				.map(offered -> offered.getItem().getId())
+				.forEach(itemIds::add);
 		Map<Long, String> thumbnails = new HashMap<>();
 		for (Image image : imageRepository.findThumbnailImagesByItemIds(itemIds)) {
 			thumbnails.put(image.getItem().getId(), imageUrlResolver.resolve(image));
@@ -71,17 +66,20 @@ public class ChatMessageResponseMapper {
 		return thumbnails;
 	}
 
-	private static boolean isExchangeRequestEvent(ChatSystemEventType eventType) {
+	static boolean isExchangeRequestEvent(ChatSystemEventType eventType) {
 		return eventType == ChatSystemEventType.EXCHANGE_REQUEST_CREATED
 				|| eventType == ChatSystemEventType.EXCHANGE_REQUEST_UPDATED;
 	}
 
-	private static ChatMessageResponse.Payload toPayload(ChatMessage message, Map<Long, String> thumbnails) {
-		ExchangeRequest request = message.getChatRoom().getExchangeRequest();
+	private static ChatMessageResponse.Payload toPayload(
+			ExchangeRequest request,
+			ChatSystemEventType eventType,
+			Map<Long, String> thumbnails
+	) {
 		Item requestedItem = request.getItem();
 		List<OfferedItem> offeredItems = request.getOfferedItems();
 		return new ChatMessageResponse.Payload(
-				message.getSystemEventType().name(),
+				eventType.name(),
 				request.getId(),
 				new ChatMessageResponse.RequestedItem(
 						requestedItem.getId(), requestedItem.getTitle(), requestedItem.getQuantity(),

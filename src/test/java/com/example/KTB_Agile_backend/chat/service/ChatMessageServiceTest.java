@@ -8,7 +8,10 @@ import com.example.KTB_Agile_backend.chat.entity.ChatSystemEventType;
 import com.example.KTB_Agile_backend.chat.messaging.ChatMessagePublisher;
 import com.example.KTB_Agile_backend.chat.repository.ChatMemberRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatMessageRepository;
+import com.example.KTB_Agile_backend.chat.repository.ChatRoomRepository;
+import com.example.KTB_Agile_backend.exchange.repository.ExchangeRequestRepository;
 import com.example.KTB_Agile_backend.group.repository.GroupMemberRepository;
+import com.example.KTB_Agile_backend.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -21,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -34,6 +38,15 @@ class ChatMessageServiceTest {
 
 	@Mock
 	private ChatMessageRepository chatMessageRepository;
+
+	@Mock
+	private ChatRoomRepository chatRoomRepository;
+
+	@Mock
+	private ExchangeRequestRepository exchangeRequestRepository;
+
+	@Mock
+	private UserRepository userRepository;
 
 	@Mock
 	private GroupMemberRepository groupMemberRepository;
@@ -50,6 +63,7 @@ class ChatMessageServiceTest {
 	@Test
 	void persistsSystemMessageAndBroadcastsOnlyAfterCommit() {
 		ChatRoom chatRoom = mock(ChatRoom.class);
+		when(chatRoom.getId()).thenReturn(22L);
 		ChatMessage message = mock(ChatMessage.class);
 		ChatSystemEventType eventType = ChatSystemEventType.EXCHANGE_REQUEST_CANCELED;
 		LocalDateTime createdAt = LocalDateTime.of(2026, 10, 18, 12, 30);
@@ -57,7 +71,8 @@ class ChatMessageServiceTest {
 		when(message.getCreatedAt()).thenReturn(createdAt);
 		ChatMessageResponse response = new ChatMessageResponse(301L, 22L, null, eventType.content(),
 				ChatMessageType.SYSTEM, eventType, createdAt, null, null, null);
-		when(chatMessageResponseMapper.toResponse(message, null)).thenReturn(response);
+		when(chatMessageResponseMapper.findSystemMessageThumbnails(any(), eq(null))).thenReturn(java.util.Map.of());
+		when(chatMessageResponseMapper.toResponse(message, null, null, null, java.util.Map.of())).thenReturn(response);
 
 		TransactionSynchronizationManager.initSynchronization();
 		try {

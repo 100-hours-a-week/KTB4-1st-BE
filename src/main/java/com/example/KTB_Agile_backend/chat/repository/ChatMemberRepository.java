@@ -11,84 +11,62 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ChatMemberRepository extends JpaRepository<ChatMember, Long> {
-	long countByChatRoom_Id(Long chatRoomId);
+	long countByChatRoomId(Long chatRoomId);
 
-	@Query("""
-		select member from ChatMember member
-		where member.chatRoom.id = :chatRoomId
-		  and member.chatRoom.deletedAt is null
-		  and member.user.id = :memberUserId
-		  and member.user.deletedAt is null
-		  and member.leftAt is null
-		""")
+	@Query(value = """
+		select cm.*
+		from chat_members cm
+		join chat_rooms room on room.chat_room_id = cm.chat_room_id
+		join users member_user on member_user.user_id = cm.user_id
+		where room.chat_room_id = :chatRoomId
+		  and room.deleted_at is null
+		  and cm.user_id = :memberUserId
+		  and member_user.deleted_at is null
+		  and cm.left_at is null
+		""", nativeQuery = true)
 	Optional<ChatMember> findActiveMember(
 			@Param("chatRoomId") Long chatRoomId,
 			@Param("memberUserId") Long userId
 	);
 
-	@Query("""
-		select distinct member
-		from ChatMember member
-		join fetch member.chatRoom room
-		join fetch room.exchangeRequest request
-		join fetch request.item
-		left join fetch request.offeredItems offered
-		left join fetch offered.item
-		where room.id = :chatRoomId
-		  and room.deletedAt is null
-		  and member.user.id = :memberUserId
-		  and member.user.deletedAt is null
-		  and member.leftAt is null
-		""")
-	Optional<ChatMember> findActiveMemberWithExchangeRequest(
-			@Param("chatRoomId") Long chatRoomId,
-			@Param("memberUserId") Long userId
-	);
-
-	@Query("""
-		select member
-		from ChatMember member
-		join fetch member.chatRoom room
-		join fetch room.exchangeRequest request
-		left join fetch request.group
-		join fetch request.item item
-		join fetch item.user
-		join fetch request.requester
-		where member.user.id = :userId
-		  and member.user.deletedAt is null
-		  and member.leftAt is null
-		  and room.deletedAt is null
+	@Query(value = """
+		select cm.*
+		from chat_members cm
+		join chat_rooms room on room.chat_room_id = cm.chat_room_id
+		join users member_user on member_user.user_id = cm.user_id
+		join exchange_requests request on request.exchange_request_id = room.exchange_request_id
+		where cm.user_id = :userId
+		  and member_user.deleted_at is null
+		  and cm.left_at is null
+		  and room.deleted_at is null
 		  and (:direction is null
-		       or (:direction = 'SENT' and request.requester.id = :userId)
-		       or (:direction = 'RECEIVED' and request.requester.id <> :userId))
-		order by room.lastMessageAt desc, room.id desc
-		""")
+		       or (:direction = 'SENT' and request.requester_id = :userId)
+		       or (:direction = 'RECEIVED' and request.requester_id <> :userId))
+		order by room.last_message_at desc, room.chat_room_id desc
+		""", nativeQuery = true)
 	List<ChatMember> findChatRoomsByUserId(
 			@Param("userId") Long userId,
 			@Param("direction") String direction,
 			Pageable pageable
 	);
 
-	@Query("""
-		select member
-		from ChatMember member
-		join fetch member.chatRoom room
-		join fetch room.exchangeRequest request
-		left join fetch request.group
-		join fetch request.item item
-		join fetch item.user
-		join fetch request.requester
-		where member.user.id = :userId
-		  and member.user.deletedAt is null
-		  and member.leftAt is null
-		  and room.deletedAt is null
+	@Query(value = """
+		select cm.*
+		from chat_members cm
+		join chat_rooms room on room.chat_room_id = cm.chat_room_id
+		join users member_user on member_user.user_id = cm.user_id
+		join exchange_requests request on request.exchange_request_id = room.exchange_request_id
+		where cm.user_id = :userId
+		  and member_user.deleted_at is null
+		  and cm.left_at is null
+		  and room.deleted_at is null
 		  and (:direction is null
-		       or (:direction = 'SENT' and request.requester.id = :userId)
-		       or (:direction = 'RECEIVED' and request.requester.id <> :userId))
-		  and (room.lastMessageAt < :cursorAt
-		       or (room.lastMessageAt = :cursorAt and room.id < :cursorRoomId))
-		order by room.lastMessageAt desc, room.id desc
-		""")
+		       or (:direction = 'SENT' and request.requester_id = :userId)
+		       or (:direction = 'RECEIVED' and request.requester_id <> :userId))
+		  and (room.last_message_at < :cursorAt
+		       or (room.last_message_at = :cursorAt and room.chat_room_id < :cursorRoomId))
+		order by room.last_message_at desc, room.chat_room_id desc
+		""", nativeQuery = true)
 	List<ChatMember> findChatRoomsByUserIdAfter(
 			@Param("userId") Long userId,
 			@Param("direction") String direction,
@@ -97,17 +75,17 @@ public interface ChatMemberRepository extends JpaRepository<ChatMember, Long> {
 			Pageable pageable
 	);
 
-	@Query("""
-		select member.chatRoom.id as chatRoomId, count(message.id) as unreadMessageCount
-		from ChatMember member
-		join ChatMessage message on message.chatRoom = member.chatRoom
-		where member.user.id = :userId
-		  and member.chatRoom.id in :chatRoomIds
-		  and member.leftAt is null
-		  and (message.user is null or message.user.id <> :userId)
-		  and (member.lastReadMessageId is null or message.id > member.lastReadMessageId)
-		group by member.chatRoom.id
-		""")
+	@Query(value = """
+		select cm.chat_room_id as chatRoomId, count(message.message_id) as unreadMessageCount
+		from chat_members cm
+		join chat_messages message on message.chat_room_id = cm.chat_room_id
+		where cm.user_id = :userId
+		  and cm.chat_room_id in (:chatRoomIds)
+		  and cm.left_at is null
+		  and (message.user_id is null or message.user_id <> :userId)
+		  and (cm.last_read_message_id is null or message.message_id > cm.last_read_message_id)
+		group by cm.chat_room_id
+		""", nativeQuery = true)
 	List<UnreadMessageCount> findUnreadMessageCounts(
 			@Param("userId") Long userId,
 			@Param("chatRoomIds") List<Long> chatRoomIds
