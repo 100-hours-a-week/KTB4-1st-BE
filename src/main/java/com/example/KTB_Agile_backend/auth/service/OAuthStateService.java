@@ -1,19 +1,17 @@
 package com.example.KTB_Agile_backend.auth.service;
 
-import com.example.KTB_Agile_backend.auth.state.OAuthStateStore;
+import com.example.KTB_Agile_backend.auth.state.RedisOAuthStateStore;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorDetail;
 import com.example.KTB_Agile_backend.auth.exception.AuthErrorCode;
 import com.example.KTB_Agile_backend.common.util.Hashing;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
@@ -25,19 +23,18 @@ public class OAuthStateService {
 			new ErrorDetail("state", "OAuth 인증 상태가 유효하지 않습니다.")
 	);
 
-	private final OAuthStateStore oauthStateStore;
+	private final RedisOAuthStateStore oauthStateStore;
 	private final Duration stateTtl;
 	private final SecureRandom secureRandom = new SecureRandom();
 
 	public OAuthStateService(
-			OAuthStateStore oauthStateStore,
+			RedisOAuthStateStore oauthStateStore,
 			@Value("${auth.oauth.state-ttl-seconds}") long stateTtlSeconds
 	) {
 		this.oauthStateStore = oauthStateStore;
 		this.stateTtl = Duration.ofSeconds(stateTtlSeconds);
 	}
 
-	@Transactional
 	public String issue(String provider) {
 		String normalizedProvider = normalizeProvider(provider);
 		byte[] stateBytes = new byte[32];
@@ -46,12 +43,11 @@ public class OAuthStateService {
 		oauthStateStore.save(
 				Hashing.sha256(state),
 				normalizedProvider,
-				LocalDateTime.now().plus(stateTtl)
+				stateTtl
 		);
 		return state;
 	}
 
-	@Transactional
 	public void consume(String stateCookie, String requestState, String provider) {
 		if (stateCookie == null || requestState == null
 				|| !MessageDigest.isEqual(
@@ -61,11 +57,9 @@ public class OAuthStateService {
 		}
 
 		String normalizedProvider = normalizeProvider(provider);
-		LocalDateTime now = LocalDateTime.now();
 		boolean consumed = oauthStateStore.consumeIfValid(
 				Hashing.sha256(stateCookie),
-				normalizedProvider,
-				now
+				normalizedProvider
 		);
 		if (!consumed) {
 			throw authenticationFailed();
