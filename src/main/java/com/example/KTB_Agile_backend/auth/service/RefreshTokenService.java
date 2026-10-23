@@ -17,6 +17,8 @@ import java.util.UUID;
 @Service
 public class RefreshTokenService {
 
+	private static final int TOKEN_SECRET_BYTES = 32;
+
 	private final RefreshTokenStore refreshTokenStore;
 	private final Duration refreshTokenTtl;
 	private final SecureRandom secureRandom = new SecureRandom();
@@ -63,7 +65,7 @@ public class RefreshTokenService {
 	}
 
 	private String createToken(String sessionId) {
-		byte[] tokenBytes = new byte[32];
+		byte[] tokenBytes = new byte[TOKEN_SECRET_BYTES];
 		secureRandom.nextBytes(tokenBytes);
 		return sessionId + "." + Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
 	}
@@ -78,7 +80,7 @@ public class RefreshTokenService {
 		}
 		try {
 			String sessionId = UUID.fromString(token.substring(0, separator)).toString();
-			if (Base64.getUrlDecoder().decode(token.substring(separator + 1)).length != 32) {
+			if (Base64.getUrlDecoder().decode(token.substring(separator + 1)).length != TOKEN_SECRET_BYTES) {
 				return Optional.empty();
 			}
 			return Optional.of(sessionId);

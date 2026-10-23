@@ -41,7 +41,7 @@ public class RedisRefreshTokenStore implements RefreshTokenStore {
 			end
 			return 'INVALID'
 			""", String.class);
-	private static final DefaultRedisScript<String> ROTATE = new DefaultRedisScript<>("""
+	private static final DefaultRedisScript<String> ROTATE_SCRIPT = new DefaultRedisScript<>("""
 			local userId = redis.call('HGET', KEYS[1], 'user_id')
 			local currentHash = redis.call('HGET', KEYS[1], 'current_hash')
 			local status = redis.call('HGET', KEYS[1], 'status')
@@ -62,7 +62,7 @@ public class RedisRefreshTokenStore implements RefreshTokenStore {
 			end
 			return 'INVALID'
 			""", String.class);
-	private static final DefaultRedisScript<Long> REVOKE = new DefaultRedisScript<>("""
+	private static final DefaultRedisScript<Long> REVOKE_SCRIPT = new DefaultRedisScript<>("""
 			local status = redis.call('HGET', KEYS[1], 'status')
 			if status ~= 'ACTIVE' then
 				return 0
@@ -105,7 +105,7 @@ public class RedisRefreshTokenStore implements RefreshTokenStore {
 	@Override
 	public Rotation rotate(String sessionId, String oldTokenHash, String newTokenHash) {
 		String result = redisTemplate.execute(
-				ROTATE,
+				ROTATE_SCRIPT,
 				List.of(sessionKey(sessionId), usedTokensKey(sessionId)),
 				oldTokenHash, newTokenHash
 		);
@@ -128,7 +128,7 @@ public class RedisRefreshTokenStore implements RefreshTokenStore {
 	@Override
 	public void revoke(String sessionId, String tokenHash) {
 		redisTemplate.execute(
-				REVOKE,
+				REVOKE_SCRIPT,
 				List.of(sessionKey(sessionId), usedTokensKey(sessionId)),
 				tokenHash
 		);
