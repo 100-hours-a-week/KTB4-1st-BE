@@ -6,6 +6,7 @@ import com.example.KTB_Agile_backend.auth.dto.response.OAuthStateResponse;
 import com.example.KTB_Agile_backend.auth.dto.response.TokenReissueResponse;
 import com.example.KTB_Agile_backend.auth.service.AuthService;
 import com.example.KTB_Agile_backend.auth.service.AuthTokenResult;
+import com.example.KTB_Agile_backend.auth.service.TokenReissueResult;
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -101,8 +102,11 @@ public class AuthController {
 	public ResponseEntity<ApiResponse<TokenReissueResponse>> reissueToken(
 			@CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String refreshToken
 	) {
-		TokenReissueResponse response = authService.reissueToken(refreshToken);
-		return ResponseEntity.ok(new ApiResponse<>(response, null));
+		TokenReissueResult result = authService.reissueToken(refreshToken);
+		return ResponseEntity.ok()
+				.header(HttpHeaders.SET_COOKIE,
+						refreshTokenCookie(result.refreshToken(), result.refreshTokenTtl()).toString())
+				.body(new ApiResponse<>(result.response(), null));
 	}
 
 	@PostMapping("/logout")
@@ -126,12 +130,16 @@ public class AuthController {
 	}
 
 	private ResponseCookie refreshTokenCookie(String refreshToken) {
+		return refreshTokenCookie(refreshToken, refreshTokenTtl);
+	}
+
+	private ResponseCookie refreshTokenCookie(String refreshToken, Duration ttl) {
 		return ResponseCookie.from(REFRESH_TOKEN_COOKIE, refreshToken)
 				.httpOnly(true)
 				.secure(secureCookies)
 				.sameSite("Lax")
 				.path(REFRESH_TOKEN_COOKIE_PATH)
-				.maxAge(refreshTokenTtl)
+				.maxAge(ttl)
 				.build();
 	}
 

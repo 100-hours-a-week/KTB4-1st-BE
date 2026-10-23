@@ -12,6 +12,7 @@ import com.example.KTB_Agile_backend.common.exception.ErrorDetail;
 import com.example.KTB_Agile_backend.auth.exception.AuthErrorCode;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.entity.UserStatus;
+import com.example.KTB_Agile_backend.user.repository.UserRepository;
 import com.example.KTB_Agile_backend.user.repository.UserPreferenceRepository;
 import com.example.KTB_Agile_backend.user.service.AccountProvisioningService;
 import com.example.KTB_Agile_backend.user.service.AccountResult;
@@ -34,6 +35,7 @@ public class AuthService {
 	private final AccountProvisioningService accountProvisioningService;
 	private final AccessTokenIssuer accessTokenIssuer;
 	private final RefreshTokenService refreshTokenService;
+	private final UserRepository userRepository;
 	private final UserPreferenceRepository userPreferenceRepository;
 
 	public String issueOAuthState() {
@@ -66,15 +68,18 @@ public class AuthService {
 	}
 
 	@Transactional
-	public TokenReissueResponse reissueToken(String refreshToken) {
-		User user = refreshTokenService.requireValidUser(refreshToken);
-		ensureActive(user);
-		return new TokenReissueResponse(
+	public TokenReissueResult reissueToken(String refreshToken) {
+		Long userId = refreshTokenService.requireCurrentUserId(refreshToken);
+		User user = userRepository.findActiveById(userId)
+				.orElseThrow(AuthService::authenticationFailed);
+		TokenReissueResponse response = new TokenReissueResponse(
 				accessTokenIssuer.issue(user),
 				TOKEN_TYPE,
 				accessTokenIssuer.expiresInSeconds(),
 				!userPreferenceRepository.existsByUser_Id(user.getId())
 		);
+		RefreshTokenRotation rotation = refreshTokenService.rotate(refreshToken);
+		return new TokenReissueResult(response, rotation.refreshToken(), rotation.remainingTtl());
 	}
 
 	@Transactional

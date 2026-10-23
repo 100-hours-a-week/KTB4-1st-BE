@@ -5,6 +5,7 @@ import com.example.KTB_Agile_backend.auth.dto.response.TokenReissueResponse;
 import com.example.KTB_Agile_backend.auth.dto.response.UserProfile;
 import com.example.KTB_Agile_backend.auth.service.AuthService;
 import com.example.KTB_Agile_backend.auth.service.AuthTokenResult;
+import com.example.KTB_Agile_backend.auth.service.TokenReissueResult;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.auth.exception.AuthErrorCode;
 import com.example.KTB_Agile_backend.common.exception.GlobalExceptionHandler;
@@ -14,6 +15,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import java.time.Duration;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -171,15 +174,22 @@ class AuthControllerTest {
 	}
 
 	@Test
-	void returnsPreferenceSetupStatusWhenRefreshingAccessToken() throws Exception {
+	void refreshesBothTokensAndReturnsPreferenceSetupStatus() throws Exception {
 		when(authService.reissueToken("refresh-token"))
-				.thenReturn(new TokenReissueResponse("access-token", "Bearer", 900, true));
+				.thenReturn(new TokenReissueResult(
+						new TokenReissueResponse("access-token", "Bearer", 900, true),
+						"rotated-refresh-token",
+						Duration.ofDays(4)
+				));
 
 		mockMvc.perform(post("/auth/refresh")
 					.cookie(new jakarta.servlet.http.Cookie("refresh_token", "refresh-token")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.accessToken").value("access-token"))
 				.andExpect(jsonPath("$.data.needsPreferenceSetup").value(true))
+				.andExpect(header().string(HttpHeaders.SET_COOKIE,
+						containsString("refresh_token=rotated-refresh-token")))
+				.andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=345600")))
 				.andExpect(jsonPath("$.error").value(nullValue()));
 	}
 
