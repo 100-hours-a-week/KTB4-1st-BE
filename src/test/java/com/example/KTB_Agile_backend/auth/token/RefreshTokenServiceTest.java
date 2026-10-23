@@ -1,20 +1,20 @@
 package com.example.KTB_Agile_backend.auth.token;
 
-import com.example.KTB_Agile_backend.common.util.Hashing;
 import com.example.KTB_Agile_backend.auth.service.RefreshTokenService;
-import com.example.KTB_Agile_backend.user.entity.RefreshToken;
+import com.example.KTB_Agile_backend.auth.service.RefreshTokenRotation;
+import com.example.KTB_Agile_backend.auth.token.RefreshTokenStore;
+import com.example.KTB_Agile_backend.common.util.Hashing;
 import com.example.KTB_Agile_backend.user.entity.User;
-import com.example.KTB_Agile_backend.user.repository.RefreshTokenRepository;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
-import java.time.LocalDateTime;
-import java.util.Optional;
+import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -23,48 +23,50 @@ class RefreshTokenServiceTest {
 
 	@Test
 	void issuesRandomTokenAndStoresOnlyItsHashWithExpiration() {
-		RefreshTokenRepository repository = mock(RefreshTokenRepository.class);
-		RefreshTokenService service = new RefreshTokenService(repository, 14);
+		RefreshTokenStore store = mock(RefreshTokenStore.class);
+		RefreshTokenService service = new RefreshTokenService(store, 14);
 		User user = new User("kim");
-		LocalDateTime beforeIssue = LocalDateTime.now().plusDays(14);
 
 		String token = service.issue(user);
+		String sessionId = token.substring(0, token.indexOf('.'));
 
-		ArgumentCaptor<RefreshToken> captor = ArgumentCaptor.forClass(RefreshToken.class);
-		verify(repository).save(captor.capture());
-		RefreshToken savedToken = captor.getValue();
-		assertSame(user, savedToken.getUser());
-		assertEquals(Hashing.sha256(token), savedToken.getTokenHash());
-		assertFalse(token.equals(savedToken.getTokenHash()));
-		assertFalse(savedToken.getExpiresAt().isBefore(beforeIssue));
+		assertTrue(sessionId.length() > 0);
+		assertNotEquals(Hashing.sha256(token), token);
+		verify(store).create(eq(sessionId), isNull(), eq(Hashing.sha256(token)), eq(Duration.ofDays(14)));
 	}
 
 	@Test
-	void returnsUserForValidRefreshToken() {
-		RefreshTokenRepository repository = mock(RefreshTokenRepository.class);
-		RefreshTokenService service = new RefreshTokenService(repository, 14);
+	void rotatesRefreshTokenAndKeepsItsSessionExpiry() {
+		RefreshTokenStore store = mock(RefreshTokenStore.class);
+		RefreshTokenService service = new RefreshTokenService(store, 14);
 		User user = new User("kim");
-		RefreshToken savedToken = new RefreshToken(user, Hashing.sha256("refresh-token"), LocalDateTime.now().plusDays(1));
-		when(repository.findByTokenHashAndDeletedAtIsNull(Hashing.sha256("refresh-token")))
-				.thenReturn(Optional.of(savedToken));
+		String token = service.issue(user);
+		String sessionId = token.substring(0, token.indexOf('.'));
+		when(store.rotate(eq(sessionId), eq(Hashing.sha256(token)), any()))
+				.thenReturn(new RefreshTokenStore.Rotation(
+						RefreshTokenStore.RotationStatus.ROTATED,
+						1L,
+						Duration.ofDays(3)
+				));
 
-		assertSame(user, service.requireValidUser("refresh-token"));
+		RefreshTokenRotation rotation = service.rotate(token);
+
+		assertNotEquals(token, rotation.refreshToken());
+		assertTrue(rotation.refreshToken().startsWith(sessionId + "."));
+		assertEquals(1L, rotation.userId());
+		assertEquals(Duration.ofDays(3), rotation.remainingTtl());
+		verify(store).rotate(eq(sessionId), eq(Hashing.sha256(token)), eq(Hashing.sha256(rotation.refreshToken())));
 	}
 
 	@Test
-	void revokesStoredRefreshToken() {
-		RefreshTokenRepository repository = mock(RefreshTokenRepository.class);
-		RefreshTokenService service = new RefreshTokenService(repository, 14);
-		RefreshToken savedToken = new RefreshToken(
-				new User("kim"),
-				Hashing.sha256("refresh-token"),
-				LocalDateTime.now().plusDays(1)
-		);
-		when(repository.findByTokenHashAndDeletedAtIsNull(Hashing.sha256("refresh-token")))
-				.thenReturn(Optional.of(savedToken));
+	void revokesTheSessionForItsCurrentRefreshToken() {
+		RefreshTokenStore store = mock(RefreshTokenStore.class);
+		RefreshTokenService service = new RefreshTokenService(store, 14);
+		String token = service.issue(new User("kim"));
+		String sessionId = token.substring(0, token.indexOf('.'));
 
-		service.revoke("refresh-token");
+		service.revoke(token);
 
-		assertNotNull(savedToken.getDeletedAt());
+		verify(store).revoke(sessionId, Hashing.sha256(token));
 	}
 }
