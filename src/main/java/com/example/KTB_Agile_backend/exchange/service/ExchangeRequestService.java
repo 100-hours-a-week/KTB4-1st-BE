@@ -87,10 +87,10 @@ public class ExchangeRequestService {
 			exchangeRequest.addOfferedItem(items.get(offeredRequest.itemId()), offeredRequest.quantity());
 		}
 		exchangeRequestRepository.save(exchangeRequest);
-		ChatRoom chatRoom = chatRoomRepository.save(new ChatRoom(exchangeRequest));
+		ChatRoom chatRoom = chatRoomRepository.save(new ChatRoom(exchangeRequest.getId()));
 		chatMemberRepository.saveAll(List.of(
-				new ChatMember(chatRoom, requester, ChatMemberRole.REQUESTER),
-				new ChatMember(chatRoom, requestedItem.getUser(), ChatMemberRole.OWNER)
+				new ChatMember(chatRoom.getId(), requester.getId(), ChatMemberRole.REQUESTER),
+				new ChatMember(chatRoom.getId(), requestedItem.getUser().getId(), ChatMemberRole.OWNER)
 		));
 		chatMessageService.sendSystemMessage(chatRoom, ChatSystemEventType.EXCHANGE_REQUEST_CREATED);
 		return toCreatedResponse(exchangeRequest, chatRoom);
@@ -122,7 +122,7 @@ public class ExchangeRequestService {
 
 		exchangeRequest.updateRequestedQuantity(request.requestedQuantity());
 		updateOfferedItems(exchangeRequest, request, items);
-		ChatRoom chatRoom = chatRoomRepository.findByExchangeRequest_Id(exchangeRequestId).orElseThrow();
+		ChatRoom chatRoom = chatRoomRepository.findByExchangeRequestId(exchangeRequestId).orElseThrow();
 		chatMessageService.sendSystemMessage(chatRoom, ChatSystemEventType.EXCHANGE_REQUEST_UPDATED);
 		return toCreatedResponse(exchangeRequest, chatRoom);
 	}
@@ -200,7 +200,7 @@ public class ExchangeRequestService {
 	}
 
 	private void closeChatRoomAndSendSystemMessage(Long exchangeRequestId, ChatSystemEventType eventType) {
-		chatRoomRepository.findByExchangeRequest_Id(exchangeRequestId).ifPresent(chatRoom -> {
+		chatRoomRepository.findByExchangeRequestId(exchangeRequestId).ifPresent(chatRoom -> {
 			chatRoom.close();
 			chatMessageService.sendSystemMessage(chatRoom, eventType);
 		});

@@ -1,26 +1,24 @@
 package com.example.KTB_Agile_backend.chat.entity;
 
-import com.example.KTB_Agile_backend.user.entity.User;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
-
 class ChatMessageTest {
 
 	@Test
 	void userMessageRequiresUser() {
 		assertThrows(NullPointerException.class,
-				() -> new ChatMessage(mock(ChatRoom.class), null, "메시지"));
+				() -> new ChatMessage(22L, null, "메시지"));
 	}
 
 	@Test
 	void systemMessageHasNoUserAndSystemType() {
 		ChatMessage message = ChatMessage.system(
-				mock(ChatRoom.class), ChatSystemEventType.EXCHANGE_REQUEST_REJECTED);
+				22L, ChatSystemEventType.EXCHANGE_REQUEST_REJECTED);
 
-		assertThat(message.getUser()).isNull();
+		assertThat(message.getChatRoomId()).isEqualTo(22L);
+		assertThat(message.getUserId()).isNull();
 		assertThat(message.getMessageType()).isEqualTo(ChatMessageType.SYSTEM);
 		assertThat(message.getSystemEventType()).isEqualTo(ChatSystemEventType.EXCHANGE_REQUEST_REJECTED);
 		assertThat(message.getContent()).isEqualTo("교환이 거절 되었습니다.");
@@ -28,10 +26,10 @@ class ChatMessageTest {
 
 	@Test
 	void userMessageHasUserAndTextType() {
-		User user = new User("사용자");
-		ChatMessage message = new ChatMessage(mock(ChatRoom.class), user, "메시지");
+		ChatMessage message = new ChatMessage(22L, 42L, "메시지");
 
-		assertThat(message.getUser()).isSameAs(user);
+		assertThat(message.getChatRoomId()).isEqualTo(22L);
+		assertThat(message.getUserId()).isEqualTo(42L);
 		assertThat(message.getMessageType()).isEqualTo(ChatMessageType.TEXT);
 	}
 }
