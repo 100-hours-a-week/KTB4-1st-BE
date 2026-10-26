@@ -26,11 +26,11 @@ public class KafkaSearchHistoryEventPublisher implements SearchHistoryEventPubli
 			kafkaTemplate.send(KafkaTopics.SEARCH_HISTORY_EVENTS, event.userId().toString(), payload)
 					.whenComplete((result, error) -> {
 						if (error != null) {
-							log.error("Failed to publish search history event", error);
+							log.error("Failed to publish Kafka event: topic={}", KafkaTopics.SEARCH_HISTORY_EVENTS, error);
 						}
 					});
 		} catch (RuntimeException exception) {
-			log.error("Failed to publish search history event", exception);
+			log.error("Failed to publish Kafka event: topic={}", KafkaTopics.SEARCH_HISTORY_EVENTS, exception);
 		}
 	}
 
