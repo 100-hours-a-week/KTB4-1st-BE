@@ -10,6 +10,8 @@ public enum GroupErrorCode implements ApiErrorCode {
 	GROUP_ALREADY_JOINED("GROUP_ALREADY_JOINED", HttpStatus.CONFLICT, "이미 가입한 그룹입니다."),
 	GROUP_MEMBER_NOT_FOUND("GROUP_MEMBER_NOT_FOUND", HttpStatus.NOT_FOUND, "그룹 멤버를 찾을 수 없습니다."),
 	GROUP_ALREADY_LEFT("GROUP_ALREADY_LEFT", HttpStatus.CONFLICT, "이미 탈퇴한 그룹입니다."),
+	GROUP_LOCATION_VERIFICATION_FAILED("GROUP_LOCATION_VERIFICATION_FAILED", HttpStatus.FORBIDDEN, "그룹 위치 인증에 실패했습니다."),
+	GROUP_LOCATION_VERIFICATION_REQUIRED("GROUP_LOCATION_VERIFICATION_REQUIRED", HttpStatus.FORBIDDEN, "그룹 위치 인증이 필요하거나 만료되었습니다."),
 	GROUP_MEMBERSHIP_REQUIRED("GROUP_MEMBERSHIP_REQUIRED", HttpStatus.FORBIDDEN, "그룹 멤버만 물품을 조회할 수 있습니다.");
 
 	private final String codeValue;
