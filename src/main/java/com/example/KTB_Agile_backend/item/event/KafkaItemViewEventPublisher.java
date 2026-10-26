@@ -26,11 +26,11 @@ public class KafkaItemViewEventPublisher implements ItemViewEventPublisher {
 			kafkaTemplate.send(KafkaTopics.ITEM_VIEW_EVENTS, event.itemId().toString(), payload)
 					.whenComplete((result, error) -> {
 						if (error != null) {
-							log.error("Failed to publish item view event", error);
+							log.error("Failed to publish Kafka event: topic={}", KafkaTopics.ITEM_VIEW_EVENTS, error);
 						}
 					});
 		} catch (RuntimeException exception) {
-			log.error("Failed to publish item view event", exception);
+			log.error("Failed to publish Kafka event: topic={}", KafkaTopics.ITEM_VIEW_EVENTS, exception);
 		}
 	}
 
