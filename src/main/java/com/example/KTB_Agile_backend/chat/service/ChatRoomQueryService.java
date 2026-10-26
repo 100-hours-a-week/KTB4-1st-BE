@@ -230,7 +230,6 @@ public class ChatRoomQueryService {
 				return size;
 			}
 		} catch (NumberFormatException ignored) {
-			// Return the endpoint-specific bad request below.
 		}
 		throw badPageRequest();
 	}

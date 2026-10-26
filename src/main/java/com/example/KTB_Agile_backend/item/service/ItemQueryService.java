@@ -322,7 +322,6 @@ public class ItemQueryService {
 				return size;
 			}
 		} catch (NumberFormatException ignored) {
-			// Return the endpoint-specific bad request below.
 		}
 		throw invalidMyItemsRequest();
 	}
