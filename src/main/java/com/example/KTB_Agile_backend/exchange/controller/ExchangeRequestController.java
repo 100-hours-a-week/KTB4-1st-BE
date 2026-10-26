@@ -178,7 +178,6 @@ public class ExchangeRequestController {
 				return id;
 			}
 		} catch (NumberFormatException ignored) {
-			// Return the endpoint-specific bad request below.
 		}
 		throw new ApiException(errorCode);
 	}
