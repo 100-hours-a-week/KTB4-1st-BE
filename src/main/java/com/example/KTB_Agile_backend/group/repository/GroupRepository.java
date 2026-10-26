@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +20,10 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	Optional<Group> findByIdAndDeletedAtIsNull(Long groupId);
+
+	@Query("select g from Group g where g.id = :groupId and g.deletedAt is null")
+	@Transactional(readOnly = true)
+	Optional<Group> findActiveForLocationVerification(@Param("groupId") Long groupId);
 
 	boolean existsByIdAndDeletedAtIsNull(Long groupId);
 

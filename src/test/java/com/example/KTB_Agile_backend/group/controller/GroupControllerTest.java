@@ -3,6 +3,7 @@ package com.example.KTB_Agile_backend.group.controller;
 import com.example.KTB_Agile_backend.common.exception.GlobalExceptionHandler;
 import com.example.KTB_Agile_backend.group.dto.response.GroupPageResponse;
 import com.example.KTB_Agile_backend.group.dto.response.GroupSummary;
+import com.example.KTB_Agile_backend.group.service.GroupLocationVerificationService;
 import com.example.KTB_Agile_backend.group.service.GroupQueryService;
 import com.example.KTB_Agile_backend.group.service.GroupService;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,14 +33,16 @@ class GroupControllerTest {
 
 	private GroupService groupService;
 	private GroupQueryService groupQueryService;
+	private GroupLocationVerificationService groupLocationVerificationService;
 	private MockMvc mockMvc;
 
 	@BeforeEach
 	void setUp() {
 		groupService = mock(GroupService.class);
 		groupQueryService = mock(GroupQueryService.class);
+		groupLocationVerificationService = mock(GroupLocationVerificationService.class);
 		mockMvc = MockMvcBuilders
-				.standaloneSetup(new GroupController(groupService, groupQueryService))
+				.standaloneSetup(new GroupController(groupService, groupQueryService, groupLocationVerificationService))
 				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
 	}
@@ -96,6 +99,7 @@ class GroupControllerTest {
 				.andExpect(status().isCreated())
 				.andExpect(header().string("Location", "/groups/7/members/me"));
 
+		verify(groupLocationVerificationService).consume(42L, 7L);
 		verify(groupService).join(42L, 7L);
 	}
 
