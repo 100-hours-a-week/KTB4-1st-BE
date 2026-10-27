@@ -3,6 +3,7 @@ package com.example.KTB_Agile_backend.group.controller;
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
 import com.example.KTB_Agile_backend.group.dto.request.CreateGroupRequest;
 import com.example.KTB_Agile_backend.group.dto.request.GroupLocationVerificationRequest;
+import com.example.KTB_Agile_backend.group.dto.response.GroupLocationVerificationResponse;
 import com.example.KTB_Agile_backend.group.dto.response.GroupPageResponse;
 import com.example.KTB_Agile_backend.group.service.GroupLocationVerificationService;
 import com.example.KTB_Agile_backend.group.service.GroupQueryService;
@@ -61,14 +62,14 @@ public class GroupController {
 	}
 
 	@PostMapping("/{groupId}/location-verifications")
-	public ResponseEntity<Void> verifyLocation(
+	public ResponseEntity<ApiResponse<GroupLocationVerificationResponse>> verifyLocation(
 			Authentication authentication,
 			@PathVariable Long groupId,
 			@Valid @RequestBody GroupLocationVerificationRequest request
 	) {
 		Long userId = Long.valueOf(authentication.getName());
-		groupLocationVerificationService.verify(userId, groupId, request);
-		return ResponseEntity.noContent().build();
+		GroupLocationVerificationResponse result = groupLocationVerificationService.verify(userId, groupId, request);
+		return ResponseEntity.ok(new ApiResponse<>(result, null));
 	}
 
 	@PostMapping("/{groupId}/members")
