@@ -117,6 +117,7 @@ state는 Authorization 헤더에 넣는 값이 아닙니다.
 | GET | /users/me | Bearer | 로그인 사용자의 닉네임과 프로필 이미지 조회 |
 | DELETE | /users | Bearer | 회원 탈퇴 처리 |
 | GET | /api/items | Bearer | 가입한 그룹의 상품 검색 및 빈 키워드일 때 전체 상품 조회 |
+| POST | /groups/{groupId}/location-verifications | Bearer | 그룹 위치 인증 결과 확인 |
 | GET | /api/search-histories | Bearer | 검색 이력 최신순 조회 (최대 10개씩 커서 페이지) |
 | DELETE | /api/search-histories/{searchHistoryId} | Bearer | 검색 이력 한 건 soft-delete |
 | DELETE | /api/search-histories | Bearer | 로그인 사용자의 검색 이력 전체 soft-delete |
@@ -491,6 +492,7 @@ JWT secret, Kakao client secret, Kakao Admin key는 Postman 요청에 넣지 않
 
 | 기능 | Method | URL | Request Header | Request Body | 필수 / 검증 및 쿠키 | Response Status | Response Body |
 |---|---|---|---|---|---|---|---|
+| 그룹 위치 인증 | POST | /groups/{groupId}/location-verifications | Authorization: Bearer Access Token<br>Content-Type: application/json | {<br>  "latitude": 37.5665,<br>  "longitude": 126.978,<br>  "accuracy": 20<br>} | latitude: -90~90, longitude: -180~180, accuracy: 0 이상<br>정확도 200m 초과 시 `ACCURACY_TOO_LOW`, 그룹 위치 반경 500m 초과 시 `DISTANCE_TOO_FAR`로 인증 결과를 반환합니다. | 200 | {<br>  "data": {<br>    "verified": false,<br>    "failureReason": "DISTANCE_TOO_FAR"<br>  },<br>  "error": null<br>}<br><br>성공 시 `verified`는 true, `failureReason`은 null입니다. |
 | 상품 검색 | GET | /api/items?groupId={groupId}&keyword={keyword}&itemState={itemState}&cursor={cursor} | Authorization: Bearer Access Token<br>Accept: application/json (선택) | 없음 | groupId 필수, keyword, itemState, cursor 선택<br>로그인 사용자가 ACTIVE 멤버인 그룹만 검색할 수 있습니다.<br>keyword는 앞뒤 공백 제거 후 상품명 또는 내용에 부분 매칭합니다.<br>최대 255자입니다. 빈 키워드는 선택한 그룹의 전체 상품을 조회하고 이력은 저장하지 않습니다.<br>itemState는 AVAILABLE(거래가능) 또는 UNAVAILABLE(거래완료)이며 생략하면 모든 상태를 조회합니다. 다음 페이지는 같은 itemState로 요청해야 합니다. 상태가 이전 커서와 다르면 cursor를 무시하고 첫 페이지부터 반환합니다.<br>실행된 검색은 결과가 0건이어도 첫 페이지 요청에서 이력을 저장합니다. | 200 | {<br>  "data": {<br>    "items": [],<br>    "nextCursor": null,<br>    "hasNext": false<br>  },<br>  "error": null<br>} |
 | 검색 이력 조회 | GET | /api/search-histories?cursor={cursor} | Authorization: Bearer Access Token<br>Accept: application/json (선택) | 없음 | cursor 선택<br>lastSearchedAt 내림차순, 동률이면 ID 내림차순으로 조회합니다.<br>한 페이지에 최대 10개를 반환합니다. | 200 | {<br>  "data": {<br>    "searchHistories": [<br>      {<br>        "searchHistoryId": 801,<br>        "keyword": "충전기",<br>        "lastSearchedAt": "2026-09-07T10:30:00",<br>        "createdAt": "2026-09-01T09:00:00"<br>      }<br>    ],<br>    "nextCursor": null,<br>    "hasNext": false<br>  },<br>  "error": null<br>} |
 | 검색 이력 단일 삭제 | DELETE | /api/search-histories/{searchHistoryId} | Authorization: Bearer Access Token<br>Accept: application/json (선택) | 없음 | 로그인 사용자가 소유한 검색 이력 한 건을 soft-delete합니다. | 204 | 응답 본문 없음 |
@@ -508,6 +510,10 @@ JWT secret, Kakao client secret, Kakao Admin key는 Postman 요청에 넣지 않
 
 | 기능 | Response Status | Response Body |
 |---|---:|---|
+| POST /groups/{groupId}/location-verifications | 400 | {<br>  "data": null,<br>  "error": {<br>    "code": "REQUEST_VALIDATION_FAILED",<br>    "message": "요청 값이 올바르지 않습니다.",<br>    "details": [<br>      {<br>        "field": "accuracy",<br>        "reason": "정확도 값이 올바르지 않습니다."<br>      }<br>    ]<br>  }<br>} |
+| POST /groups/{groupId}/location-verifications | 401 | {<br>  "data": null,<br>  "error": {<br>    "code": "AUTHENTICATION_REQUIRED",<br>    "message": "로그인이 필요합니다.",<br>    "details": []<br>  }<br>} |
+| POST /groups/{groupId}/location-verifications | 404 | {<br>  "data": null,<br>  "error": {<br>    "code": "GROUP_NOT_FOUND",<br>    "message": "그룹을 찾을 수 없습니다.",<br>    "details": []<br>  }<br>} |
+| POST /groups/{groupId}/location-verifications | 500 | {<br>  "data": null,<br>  "error": {<br>    "code": "INTERNAL_SERVER_ERROR",<br>    "message": "서버 오류가 발생했습니다.",<br>    "details": []<br>  }<br>} |
 | POST /auth/oauth | 400 | {<br>  "data": null,<br>  "error": {<br>    "code": "REQUEST_VALIDATION_FAILED",<br>    "message": "요청 값이 올바르지 않습니다.",<br>    "details": [<br>      {<br>        "field": "authorizationCode",<br>        "reason": "유효하지 않은 인가 코드입니다."<br>      },<br>      {<br>        "field": "state",<br>        "reason": "state는 필수 입력값입니다."<br>      }<br>    ]<br>  }<br>} |
 | POST /auth/oauth | 401 | {<br>  "data": null,<br>  "error": {<br>    "code": "AUTH_OAUTH_AUTHENTICATION_FAILED",<br>    "message": "OAuth 인증에 실패했습니다.",<br>    "details": [<br>      {<br>        "field": "authorizationCode",<br>        "reason": "인가 코드가 만료되었거나 유효하지 않습니다."<br>      }<br>    ]<br>  }<br>} |
 | POST /auth/oauth | 401 | {<br>  "data": null,<br>  "error": {<br>    "code": "AUTH_OAUTH_STATE_INVALID",<br>    "message": "OAuth 인증 상태가 유효하지 않습니다.",<br>    "details": [<br>      {<br>        "field": "state",<br>        "reason": "OAuth 인증 상태가 유효하지 않습니다."<br>      }<br>    ]<br>  }<br>} |

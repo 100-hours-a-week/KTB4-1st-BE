@@ -2,6 +2,8 @@ package com.example.KTB_Agile_backend.group.service;
 
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.group.dto.request.GroupLocationVerificationRequest;
+import com.example.KTB_Agile_backend.group.dto.response.GroupLocationVerificationResponse;
+import com.example.KTB_Agile_backend.group.dto.response.GroupLocationVerificationResponse.FailureReason;
 import com.example.KTB_Agile_backend.group.entity.Group;
 import com.example.KTB_Agile_backend.group.exception.GroupErrorCode;
 import com.example.KTB_Agile_backend.group.repository.GroupRepository;
@@ -25,7 +27,7 @@ public class GroupLocationVerificationService {
 	private final GroupRepository groupRepository;
 	private final StringRedisTemplate redisTemplate;
 
-	public void verify(
+	public GroupLocationVerificationResponse verify(
 			Long userId,
 			Long groupId,
 			GroupLocationVerificationRequest request
@@ -33,12 +35,15 @@ public class GroupLocationVerificationService {
 		Group group = groupRepository.findActiveForLocationVerification(groupId)
 				.orElseThrow(() -> new ApiException(GroupErrorCode.GROUP_NOT_FOUND));
 
-		if (request.accuracy().compareTo(MAX_ACCURACY_METERS) > 0
-				|| distanceMeters(group, request.latitude(), request.longitude()) > VERIFICATION_RADIUS_METERS) {
-			throw new ApiException(GroupErrorCode.GROUP_LOCATION_VERIFICATION_FAILED);
+		if (request.accuracy().compareTo(MAX_ACCURACY_METERS) > 0) {
+			return new GroupLocationVerificationResponse(false, FailureReason.ACCURACY_TOO_LOW);
+		}
+		if (distanceMeters(group, request.latitude(), request.longitude()) > VERIFICATION_RADIUS_METERS) {
+			return new GroupLocationVerificationResponse(false, FailureReason.DISTANCE_TOO_FAR);
 		}
 
 		redisTemplate.opsForValue().set(verificationKey(userId, groupId), "verified", VERIFICATION_TTL);
+		return new GroupLocationVerificationResponse(true, null);
 	}
 
 	public void consume(Long userId, Long groupId) {
