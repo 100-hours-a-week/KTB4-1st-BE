@@ -1,0 +1,231 @@
+openapi: 3.0.3
+info:
+  title: Item Recommendation API
+  version: 1.0.0
+  description: 로그인 사용자를 위한 최근 6시간 조회 이벤트 기반 상품 추천 API입니다.
+servers:
+  - url: /
+    description: Spring 백엔드
+tags:
+  - name: Item Recommendation
+    description: 최근 조회 이벤트 순 상품 추천
+paths:
+  /items/recommendations:
+    get:
+      tags: [Item Recommendation]
+      summary: 최근 인기 상품 페이지 조회
+      operationId: findPopularItems
+      description: |
+        최근 6시간 동안의 상품 상세 조회 이벤트가 많은 순서로 상품을 반환합니다.
+        다음 페이지 요청에는 응답의 `nextCursor`를 그대로 전달하고 `size`를 유지하세요.
+        순위는 조회 이벤트에 따라 바뀔 수 있으므로 페이지 사이에 일부 항목의 위치가 달라질 수 있습니다.
+        응답 `ItemSummary.viewCount`는 기존 누적 조회수이며, 추천 정렬 기준은 별도의 최근 6시간 집계입니다.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: size
+          in: query
+          required: false
+          description: 페이지 크기 (기본값 20, 최소 1, 최대 100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          example: 20
+        - name: cursor
+          in: query
+          required: false
+          description: 이전 응답의 `nextCursor`. opaque 값이며 이 API에서만 사용합니다.
+          schema:
+            type: string
+          example: MjA=
+      responses:
+        '200':
+          description: 추천 상품 페이지 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemRecommendationPageEnvelope'
+              example:
+                data:
+                  items:
+                    - itemId: 101
+                      title: 캠핑 의자
+                      contentPreview: 가볍고 튼튼한 캠핑 의자입니다.
+                      quantity: 1
+                      owner:
+                        userId: 9
+                        nickname: 민지
+                      itemState: AVAILABLE
+                      thumbnailImageUrl: https://example.com/items/101.png
+                      likeCount: 12
+                      viewCount: 238
+                      exchangeRequestCount: 3
+                      isLiked: false
+                      createdAt: '2026-10-28T10:30:00'
+                  nextCursor: MjA=
+                  hasNext: true
+                error: null
+        '400':
+          description: size 또는 cursor 값이 올바르지 않음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+              examples:
+                invalidSize:
+                  summary: 허용 범위를 벗어난 페이지 크기
+                  value:
+                    data: null
+                    error:
+                      code: BAD_REQUEST
+                      message: size 값이 올바르지 않습니다.
+                      details: []
+                invalidCursor:
+                  summary: 잘못된 cursor
+                  value:
+                    data: null
+                    error:
+                      code: INVALID_CURSOR
+                      message: cursor가 올바르지 않습니다.
+                      details: []
+        '401':
+          description: 로그인이 필요함
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+              example:
+                data: null
+                error:
+                  code: AUTHENTICATION_REQUIRED
+                  message: 로그인이 필요합니다.
+                  details: []
+        '500':
+          description: 서버 내부 오류
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+              example:
+                data: null
+                error:
+                  code: INTERNAL_SERVER_ERROR
+                  message: 서버 오류가 발생했습니다.
+                  details: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ItemRecommendationPageEnvelope:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          $ref: '#/components/schemas/ItemRecommendationPage'
+        error:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/ApiError'
+    ItemRecommendationPage:
+      type: object
+      required: [items, nextCursor, hasNext]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemSummary'
+        nextCursor:
+          type: string
+          nullable: true
+          description: 다음 페이지가 없으면 null입니다.
+        hasNext:
+          type: boolean
+    ItemSummary:
+      type: object
+      required:
+        - itemId
+        - title
+        - contentPreview
+        - quantity
+        - owner
+        - itemState
+        - likeCount
+        - viewCount
+        - exchangeRequestCount
+        - isLiked
+        - createdAt
+      properties:
+        itemId:
+          type: integer
+          format: int64
+        title:
+          type: string
+        contentPreview:
+          type: string
+        quantity:
+          type: integer
+        owner:
+          $ref: '#/components/schemas/ItemOwner'
+        itemState:
+          type: string
+          enum: [AVAILABLE, UNAVAILABLE]
+        thumbnailImageUrl:
+          type: string
+          nullable: true
+        likeCount:
+          type: integer
+          format: int64
+        viewCount:
+          type: integer
+          format: int64
+          description: 전체 기간 누적 조회수입니다. 추천 정렬 점수와는 다릅니다.
+        exchangeRequestCount:
+          type: integer
+          format: int64
+        isLiked:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    ItemOwner:
+      type: object
+      required: [userId, nickname]
+      properties:
+        userId:
+          type: integer
+          format: int64
+        nickname:
+          type: string
+    ApiErrorEnvelope:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          type: object
+          nullable: true
+        error:
+          $ref: '#/components/schemas/ApiError'
+    ApiError:
+      type: object
+      required: [code, message, details]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+            required: [field, reason]
+            properties:
+              field:
+                type: string
+              reason:
+                type: string

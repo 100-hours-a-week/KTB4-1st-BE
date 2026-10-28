@@ -6,12 +6,15 @@ import com.example.KTB_Agile_backend.item.dto.request.UpdateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.response.ItemCreateResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
+import com.example.KTB_Agile_backend.item.dto.response.ItemRecommendationPageResponse;
+import com.example.KTB_Agile_backend.item.dto.response.ItemSummary;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.event.ItemViewEvent;
 import com.example.KTB_Agile_backend.item.event.ItemViewEventPublisher;
 import com.example.KTB_Agile_backend.item.service.ItemService;
 import com.example.KTB_Agile_backend.item.service.ItemQueryService;
 import com.example.KTB_Agile_backend.item.service.ItemLikeService;
+import com.example.KTB_Agile_backend.item.service.ItemRecommendationService;
 import com.example.KTB_Agile_backend.user.entity.UserStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,6 +42,7 @@ class ItemControllerTest {
 	private ItemService itemService;
 	private ItemLikeService itemLikeService;
 	private ItemQueryService itemQueryService;
+	private ItemRecommendationService itemRecommendationService;
 	private ItemViewEventPublisher itemViewEventPublisher;
 	private MockMvc mockMvc;
 
@@ -47,10 +51,12 @@ class ItemControllerTest {
 		itemService = mock(ItemService.class);
 		itemLikeService = mock(ItemLikeService.class);
 		itemQueryService = mock(ItemQueryService.class);
+		itemRecommendationService = mock(ItemRecommendationService.class);
 		itemViewEventPublisher = mock(ItemViewEventPublisher.class);
 		mockMvc = MockMvcBuilders
 				.standaloneSetup(new ItemController(
-						itemService, itemLikeService, itemQueryService, itemViewEventPublisher))
+						itemService, itemLikeService, itemQueryService,
+						itemRecommendationService, itemViewEventPublisher))
 				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
 	}
@@ -94,6 +100,38 @@ class ItemControllerTest {
 				.andExpect(jsonPath("$.data.nextCursor").doesNotExist());
 
 		verify(itemQueryService).findByGroup(42L, 7L, "cursor");
+	}
+
+	@Test
+	void listsRecommendedItemsWithItemSummaryPage() throws Exception {
+		ItemSummary summary = new ItemSummary(
+				123L,
+				"추천 상품",
+				"상품 설명",
+				1,
+				new ItemSummary.Owner(7L, "판매자"),
+				ItemState.AVAILABLE,
+				null,
+				0L,
+				4L,
+				0L,
+				false,
+				LocalDateTime.parse("2026-10-28T12:00:00")
+		);
+		when(itemRecommendationService.findPopularItems(42L, "10", "cursor"))
+				.thenReturn(new ItemRecommendationPageResponse(List.of(summary), "next", true));
+
+		mockMvc.perform(get("/items/recommendations")
+					.param("size", "10")
+					.param("cursor", "cursor")
+					.principal(new UsernamePasswordAuthenticationToken("42", null)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.items[0].itemId").value(123))
+				.andExpect(jsonPath("$.data.items[0].title").value("추천 상품"))
+				.andExpect(jsonPath("$.data.nextCursor").value("next"))
+				.andExpect(jsonPath("$.data.hasNext").value(true));
+
+		verify(itemRecommendationService).findPopularItems(42L, "10", "cursor");
 	}
 
 	@Test

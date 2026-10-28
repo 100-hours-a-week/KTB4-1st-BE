@@ -7,6 +7,7 @@ import com.example.KTB_Agile_backend.item.dto.response.ItemCreateResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemLikeResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
+import com.example.KTB_Agile_backend.item.dto.response.ItemRecommendationPageResponse;
 import com.example.KTB_Agile_backend.item.dto.response.MyItemPageResponse;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.event.ItemViewEvent;
@@ -14,6 +15,7 @@ import com.example.KTB_Agile_backend.item.event.ItemViewEventPublisher;
 import com.example.KTB_Agile_backend.item.service.ItemLikeService;
 import com.example.KTB_Agile_backend.item.service.ItemService;
 import com.example.KTB_Agile_backend.item.service.ItemQueryService;
+import com.example.KTB_Agile_backend.item.service.ItemRecommendationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -37,6 +39,7 @@ public class ItemController {
 	private final ItemService itemService;
 	private final ItemLikeService itemLikeService;
 	private final ItemQueryService itemQueryService;
+	private final ItemRecommendationService itemRecommendationService;
 	private final ItemViewEventPublisher itemViewEventPublisher;
 
 	@GetMapping("/items")
@@ -49,6 +52,17 @@ public class ItemController {
 	) {
 		ItemPageResponse response = itemQueryService.search(
 				Long.valueOf(authentication.getName()), groupId, keyword, itemState, cursor);
+		return ResponseEntity.ok(new ApiResponse<>(response, null));
+	}
+
+	@GetMapping("/items/recommendations")
+	public ResponseEntity<ApiResponse<ItemRecommendationPageResponse>> findPopularItems(
+			Authentication authentication,
+			@RequestParam(defaultValue = "20") String size,
+			@RequestParam(required = false) String cursor
+	) {
+		ItemRecommendationPageResponse response = itemRecommendationService.findPopularItems(
+				Long.valueOf(authentication.getName()), size, cursor);
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 
