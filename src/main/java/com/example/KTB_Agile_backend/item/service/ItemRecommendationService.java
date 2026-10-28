@@ -6,8 +6,6 @@ import com.example.KTB_Agile_backend.common.pagination.CursorCodec;
 import com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection;
 import com.example.KTB_Agile_backend.item.dto.response.ItemRecommendationPageResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemSummary;
-import com.example.KTB_Agile_backend.item.repository.ItemRepository;
-import com.example.KTB_Agile_backend.user.entity.UserStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
@@ -95,7 +93,6 @@ public class ItemRecommendationService {
 			""", Long.class);
 
 	private final StringRedisTemplate redisTemplate;
-	private final ItemRepository itemRepository;
 	private final ItemQueryService itemQueryService;
 
 	public void recordView(Long itemId, long timestampMillis, int partition, long offset) {
@@ -148,44 +145,69 @@ public class ItemRecommendationService {
 	}
 
 	@Transactional(readOnly = true)
-	public ItemRecommendationPageResponse findPopularItems(Long userId, String sizeValue, String cursor) {
+	public ItemRecommendationPageResponse findPopularItems(
+			Long userId, Long groupId, String sizeValue, String cursor) {
 		int size = parseSize(sizeValue);
 		long offset = cursor == null || cursor.isBlank() ? 0 : CursorCodec.decodeId(cursor);
-		long end;
+		itemQueryService.validateActiveGroupMembership(userId, groupId);
+
+		// shortcut: scans until it finds size+1 group items or exhausts the global ranking; add a group index if scans grow costly.
+		List<RankedItem> rankedItems = new ArrayList<>();
+		int fetchSize = size + 1;
+		while (rankedItems.size() <= size) {
+			long end = addCursorOffset(offset, fetchSize - 1L);
+			Set<ZSetOperations.TypedTuple<String>> tuples = redisTemplate.opsForZSet()
+					.reverseRangeWithScores(POPULARITY_KEY, offset, end);
+			if (tuples == null || tuples.isEmpty()) {
+				break;
+			}
+
+			List<ZSetOperations.TypedTuple<String>> ranked = new ArrayList<>(tuples);
+			ranked.sort((left, right) -> {
+				int scoreOrder = Double.compare(right.getScore(), left.getScore());
+				return scoreOrder == 0 ? right.getValue().compareTo(left.getValue()) : scoreOrder;
+			});
+			List<Long> itemIds = ranked.stream().map(tuple -> Long.valueOf(tuple.getValue())).toList();
+			Map<Long, ItemSummaryProjection> summariesById = new LinkedHashMap<>();
+			itemQueryService.findActiveItemSummariesByGroupIdAndItemIds(groupId, itemIds)
+					.forEach(summary -> summariesById.put(summary.itemId(), summary));
+
+			for (int index = 0; index < ranked.size(); index++) {
+				Long itemId = Long.valueOf(ranked.get(index).getValue());
+				ItemSummaryProjection summary = summariesById.get(itemId);
+				if (summary != null) {
+					rankedItems.add(new RankedItem(addCursorOffset(offset, index), summary));
+					if (rankedItems.size() > size) {
+						break;
+					}
+				}
+			}
+			if (rankedItems.size() > size || ranked.size() < fetchSize) {
+				break;
+			}
+			offset = addCursorOffset(offset, ranked.size());
+		}
+
+		boolean hasNext = rankedItems.size() > size;
+		List<RankedItem> page = hasNext ? rankedItems.subList(0, size) : rankedItems;
+		List<ItemSummaryProjection> summaries = page.stream().map(RankedItem::summary).toList();
+		List<ItemSummary> items = itemQueryService.toSummariesForUser(userId, summaries);
+		// shortcut: rank cursors can shift between requests as new views change scores.
+		String nextCursor = hasNext
+				? CursorCodec.encodeId(addCursorOffset(page.getLast().rank(), 1))
+				: null;
+		return new ItemRecommendationPageResponse(items, nextCursor, hasNext);
+	}
+
+	private static long addCursorOffset(long offset, long amount) {
 		try {
-			end = Math.addExact(offset, size);
+			return Math.addExact(offset, amount);
 		} catch (ArithmeticException exception) {
 			throw new ApiException(ErrorCode.INVALID_CURSOR, List.of(), exception);
 		}
+	}
 
-		Set<ZSetOperations.TypedTuple<String>> tuples = redisTemplate.opsForZSet()
-				.reverseRangeWithScores(POPULARITY_KEY, offset, end);
-		if (tuples == null || tuples.isEmpty()) {
-			return new ItemRecommendationPageResponse(List.of(), null, false);
-		}
-
-		List<ZSetOperations.TypedTuple<String>> ranked = new ArrayList<>(tuples);
-		ranked.sort((left, right) -> {
-			int scoreOrder = Double.compare(right.getScore(), left.getScore());
-			return scoreOrder == 0 ? right.getValue().compareTo(left.getValue()) : scoreOrder;
-		});
-		boolean hasNext = ranked.size() > size;
-		List<ZSetOperations.TypedTuple<String>> page = hasNext ? ranked.subList(0, size) : ranked;
-		List<Long> itemIds = page.stream().map(tuple -> Long.valueOf(tuple.getValue())).toList();
-
-		List<ItemSummaryProjection> summaries = itemRepository.findActiveItemSummariesByIds(
-				itemIds, UserStatus.ACTIVE);
-		Map<Long, ItemSummary> summariesById = new LinkedHashMap<>();
-		itemQueryService.toSummariesForUser(userId, summaries)
-				.forEach(summary -> summariesById.put(summary.itemId(), summary));
-
-		List<ItemSummary> items = itemIds.stream()
-				.filter(summariesById::containsKey)
-				.map(summariesById::get)
-				.toList();
-		// shortcut: rank cursors can shift between requests as new views change scores.
-		String nextCursor = hasNext ? CursorCodec.encodeId(offset + size) : null;
-		return new ItemRecommendationPageResponse(items, nextCursor, hasNext);
+	private record RankedItem(long rank, ItemSummaryProjection summary) {
 	}
 
 	private static int parseSize(String value) {

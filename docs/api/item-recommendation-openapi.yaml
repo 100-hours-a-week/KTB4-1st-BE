@@ -16,13 +16,22 @@ paths:
       summary: 최근 인기 상품 페이지 조회
       operationId: findPopularItems
       description: |
-        최근 6시간 동안의 상품 상세 조회 이벤트가 많은 순서로 상품을 반환합니다.
-        다음 페이지 요청에는 응답의 `nextCursor`를 그대로 전달하고 `size`를 유지하세요.
+        최근 6시간 동안의 상품 상세 조회 이벤트가 많은 순서로 지정한 그룹의 상품을 반환합니다.
+        조회 이벤트 점수는 상품별로 전역 집계하고, 응답 후보는 `groupId`에 연결된 활성 상품으로 제한합니다.
+        다음 페이지 요청에는 같은 `groupId`, 응답의 `nextCursor`, 동일한 `size`를 전달하세요.
         순위는 조회 이벤트에 따라 바뀔 수 있으므로 페이지 사이에 일부 항목의 위치가 달라질 수 있습니다.
         응답 `ItemSummary.viewCount`는 기존 누적 조회수이며, 추천 정렬 기준은 별도의 최근 6시간 집계입니다.
       security:
         - bearerAuth: []
       parameters:
+        - name: groupId
+          in: query
+          required: true
+          description: 추천 결과를 제한할 그룹 ID
+          schema:
+            type: integer
+            format: int64
+          example: 7
         - name: size
           in: query
           required: false
@@ -68,7 +77,7 @@ paths:
                   hasNext: true
                 error: null
         '400':
-          description: size 또는 cursor 값이 올바르지 않음
+          description: groupId, size 또는 cursor 값이 올바르지 않음
           content:
             application/json:
               schema:
@@ -101,6 +110,30 @@ paths:
                 error:
                   code: AUTHENTICATION_REQUIRED
                   message: 로그인이 필요합니다.
+                  details: []
+        '403':
+          description: 해당 그룹의 활성 멤버가 아님
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+              example:
+                data: null
+                error:
+                  code: GROUP_MEMBERSHIP_REQUIRED
+                  message: 그룹 멤버만 물품을 조회할 수 있습니다.
+                  details: []
+        '404':
+          description: 그룹을 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+              example:
+                data: null
+                error:
+                  code: GROUP_NOT_FOUND
+                  message: 그룹을 찾을 수 없습니다.
                   details: []
         '500':
           description: 서버 내부 오류

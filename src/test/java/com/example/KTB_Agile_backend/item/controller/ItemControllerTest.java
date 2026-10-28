@@ -118,10 +118,11 @@ class ItemControllerTest {
 				false,
 				LocalDateTime.parse("2026-10-28T12:00:00")
 		);
-		when(itemRecommendationService.findPopularItems(42L, "10", "cursor"))
+		when(itemRecommendationService.findPopularItems(42L, 7L, "10", "cursor"))
 				.thenReturn(new ItemRecommendationPageResponse(List.of(summary), "next", true));
 
 		mockMvc.perform(get("/items/recommendations")
+					.param("groupId", "7")
 					.param("size", "10")
 					.param("cursor", "cursor")
 					.principal(new UsernamePasswordAuthenticationToken("42", null)))
@@ -131,7 +132,7 @@ class ItemControllerTest {
 				.andExpect(jsonPath("$.data.nextCursor").value("next"))
 				.andExpect(jsonPath("$.data.hasNext").value(true));
 
-		verify(itemRecommendationService).findPopularItems(42L, "10", "cursor");
+		verify(itemRecommendationService).findPopularItems(42L, 7L, "10", "cursor");
 	}
 
 	@Test

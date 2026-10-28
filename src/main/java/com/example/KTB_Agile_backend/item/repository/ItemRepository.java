@@ -2,8 +2,6 @@ package com.example.KTB_Agile_backend.item.repository;
 
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemPriceStatus;
-import com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection;
-import com.example.KTB_Agile_backend.user.entity.UserStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -43,22 +41,6 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
 	Optional<Item> findByIdAndDeletedAtIsNull(Long itemId);
 
 	List<Item> findAllByIdInAndDeletedAtIsNull(Collection<Long> itemIds);
-
-	@Query("""
-			select new com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection(
-				item.id, item.title, item.content, item.quantity, owner.id, owner.nickname,
-				item.itemState, item.createdAt
-			)
-			from Item item
-			join item.user owner
-			where item.id in :itemIds
-				and item.deletedAt is null
-				and owner.userStatus = :activeUserStatus
-			""")
-	List<ItemSummaryProjection> findActiveItemSummariesByIds(
-			@Param("itemIds") Collection<Long> itemIds,
-			@Param("activeUserStatus") UserStatus activeUserStatus
-	);
 
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select item from Item item where item.id in :itemIds order by item.id")

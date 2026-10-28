@@ -5,8 +5,6 @@ import com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection;
 import com.example.KTB_Agile_backend.item.dto.response.ItemRecommendationPageResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemSummary;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
-import com.example.KTB_Agile_backend.item.repository.ItemRepository;
-import com.example.KTB_Agile_backend.user.entity.UserStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -41,9 +39,6 @@ class ItemRecommendationServiceTest {
 	private StringRedisTemplate redisTemplate;
 
 	@Mock
-	private ItemRepository itemRepository;
-
-	@Mock
 	private ItemQueryService itemQueryService;
 
 	@Test
@@ -55,21 +50,30 @@ class ItemRecommendationServiceTest {
 				new DefaultTypedTuple<>("200", 8.0),
 				new DefaultTypedTuple<>("100", 12.0)
 		));
+		Set<ZSetOperations.TypedTuple<String>> nextTuples = new LinkedHashSet<>(List.of(
+				new DefaultTypedTuple<>("400", 3.0)
+		));
 		when(zSetOperations.reverseRangeWithScores("item:recommend:{views}:popularity", 0, 2))
 				.thenReturn(tuples);
+		when(zSetOperations.reverseRangeWithScores("item:recommend:{views}:popularity", 3, 5))
+				.thenReturn(nextTuples);
 
-		List<ItemSummaryProjection> projections = List.of(projection(200L), projection(100L));
-		when(itemRepository.findActiveItemSummariesByIds(List.of(100L, 200L), UserStatus.ACTIVE))
+		List<ItemSummaryProjection> projections = List.of(projection(100L), projection(200L));
+		when(itemQueryService.findActiveItemSummariesByGroupIdAndItemIds(7L, List.of(100L, 200L, 300L)))
 				.thenReturn(projections);
+		when(itemQueryService.findActiveItemSummariesByGroupIdAndItemIds(7L, List.of(400L)))
+				.thenReturn(List.of(projection(400L)));
 		when(itemQueryService.toSummariesForUser(42L, projections))
-				.thenReturn(List.of(summary(200L), summary(100L)));
+				.thenReturn(List.of(summary(100L), summary(200L)));
 
-		ItemRecommendationPageResponse response = service().findPopularItems(42L, "2", null);
+		ItemRecommendationPageResponse response = service().findPopularItems(42L, 7L, "2", null);
 
 		assertThat(response.items()).extracting(ItemSummary::itemId).containsExactly(100L, 200L);
 		assertThat(response.hasNext()).isTrue();
 		assertThat(response.nextCursor()).isEqualTo(CursorCodec.encodeId(2L));
 		verify(zSetOperations).reverseRangeWithScores("item:recommend:{views}:popularity", 0, 2);
+		verify(zSetOperations).reverseRangeWithScores("item:recommend:{views}:popularity", 3, 5);
+		verify(itemQueryService).validateActiveGroupMembership(42L, 7L);
 	}
 
 	@Test
@@ -127,7 +131,7 @@ class ItemRecommendationServiceTest {
 	}
 
 	private ItemRecommendationService service() {
-		return new ItemRecommendationService(redisTemplate, itemRepository, itemQueryService);
+		return new ItemRecommendationService(redisTemplate, itemQueryService);
 	}
 
 	private static ItemSummaryProjection projection(Long itemId) {

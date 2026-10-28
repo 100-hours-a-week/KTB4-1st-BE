@@ -58,11 +58,12 @@ public class ItemController {
 	@GetMapping("/items/recommendations")
 	public ResponseEntity<ApiResponse<ItemRecommendationPageResponse>> findPopularItems(
 			Authentication authentication,
+			@RequestParam Long groupId,
 			@RequestParam(defaultValue = "20") String size,
 			@RequestParam(required = false) String cursor
 	) {
 		ItemRecommendationPageResponse response = itemRecommendationService.findPopularItems(
-				Long.valueOf(authentication.getName()), size, cursor);
+				Long.valueOf(authentication.getName()), groupId, size, cursor);
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 
