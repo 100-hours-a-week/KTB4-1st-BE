@@ -89,19 +89,19 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 			join item.user owner
 			join GroupMember membership on membership.group = groupItem.group
 				and membership.user = owner
-			where groupItem.group.id = :groupId
+			where groupItem.group.id = :recommendationGroupId
 				and groupItem.group.deletedAt is null
 				and groupItem.deletedAt is null
 				and item.id in :itemIds
 				and item.deletedAt is null
-				and owner.userStatus = :activeUserStatus
-				and membership.status = :activeMemberStatus
+				and owner.userStatus = :recommendationActiveUserStatus
+				and membership.status = :recommendationActiveMemberStatus
 			""")
 	List<ItemSummaryProjection> findActiveItemSummariesByGroupIdAndItemIds(
-			@Param("groupId") Long groupId,
+			@Param("recommendationGroupId") Long groupId,
 			@Param("itemIds") Collection<Long> itemIds,
-			@Param("activeUserStatus") UserStatus activeUserStatus,
-			@Param("activeMemberStatus") GroupMemberStatus activeMemberStatus
+			@Param("recommendationActiveUserStatus") UserStatus activeUserStatus,
+			@Param("recommendationActiveMemberStatus") GroupMemberStatus activeMemberStatus
 	);
 
 	@Query("""
