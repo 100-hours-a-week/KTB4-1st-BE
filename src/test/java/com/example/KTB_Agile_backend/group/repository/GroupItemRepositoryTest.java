@@ -99,6 +99,11 @@ class GroupItemRepositoryTest {
 				.extracting(ItemSummaryProjection::itemId)
 				.containsExactly(third.getId(), second.getId());
 		assertThat(statistics.getPrepareStatementCount()).isEqualTo(1L);
+		assertThat(groupItemRepository.findActiveItemSummariesByGroupIdAndItemIds(
+				group.getId(), List.of(first.getId(), second.getId(), third.getId()),
+						UserStatus.ACTIVE, GroupMemberStatus.ACTIVE))
+				.extracting(ItemSummaryProjection::itemId)
+				.containsExactlyInAnyOrder(second.getId(), third.getId());
 	}
 
 	@Test
