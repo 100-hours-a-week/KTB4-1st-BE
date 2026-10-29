@@ -1,4 +1,6 @@
 name: Publish Backend-dev
+run-name: >-
+  ${{ github.event_name == 'workflow_dispatch' && format('[dev] Publish 수동배포 {0} · {1}', inputs.digest || 'latest', github.actor) || format('[dev] Publish {0} · {1}', github.event.head_commit.message || github.sha, github.actor) }}
 
 on:
   push:
