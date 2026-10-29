@@ -40,9 +40,8 @@ class ChatRoomServiceTest {
 		Long userId = 42L;
 		ChatRoom chatRoom = mock(ChatRoom.class);
 		ChatMember member = mock(ChatMember.class);
-		when(chatRoomRepository.existsById(chatRoomId)).thenReturn(true);
+		when(chatRoomRepository.findById(chatRoomId)).thenReturn(Optional.of(chatRoom));
 		when(chatMemberRepository.findActiveMember(chatRoomId, userId)).thenReturn(Optional.of(member));
-		when(member.getChatRoom()).thenReturn(chatRoom);
 
 		service.leave(chatRoomId, userId);
 

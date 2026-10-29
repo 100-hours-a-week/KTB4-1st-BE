@@ -1,17 +1,13 @@
 package com.example.KTB_Agile_backend.chat.entity;
 
 import com.example.KTB_Agile_backend.common.entity.BaseEntity;
-import com.example.KTB_Agile_backend.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -30,13 +26,11 @@ public class ChatMessage extends BaseEntity {
 	@Column(name = "message_id", nullable = false)
 	private Long id;
 
-	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumn(name = "chat_room_id", nullable = false)
-	private ChatRoom chatRoom;
+	@Column(name = "chat_room_id", nullable = false)
+	private Long chatRoomId;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "user_id")
-	private User user;
+	@Column(name = "user_id")
+	private Long userId;
 
 	@Column(nullable = false, columnDefinition = "TEXT")
 	private String content;
@@ -49,15 +43,15 @@ public class ChatMessage extends BaseEntity {
 	@Column(name = "system_event_type", length = 40)
 	private ChatSystemEventType systemEventType;
 
-	public ChatMessage(ChatRoom chatRoom, User user, String content) {
-		this.chatRoom = chatRoom;
-		this.user = Objects.requireNonNull(user, "user must not be null");
+	public ChatMessage(Long chatRoomId, Long userId, String content) {
+		this.chatRoomId = Objects.requireNonNull(chatRoomId, "chatRoomId must not be null");
+		this.userId = Objects.requireNonNull(userId, "userId must not be null");
 		this.content = content;
 	}
 
-	public static ChatMessage system(ChatRoom chatRoom, ChatSystemEventType eventType) {
+	public static ChatMessage system(Long chatRoomId, ChatSystemEventType eventType) {
 		ChatMessage message = new ChatMessage();
-		message.chatRoom = chatRoom;
+		message.chatRoomId = Objects.requireNonNull(chatRoomId, "chatRoomId must not be null");
 		message.content = eventType.content();
 		message.messageType = ChatMessageType.SYSTEM;
 		message.systemEventType = eventType;

@@ -11,6 +11,7 @@ import com.example.KTB_Agile_backend.item.price.persistence.ItemPriceEstimationO
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.item.price.persistence.PriceEstimationRetryScheduleRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PriceEstimationRetryScheduler {
 	private static final int UPDATED_ROW_COUNT = 1;
 
@@ -64,6 +66,10 @@ public class PriceEstimationRetryScheduler {
 			} else {
 				schedule.schedule(nextAttempt, nextAttemptAt, validationRetryUsed);
 			}
+			if (log.isWarnEnabled()) {
+				log.warn("Scheduled item price estimation retry: requestId={}, failedAttempt={}, nextAttempt={}, retryAt={}, failure={}",
+						request.requestId(), request.attemptCount(), nextAttempt, nextAttemptAt, failure);
+			}
 			return;
 		}
 
@@ -74,6 +80,10 @@ public class PriceEstimationRetryScheduler {
 					request.originalRequestEventId(), "PRICE_ESTIMATION_FAILED:" + request.requestId(),
 					ItemPriceEstimationOutboxEventType.PRICE_ESTIMATION_FAILED, request.itemId(),
 					request.attemptCount(), serialize(failed)));
+			if (log.isErrorEnabled()) {
+				log.error("Item price estimation retries exhausted: requestId={}, itemId={}, attempt={}, failureEventId={}, failure={}",
+						request.requestId(), request.itemId(), request.attemptCount(), eventId, failure);
+			}
 		}
 		if (schedule != null) scheduleRepository.delete(schedule);
 	}

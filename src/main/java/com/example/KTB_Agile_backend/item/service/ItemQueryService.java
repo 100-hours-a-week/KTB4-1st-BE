@@ -39,6 +39,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -136,14 +137,7 @@ public class ItemQueryService {
 
 	@Transactional(readOnly = true)
 	public ItemPageResponse findByGroup(Long userId, Long groupId, String cursor) {
-		if (!groupRepository.existsByIdAndDeletedAtIsNull(groupId)) {
-			throw new ApiException(GroupErrorCode.GROUP_NOT_FOUND);
-		}
-		GroupMember member = groupMemberRepository.findByGroup_IdAndUser_Id(groupId, userId)
-				.orElseThrow(() -> new ApiException(GroupErrorCode.GROUP_MEMBERSHIP_REQUIRED));
-		if (member.getStatus() != GroupMemberStatus.ACTIVE) {
-			throw new ApiException(GroupErrorCode.GROUP_MEMBERSHIP_REQUIRED);
-		}
+		validateActiveGroupMembership(userId, groupId);
 
 		Long cursorId = CursorCodec.decodeId(cursor);
 		Pageable pageable = PageRequest.of(0, FETCH_SIZE);
@@ -167,6 +161,28 @@ public class ItemQueryService {
 				page.nextCursor(),
 				page.hasNext()
 		);
+	}
+
+	@Transactional(readOnly = true)
+	public void validateActiveGroupMembership(Long userId, Long groupId) {
+		if (!groupRepository.existsByIdAndDeletedAtIsNull(groupId)) {
+			throw new ApiException(GroupErrorCode.GROUP_NOT_FOUND);
+		}
+		GroupMember member = groupMemberRepository.findByGroup_IdAndUser_Id(groupId, userId)
+				.orElseThrow(() -> new ApiException(GroupErrorCode.GROUP_MEMBERSHIP_REQUIRED));
+		if (member.getStatus() != GroupMemberStatus.ACTIVE) {
+			throw new ApiException(GroupErrorCode.GROUP_MEMBERSHIP_REQUIRED);
+		}
+	}
+
+	@Transactional(readOnly = true)
+	public List<ItemSummaryProjection> findActiveItemSummariesByGroupIdAndItemIds(
+			Long groupId, Collection<Long> itemIds) {
+		if (itemIds.isEmpty()) {
+			return List.of();
+		}
+		return groupItemRepository.findActiveItemSummariesByGroupIdAndItemIds(
+				groupId, itemIds, UserStatus.ACTIVE, GroupMemberStatus.ACTIVE);
 	}
 
 	@Transactional
@@ -322,7 +338,6 @@ public class ItemQueryService {
 				return size;
 			}
 		} catch (NumberFormatException ignored) {
-			// Return the endpoint-specific bad request below.
 		}
 		throw invalidMyItemsRequest();
 	}

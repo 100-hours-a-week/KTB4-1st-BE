@@ -10,9 +10,9 @@ import java.util.List;
 
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
 
-	List<ChatMessage> findAllByChatRoom_IdOrderByIdDesc(Long chatRoomId, Pageable pageable);
+	List<ChatMessage> findAllByChatRoomIdOrderByIdDesc(Long chatRoomId, Pageable pageable);
 
-	List<ChatMessage> findAllByChatRoom_IdAndIdLessThanOrderByIdDesc(
+	List<ChatMessage> findAllByChatRoomIdAndIdLessThanOrderByIdDesc(
 			Long chatRoomId,
 			Long messageId,
 			Pageable pageable
@@ -21,11 +21,11 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
 	@Query("""
 		select message
 		from ChatMessage message
-		where message.chatRoom.id in :chatRoomIds
+		where message.chatRoomId in :chatRoomIds
 		  and message.id = (
 			select max(latest.id)
 			from ChatMessage latest
-			where latest.chatRoom.id = message.chatRoom.id
+			where latest.chatRoomId = message.chatRoomId
 		  )
 		""")
 	List<ChatMessage> findLatestByChatRoomIds(@Param("chatRoomIds") List<Long> chatRoomIds);

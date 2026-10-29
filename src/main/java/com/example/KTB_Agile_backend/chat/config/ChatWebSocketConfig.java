@@ -1,5 +1,6 @@
 package com.example.KTB_Agile_backend.chat.config;
 
+import com.example.KTB_Agile_backend.chat.messaging.RedisChatRoomSubscriptionManager;
 import com.example.KTB_Agile_backend.chat.security.ChatRoomAccessInterceptor;
 import com.example.KTB_Agile_backend.chat.security.JwtStompAuthenticationInterceptor;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,15 +19,18 @@ public class ChatWebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
 	private final JwtStompAuthenticationInterceptor authenticationInterceptor;
 	private final ChatRoomAccessInterceptor chatRoomAccessInterceptor;
+	private final RedisChatRoomSubscriptionManager redisChatRoomSubscriptionManager;
 	private final List<String> allowedOrigins;
 
 	public ChatWebSocketConfig(
 			JwtStompAuthenticationInterceptor authenticationInterceptor,
 			ChatRoomAccessInterceptor chatRoomAccessInterceptor,
+			RedisChatRoomSubscriptionManager redisChatRoomSubscriptionManager,
 			@Value("${cors.allowed-origins:http://127.0.0.1:3000}") List<String> allowedOrigins
 	) {
 		this.authenticationInterceptor = authenticationInterceptor;
 		this.chatRoomAccessInterceptor = chatRoomAccessInterceptor;
+		this.redisChatRoomSubscriptionManager = redisChatRoomSubscriptionManager;
 		this.allowedOrigins = allowedOrigins;
 	}
 
@@ -43,6 +47,7 @@ public class ChatWebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
 	@Override
 	public void configureClientInboundChannel(ChannelRegistration registration) {
-		registration.interceptors(authenticationInterceptor, chatRoomAccessInterceptor);
+		registration.interceptors(authenticationInterceptor, chatRoomAccessInterceptor,
+				redisChatRoomSubscriptionManager);
 	}
 }

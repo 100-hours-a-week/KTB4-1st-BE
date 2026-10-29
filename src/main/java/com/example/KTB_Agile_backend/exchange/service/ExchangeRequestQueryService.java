@@ -93,7 +93,6 @@ public class ExchangeRequestQueryService {
 				return size;
 			}
 		} catch (NumberFormatException ignored) {
-			// Return the endpoint-specific bad request below.
 		}
 		throw new ApiException(ErrorCode.BAD_REQUEST, "size 또는 cursor 값이 올바르지 않습니다.");
 	}

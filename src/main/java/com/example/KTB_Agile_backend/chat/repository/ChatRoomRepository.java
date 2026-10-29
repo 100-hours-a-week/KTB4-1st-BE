@@ -6,6 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
-	long countByExchangeRequest_Id(Long exchangeRequestId);
-	Optional<ChatRoom> findByExchangeRequest_Id(Long exchangeRequestId);
+	long countByExchangeRequestId(Long exchangeRequestId);
+	Optional<ChatRoom> findByExchangeRequestId(Long exchangeRequestId);
 }

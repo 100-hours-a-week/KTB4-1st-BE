@@ -2,7 +2,10 @@ package com.example.KTB_Agile_backend.group.controller;
 
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
 import com.example.KTB_Agile_backend.group.dto.request.CreateGroupRequest;
+import com.example.KTB_Agile_backend.group.dto.request.GroupLocationVerificationRequest;
+import com.example.KTB_Agile_backend.group.dto.response.GroupLocationVerificationResponse;
 import com.example.KTB_Agile_backend.group.dto.response.GroupPageResponse;
+import com.example.KTB_Agile_backend.group.service.GroupLocationVerificationService;
 import com.example.KTB_Agile_backend.group.service.GroupQueryService;
 import com.example.KTB_Agile_backend.group.service.GroupService;
 import jakarta.validation.Valid;
@@ -28,6 +31,7 @@ public class GroupController {
 
 	private final GroupService groupService;
 	private final GroupQueryService groupQueryService;
+	private final GroupLocationVerificationService groupLocationVerificationService;
 
 	@GetMapping
 	public ResponseEntity<ApiResponse<GroupPageResponse>> search(
@@ -57,12 +61,25 @@ public class GroupController {
 		return ResponseEntity.status(HttpStatus.CREATED).build();
 	}
 
+	@PostMapping("/{groupId}/location-verifications")
+	public ResponseEntity<ApiResponse<GroupLocationVerificationResponse>> verifyLocation(
+			Authentication authentication,
+			@PathVariable Long groupId,
+			@Valid @RequestBody GroupLocationVerificationRequest request
+	) {
+		Long userId = Long.valueOf(authentication.getName());
+		GroupLocationVerificationResponse result = groupLocationVerificationService.verify(userId, groupId, request);
+		return ResponseEntity.ok(new ApiResponse<>(result, null));
+	}
+
 	@PostMapping("/{groupId}/members")
 	public ResponseEntity<Void> join(
 			Authentication authentication,
 			@PathVariable Long groupId
 	) {
-		groupService.join(Long.valueOf(authentication.getName()), groupId);
+		Long userId = Long.valueOf(authentication.getName());
+		groupLocationVerificationService.consume(userId, groupId);
+		groupService.join(userId, groupId);
 		return ResponseEntity.created(URI.create("/groups/" + groupId + "/members/me")).build();
 	}
 

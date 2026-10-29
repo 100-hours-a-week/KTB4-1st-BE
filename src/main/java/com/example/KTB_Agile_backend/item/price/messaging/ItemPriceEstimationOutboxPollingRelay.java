@@ -40,7 +40,8 @@ public class ItemPriceEstimationOutboxPollingRelay {
 					throw new IllegalStateException("Interrupted while relaying item price estimation event", exception);
 				} catch (Exception exception) {
 					if (log.isErrorEnabled()) {
-						log.error("Failed to relay item price estimation event {}", event.getEventId(), exception);
+						log.error("Failed to relay Kafka event: eventId={}, topic={}",
+								event.getEventId(), event.getEventType().topic(), exception);
 					}
 				}
 			}
