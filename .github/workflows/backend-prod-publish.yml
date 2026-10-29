@@ -1,4 +1,6 @@
 name: Publish Backend-prod
+run-name: >-
+  ${{ github.event_name == 'workflow_dispatch' && format('[prod] Publish 수동배포 v{0} · {1}', inputs.version, github.actor) || format('[prod] Publish {0} · {1}', github.ref_name, github.actor) }}
 
 on:
   push:
@@ -14,7 +16,7 @@ on:
 
 concurrency:
   group: backend-prod-publish
-  # 이미지 게시와 수동 운영 배포가 도중에 취소되지 않도록 직렬 큐잉 처리
+  # 운영 태그 배포 작업이 도중에 취소되어 이미지가 누락되거나 태그가 꼬이지 않도록 직렬 큐잉 처리
   cancel-in-progress: false
 
 jobs:
@@ -26,6 +28,9 @@ jobs:
       contents: read
       packages: write
     timeout-minutes: 15
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
@@ -51,9 +56,9 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}
-          # latest 태그는 지양 정책에 따라 생성하지 않고, 푸시된 git tag만 추출
+          flavor: latest=false
           tags: |
-            type=ref,event=tag
+            type=semver,pattern={{version}}
           labels: |
             org.opencontainers.image.title=Bakkucca-Backend-Prod
             org.opencontainers.image.version=${{ github.ref_name }}
@@ -67,6 +72,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Push Docker Image
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -80,6 +86,13 @@ jobs:
           cache-to: type=gha,mode=max,scope=backend
           secrets: |
             sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
+
+      # 이번 릴리즈 빌드의 digest를 운영 배포에 전달
+      - name: Export image digest
+        id: image
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}@${IMAGE_DIGEST}" >> "$GITHUB_OUTPUT"
 
       - name: Set Lowercase Package Name
         id: pkg
@@ -95,7 +108,7 @@ jobs:
           package-type: 'container'
           # 운영 이미지는 롤백 여유를 위해 최근 5개 버전 유지
           min-versions-to-keep: 5
-          ignore-versions: '^(?!v[0-9]+\.[0-9]+\.[0-9]+).*$'
+          ignore-versions: '^(?!v?[0-9]+\.[0-9]+\.[0-9]+$).*$'
         continue-on-error: true
 
       - name: Send Discord Notification
@@ -227,19 +240,25 @@ jobs:
         env:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
-          image_ref="ghcr.io/${GITHUB_REPOSITORY,,}:v${RELEASE_VERSION}"
-          digest=$(docker buildx imagetools inspect "$image_ref" --format '{{json .Manifest}}' | jq -er '.digest')
+          repository="ghcr.io/${GITHUB_REPOSITORY,,}"
+          image_ref="${repository}:${RELEASE_VERSION}"
+          # 전환 전 v 접두어 이미지도 수동 재배포할 수 있도록 유지
+          if ! manifest=$(docker buildx imagetools inspect "$image_ref" --format '{{json .Manifest}}'); then
+            image_ref="${repository}:v${RELEASE_VERSION}"
+            manifest=$(docker buildx imagetools inspect "$image_ref" --format '{{json .Manifest}}')
+          fi
+          digest=$(jq -er '.digest' <<< "$manifest")
           if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
             echo "::error::이미지 digest를 확인하지 못했습니다"
             exit 1
           fi
           echo "image=ghcr.io/${GITHUB_REPOSITORY,,}@${digest}" >> "$GITHUB_OUTPUT"
 
-  # 마이그레이션 기간에는 수동으로 선택한 main 릴리즈 이미지만 운영에 배포
+  # main 릴리즈 이미지를 해당 서비스의 운영 환경에 배포
   deploy-prod:
     name: Deploy Prod to ECS
-    needs: [select-image]
-    if: github.event_name == 'workflow_dispatch'
+    needs: [publish-prod, select-image]
+    if: ${{ always() && !cancelled() && (needs.publish-prod.result == 'success' || needs.select-image.result == 'success') }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 90
     environment: prod
@@ -252,8 +271,8 @@ jobs:
       ECS_SERVICE: bakkucca-v2-prod-be
       CONTAINER_NAME: backend
       CONTAINER_PORT: "8080"
-      IMAGE_URI: ${{ needs.select-image.outputs.image }}
-      DEPLOY_VERSION: ${{ inputs.version }}
+      IMAGE_URI: ${{ needs.publish-prod.outputs.image || needs.select-image.outputs.image }}
+      DEPLOY_VERSION: ${{ inputs.version || github.ref_name }}
     steps:
       - name: Check deployment settings
         run: |
@@ -314,7 +333,7 @@ jobs:
           codedeploy-appspec: ${{ runner.temp }}/appspec.json
           codedeploy-application: ${{ env.ECS_SERVICE }}
           codedeploy-deployment-group: ${{ env.ECS_SERVICE }}
-          codedeploy-deployment-description: ${{ inputs.version }} / ${{ github.sha }} / ${{ github.run_id }}
+          codedeploy-deployment-description: ${{ inputs.version || github.ref_name }} / ${{ github.sha }} / ${{ github.run_id }}
           wait-for-service-stability: true
           wait-for-minutes: 20
 
