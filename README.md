@@ -81,3 +81,9 @@ Connect to `/ws` with STOMP `CONNECT` header `Authorization: Bearer <jwt>`. Subs
 Leaving a chat room, editing, rejecting, and canceling an exchange also persist and broadcast `SYSTEM` messages with the corresponding Korean notice as `content`. Exchange edits include the same request-card payload as request creation.
 
 Fetch the latest chat messages with `GET /chat/rooms/{chatRoomId}/messages`. Pass the returned `nextCursor` as the `cursor` query parameter to load older messages; each response contains messages in chronological order.
+
+## WebSocket notifications
+
+Notifications use the existing authenticated STOMP connection at `/ws`. A connected client subscribes to `/user/queue/notifications`; application code publishes an explicit user ID and payload through `NotificationMessagePublisher`. The server sends notifications only to sessions authenticated as that user.
+
+The notification publisher sends through Redis Pub/Sub so any backend instance can forward the event to its local WebSocket sessions. This path is online-only: disconnected clients do not receive or replay messages. No business event or recipient policy is connected yet; callers will choose those when defined. If notification history or reconnect replay becomes a requirement, add persistent notification storage separately.

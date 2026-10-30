@@ -3,6 +3,7 @@ package com.example.KTB_Agile_backend.chat.config;
 import com.example.KTB_Agile_backend.chat.messaging.RedisChatRoomSubscriptionManager;
 import com.example.KTB_Agile_backend.chat.security.ChatRoomAccessInterceptor;
 import com.example.KTB_Agile_backend.chat.security.JwtStompAuthenticationInterceptor;
+import com.example.KTB_Agile_backend.notification.security.NotificationSubscriptionAccessInterceptor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
@@ -19,17 +20,20 @@ public class ChatWebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
 	private final JwtStompAuthenticationInterceptor authenticationInterceptor;
 	private final ChatRoomAccessInterceptor chatRoomAccessInterceptor;
+	private final NotificationSubscriptionAccessInterceptor notificationSubscriptionAccessInterceptor;
 	private final RedisChatRoomSubscriptionManager redisChatRoomSubscriptionManager;
 	private final List<String> allowedOrigins;
 
 	public ChatWebSocketConfig(
 			JwtStompAuthenticationInterceptor authenticationInterceptor,
 			ChatRoomAccessInterceptor chatRoomAccessInterceptor,
+			NotificationSubscriptionAccessInterceptor notificationSubscriptionAccessInterceptor,
 			RedisChatRoomSubscriptionManager redisChatRoomSubscriptionManager,
 			@Value("${cors.allowed-origins:http://127.0.0.1:3000}") List<String> allowedOrigins
 	) {
 		this.authenticationInterceptor = authenticationInterceptor;
 		this.chatRoomAccessInterceptor = chatRoomAccessInterceptor;
+		this.notificationSubscriptionAccessInterceptor = notificationSubscriptionAccessInterceptor;
 		this.redisChatRoomSubscriptionManager = redisChatRoomSubscriptionManager;
 		this.allowedOrigins = allowedOrigins;
 	}
@@ -41,13 +45,14 @@ public class ChatWebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
 	@Override
 	public void configureMessageBroker(MessageBrokerRegistry registry) {
-		registry.enableSimpleBroker("/topic");
+		registry.enableSimpleBroker("/topic", "/queue");
 		registry.setApplicationDestinationPrefixes("/app");
 	}
 
 	@Override
 	public void configureClientInboundChannel(ChannelRegistration registration) {
 		registration.interceptors(authenticationInterceptor, chatRoomAccessInterceptor,
+				notificationSubscriptionAccessInterceptor,
 				redisChatRoomSubscriptionManager);
 	}
 }
