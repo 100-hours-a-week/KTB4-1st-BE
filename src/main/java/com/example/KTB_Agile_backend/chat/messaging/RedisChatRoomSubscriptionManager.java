@@ -29,7 +29,7 @@ public class RedisChatRoomSubscriptionManager implements ExecutorChannelIntercep
 	private final Map<Long, Integer> subscriptionCountByRoom = new HashMap<>();
 
 	public RedisChatRoomSubscriptionManager(
-			@Qualifier("chatMessageListenerContainer") RedisMessageListenerContainer listenerContainer,
+			@Qualifier("webSocketRedisMessageListenerContainer") RedisMessageListenerContainer listenerContainer,
 			RedisPubSubChatMessageBroker chatMessageBroker
 	) {
 		this.listenerContainer = listenerContainer;
