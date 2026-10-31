@@ -17,6 +17,7 @@ import com.example.KTB_Agile_backend.item.price.retry.PriceEstimationRetrySchedu
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.repository.UserRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -52,6 +53,7 @@ class ItemPriceConcurrencyTest {
 
 	@Autowired
 	private PlatformTransactionManager transactionManager;
+	private Fixture cleanupFixture;
 
 	@Test
 	@Transactional(propagation = NOT_SUPPORTED)
@@ -60,8 +62,9 @@ class ItemPriceConcurrencyTest {
 		Fixture fixture = transaction(() -> {
 			User owner = userRepository.save(new User("owner-" + UUID.randomUUID()));
 			Item item = itemRepository.save(item(owner, requestId));
-			return new Fixture(item.getId(), requestId);
+			return new Fixture(item.getId(), requestId, owner.getId());
 		});
+		cleanupFixture = fixture;
 		ItemPriceEstimationRequested request = new ItemPriceEstimationRequested(
 				UUID.randomUUID().toString(), fixture.requestId(), UUID.randomUUID().toString(), fixture.itemId(),
 				"book", "title", "content", new BigDecimal("0.30"), new BigDecimal("0.50"), 1);
@@ -93,6 +96,19 @@ class ItemPriceConcurrencyTest {
 		}
 	}
 
+	@AfterEach
+	void cleanUpFixture() {
+		if (cleanupFixture == null) {
+			return;
+		}
+		transaction(() -> {
+			retryScheduleRepository.deleteById(cleanupFixture.requestId());
+			itemRepository.deleteById(cleanupFixture.itemId());
+			userRepository.deleteById(cleanupFixture.ownerId());
+			return null;
+		});
+	}
+
 	private <T> T transaction(Supplier<T> action) {
 		return new TransactionTemplate(transactionManager).execute(status -> action.get());
 	}
@@ -109,7 +125,7 @@ class ItemPriceConcurrencyTest {
 				true, 3, true, Duration.ofSeconds(1), 2.0, Duration.ofSeconds(5), false, Duration.ofMillis(500)));
 	}
 
-	private record Fixture(Long itemId, String requestId) {
+	private record Fixture(Long itemId, String requestId, Long ownerId) {
 	}
 
 	private record State(ItemPriceStatus priceStatus, Integer retryAttempt) {
