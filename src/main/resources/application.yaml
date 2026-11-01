@@ -79,6 +79,10 @@ cloud:
       region: ${AWS_REGION:ap-northeast-2}
       presigned-url-duration-seconds: ${AWS_S3_PRESIGNED_URL_DURATION_SECONDS:600}
       read-url-duration-seconds: ${AWS_S3_READ_URL_DURATION_SECONDS:3600}
+    cloudfront:
+      domain: ${AWS_CLOUDFRONT_DOMAIN:}
+      public-key-id: ${AWS_CLOUDFRONT_PUBLIC_KEY_ID:}
+      private-key-pem: ${CLOUDFRONT_PRIVATE_KEY_PEM:}
 
 ai:
   base-url: ${AI_BASE_URL:}
