@@ -16,4 +16,11 @@ public class S3ImageUrlResolver implements ImageUrlResolver {
 				? image.getImageUrl()
 				: s3ImageObjectService.presignedReadUrl(image.getObjectKey());
 	}
+
+	@Override
+	public String resolveThumbnail(Image image) {
+		return image.getThumbnailObjectKey() == null
+				? resolve(image)
+				: s3ImageObjectService.presignedReadUrl(image.getThumbnailObjectKey());
+	}
 }
