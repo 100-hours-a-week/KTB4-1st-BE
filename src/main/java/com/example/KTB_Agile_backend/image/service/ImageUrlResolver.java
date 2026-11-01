@@ -6,4 +6,8 @@ import com.example.KTB_Agile_backend.image.entity.Image;
 public interface ImageUrlResolver {
 
 	String resolve(Image image);
+
+	default String resolveThumbnail(Image image) {
+		return resolve(image);
+	}
 }

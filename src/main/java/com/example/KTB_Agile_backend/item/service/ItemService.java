@@ -69,12 +69,17 @@ public class ItemService {
 				.orElseThrow(() -> new ApiException(ErrorCode.AUTHENTICATION_REQUIRED));
 		List<Group> groups = findRegistrableGroups(userId, request.groupIds());
 		s3ImageObjectService.validatePendingObjects(userId, request.objectKeys());
+		if (request.thumbnailObjectKey() != null) {
+			s3ImageObjectService.validatePendingObject(userId, request.thumbnailObjectKey());
+		}
 		if (imageRepository.existsByObjectKeyIn(request.objectKeys())) {
 			throw new ApiException(ItemErrorCode.ITEM_IMAGE_ALREADY_REGISTERED);
 		}
 		List<Image> images = request.objectKeys().stream()
 				.map(objectKey -> Image.fromS3Object(user, objectKey))
 				.toList();
+		Image thumbnailImage = images.get(0);
+		thumbnailImage.setThumbnailObjectKey(request.thumbnailObjectKey());
 
 		String keyword = moderationCheckService.consumeForItem(
 				userId,
@@ -114,8 +119,12 @@ public class ItemService {
 				.toList());
 		images.forEach(image -> image.attachTo(item));
 		imageRepository.saveAll(images);
-		item.setThumbnailImage(images.get(0));
-		s3ImageObjectService.markRegistered(request.objectKeys());
+		item.setThumbnailImage(thumbnailImage);
+		List<String> objectKeysToRegister = new ArrayList<>(request.objectKeys());
+		if (request.thumbnailObjectKey() != null && !objectKeysToRegister.contains(request.thumbnailObjectKey())) {
+			objectKeysToRegister.add(request.thumbnailObjectKey());
+		}
+		s3ImageObjectService.markRegistered(objectKeysToRegister);
 
 		return new ItemCreateResponse(item.getId());
 	}
@@ -132,6 +141,14 @@ public class ItemService {
 
 		List<Group> groups = findRegistrableGroups(userId, request.groupIds());
 		List<Image> images = findUpdatableImages(userId, itemId, request.imageIds());
+		Image thumbnailImage = images.stream()
+				.filter(image -> image.getId().equals(request.imageIds().get(0)))
+				.findFirst()
+				.orElseThrow();
+		if (request.thumbnailObjectKey() != null) {
+			s3ImageObjectService.validatePendingObject(userId, request.thumbnailObjectKey());
+			thumbnailImage.setThumbnailObjectKey(request.thumbnailObjectKey());
+		}
 		item.update(
 				request.title(),
 				request.content(),
@@ -147,10 +164,10 @@ public class ItemService {
 		}
 		replaceGroups(item, groups);
 		replaceImages(item, images);
-		item.setThumbnailImage(images.stream()
-				.filter(image -> image.getId().equals(request.imageIds().get(0)))
-				.findFirst()
-				.orElseThrow());
+		item.setThumbnailImage(thumbnailImage);
+		if (request.thumbnailObjectKey() != null) {
+			s3ImageObjectService.markRegistered(List.of(request.thumbnailObjectKey()));
+		}
 	}
 
 	@Transactional
