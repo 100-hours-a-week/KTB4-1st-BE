@@ -398,7 +398,7 @@ public class ItemQueryService {
 		}
 		Map<Long, String> thumbnails = new LinkedHashMap<>();
 		imageRepository.findThumbnailImagesByItemIds(itemIds).forEach(image ->
-				thumbnails.putIfAbsent(image.getItem().getId(), imageUrl(image))
+				thumbnails.putIfAbsent(image.getItem().getId(), imageUrlResolver.resolveThumbnail(image))
 		);
 		return thumbnails;
 	}
