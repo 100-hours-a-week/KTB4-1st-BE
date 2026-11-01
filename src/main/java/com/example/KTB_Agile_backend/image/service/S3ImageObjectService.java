@@ -42,6 +42,7 @@ public class S3ImageObjectService {
 	private final String cloudFrontDomain;
 	private final CannedSignerRequest cloudFrontSignerRequest;
 
+	@SuppressWarnings("PMD.NullAssignment")
 	public S3ImageObjectService(
 			S3Client s3Client,
 			S3Presigner s3Presigner,
