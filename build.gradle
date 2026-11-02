@@ -97,10 +97,3 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
-
-tasks.register('backfillItemThumbnails', JavaExec) {
-	group = 'application'
-	description = 'Create missing thumbnails for existing item representative images.'
-	classpath = sourceSets.main.runtimeClasspath
-	mainClass = 'com.example.KTB_Agile_backend.image.backfill.ItemThumbnailBackfill'
-}
