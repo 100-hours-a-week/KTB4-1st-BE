@@ -8,6 +8,7 @@ import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
+import com.example.KTB_Agile_backend.notification.service.NotificationService;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
@@ -34,6 +35,9 @@ class ExchangeRequestConcurrencyTest {
 
 	@MockitoBean
 	private ChatMessageService chatMessageService;
+
+	@MockitoBean
+	private NotificationService notificationService;
 
 	@Autowired
 	private ExchangeRequestService service;

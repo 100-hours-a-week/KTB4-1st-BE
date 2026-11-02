@@ -22,6 +22,7 @@ import com.example.KTB_Agile_backend.item.entity.ItemStats;
 import com.example.KTB_Agile_backend.item.entity.ItemView;
 import com.example.KTB_Agile_backend.item.price.application.ItemPriceEstimationRequestPublisher;
 import com.example.KTB_Agile_backend.item.price.application.ItemPriceLookupService;
+import com.example.KTB_Agile_backend.notification.service.NotificationService;
 import com.example.KTB_Agile_backend.item.price.messaging.ItemPriceEstimationRequested;
 import com.example.KTB_Agile_backend.item.repository.ItemLikeRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
@@ -90,7 +91,7 @@ class ItemServiceTest {
 				mock(ItemViewRepository.class), groupRepository, groupMemberRepository,
 				mock(GroupItemRepository.class), imageRepository, mock(S3ImageObjectService.class),
 				userRepository, moderationCheckService, priceLookupService,
-				new ItemPriceRangeCalculator(), requestPublisher);
+				new ItemPriceRangeCalculator(), requestPublisher, mock(NotificationService.class));
 		User owner = user(42L);
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(owner));
 		when(groupRepository.findAllByIdInAndDeletedAtIsNull(List.of(101L))).thenReturn(List.of(group("그룹")));
@@ -135,7 +136,7 @@ class ItemServiceTest {
 				s3ImageObjectService,
 				userRepository,
 				mock(ModerationCheckService.class), itemPriceLookupService(), new ItemPriceRangeCalculator(),
-				requestPublisher
+				requestPublisher, mock(NotificationService.class)
 		);
 		User user = mock(User.class);
 		Group firstGroup = group("첫 그룹");
@@ -188,7 +189,7 @@ class ItemServiceTest {
 				mock(S3ImageObjectService.class),
 				userRepository,
 				mock(ModerationCheckService.class), itemPriceLookupService(), new ItemPriceRangeCalculator(),
-				mock(ItemPriceEstimationRequestPublisher.class)
+				mock(ItemPriceEstimationRequestPublisher.class), mock(NotificationService.class)
 		);
 		User owner = user(42L);
 		Item item = spy(new Item(owner, "기존 제목", "기존 내용"));
@@ -198,7 +199,7 @@ class ItemServiceTest {
 		Image image = new Image(owner, "https://example.com/image.jpg");
 		ReflectionTestUtils.setField(image, "id", 1001L);
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(owner));
-		when(itemRepository.findByIdAndDeletedAtIsNull(123L)).thenReturn(Optional.of(item));
+		when(itemRepository.findAllForExchange(List.of(123L))).thenReturn(List.of(item));
 		when(groupRepository.findAllByIdInAndDeletedAtIsNull(List.of(101L)))
 				.thenReturn(List.of(group));
 		when(groupMemberRepository.countByGroup_IdInAndUser_IdAndStatus(
@@ -269,7 +270,7 @@ class ItemServiceTest {
 				s3ImageObjectService,
 				userRepository,
 				mock(ModerationCheckService.class), itemPriceLookupService(), new ItemPriceRangeCalculator(),
-				mock(ItemPriceEstimationRequestPublisher.class)
+				mock(ItemPriceEstimationRequestPublisher.class), mock(NotificationService.class)
 		);
 		User requester = user(42L);
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(requester));
@@ -455,7 +456,7 @@ class ItemServiceTest {
 				mock(S3ImageObjectService.class),
 				userRepository,
 				mock(ModerationCheckService.class), itemPriceLookupService(), new ItemPriceRangeCalculator(),
-				mock(ItemPriceEstimationRequestPublisher.class)
+				mock(ItemPriceEstimationRequestPublisher.class), mock(NotificationService.class)
 		);
 
 		User viewer = user(42L);
@@ -550,7 +551,7 @@ class ItemServiceTest {
 				mock(S3ImageObjectService.class),
 				userRepository,
 				mock(ModerationCheckService.class), itemPriceLookupService(), new ItemPriceRangeCalculator(),
-				mock(ItemPriceEstimationRequestPublisher.class)
+				mock(ItemPriceEstimationRequestPublisher.class), mock(NotificationService.class)
 		);
 	}
 

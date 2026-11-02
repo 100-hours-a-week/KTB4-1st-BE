@@ -22,6 +22,7 @@ import com.example.KTB_Agile_backend.image.service.ImageUrlResolver;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
+import com.example.KTB_Agile_backend.notification.service.NotificationService;
 import com.example.KTB_Agile_backend.user.entity.User;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,9 @@ class ExchangeRequestServiceTest {
 
 	@MockitoBean
 	private ChatMessagePublisher chatMessagePublisher;
+
+	@MockitoBean
+	private NotificationService notificationService;
 
 	@Autowired
 	private ExchangeRequestService service;

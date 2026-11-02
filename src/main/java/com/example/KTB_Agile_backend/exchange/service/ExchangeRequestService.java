@@ -25,6 +25,7 @@ import com.example.KTB_Agile_backend.group.repository.GroupItemRepository;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
+import com.example.KTB_Agile_backend.notification.service.NotificationService;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -50,6 +52,7 @@ public class ExchangeRequestService {
 	private final ItemRepository itemRepository;
 	private final GroupItemRepository groupItemRepository;
 	private final UserRepository userRepository;
+	private final NotificationService notificationService;
 
 	@Transactional
 	public ExchangeRequestCreatedResponse create(
@@ -93,6 +96,7 @@ public class ExchangeRequestService {
 				new ChatMember(chatRoom.getId(), requestedItem.getUser().getId(), ChatMemberRole.OWNER)
 		));
 		chatMessageService.sendSystemMessage(chatRoom, ChatSystemEventType.EXCHANGE_REQUEST_CREATED);
+		notificationService.requestCreated(exchangeRequest);
 		return toCreatedResponse(exchangeRequest, chatRoom);
 	}
 
@@ -120,8 +124,12 @@ public class ExchangeRequestService {
 				ExchangeErrorCode.EXCHANGE_REQUEST_UPDATE_CONFLICT,
 				ExchangeErrorCode.EXCHANGE_REQUEST_UPDATE_QUANTITY_EXCEEDED);
 
+		boolean conditionsChanged = haveTradeConditionsChanged(exchangeRequest, request);
 		exchangeRequest.updateRequestedQuantity(request.requestedQuantity());
 		updateOfferedItems(exchangeRequest, request, items);
+		if (conditionsChanged) {
+			notificationService.conditionsChanged(exchangeRequest);
+		}
 		ChatRoom chatRoom = chatRoomRepository.findByExchangeRequestId(exchangeRequestId).orElseThrow();
 		chatMessageService.sendSystemMessage(chatRoom, ChatSystemEventType.EXCHANGE_REQUEST_UPDATED);
 		return toCreatedResponse(exchangeRequest, chatRoom);
@@ -138,6 +146,7 @@ public class ExchangeRequestService {
 			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_CANCEL_CONFLICT);
 		}
 		exchangeRequest.changeStatus(ExchangeRequestStatus.CANCELED);
+		notificationService.requestCanceled(exchangeRequest);
 		closeChatRoomAndSendSystemMessage(exchangeRequestId, ChatSystemEventType.EXCHANGE_REQUEST_CANCELED);
 	}
 
@@ -164,29 +173,44 @@ public class ExchangeRequestService {
 			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_STATUS_CONFLICT);
 		}
 
+		Map<Long, ItemState> itemStatesBeforeCompletion = new HashMap<>();
+		Map<Long, Item> completedItems = Map.of();
 		if (status == ExchangeRequestStatus.COMPLETED) {
 			List<Long> itemIds = new ArrayList<>();
 			itemIds.add(exchangeRequest.getItem().getId());
 			exchangeRequest.getOfferedItems().forEach(offered -> itemIds.add(offered.getItem().getId()));
-			Map<Long, Item> items = lockItems(itemIds);
-			if (items.size() != itemIds.size()) {
+			completedItems = lockItems(itemIds);
+			if (completedItems.size() != itemIds.size()) {
 				throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_STATUS_NOT_FOUND);
 			}
-			items.get(exchangeRequest.getItem().getId())
+			completedItems.forEach((id, item) -> itemStatesBeforeCompletion.put(id, item.getItemState()));
+			completedItems.get(exchangeRequest.getItem().getId())
 					.deductForCompletedExchange(exchangeRequest.getRequestedQuantity());
 			for (OfferedItem offered : exchangeRequest.getOfferedItems()) {
-				items.get(offered.getItem().getId()).deductForCompletedExchange(offered.getQuantity());
+				completedItems.get(offered.getItem().getId()).deductForCompletedExchange(offered.getQuantity());
 			}
 		}
 
 		exchangeRequest.changeStatus(status);
+		exchangeRequestRepository.flush();
+		if (status == ExchangeRequestStatus.COMPLETED) {
+			notificationService.requestCompleted(exchangeRequest);
+			for (Map.Entry<Long, Item> entry : completedItems.entrySet()) {
+				if (itemStatesBeforeCompletion.get(entry.getKey()) == ItemState.AVAILABLE
+						&& entry.getValue().getItemState() == ItemState.UNAVAILABLE) {
+					notificationService.itemUnavailable(entry.getValue(), exchangeRequest.getId());
+				}
+			}
+		} else if (status == ExchangeRequestStatus.REJECTED) {
+			notificationService.requestRejected(exchangeRequest);
+		} else if (status == ExchangeRequestStatus.CANCELED) {
+			notificationService.requestCanceled(exchangeRequest);
+		}
 		if (status == ExchangeRequestStatus.REJECTED || status == ExchangeRequestStatus.CANCELED) {
 			closeChatRoomAndSendSystemMessage(exchangeRequestId, status == ExchangeRequestStatus.REJECTED
 					? ChatSystemEventType.EXCHANGE_REQUEST_REJECTED
 					: ChatSystemEventType.EXCHANGE_REQUEST_CANCELED);
 		}
-		// Populate @LastModifiedDate before including it in the response.
-		exchangeRequestRepository.flush();
 		return new ExchangeRequestStatusResponse(
 				exchangeRequest.getId(), exchangeRequest.getItem().getId(), status,
 				exchangeRequest.getUpdatedAt()
@@ -314,6 +338,22 @@ public class ExchangeRequestService {
 				exchangeRequest.addOfferedItem(items.get(offered.itemId()), quantity);
 			}
 		}
+	}
+
+	private static boolean haveTradeConditionsChanged(
+			ExchangeRequest exchangeRequest,
+			ExchangeRequestCreateRequest request
+	) {
+		if (!Objects.equals(exchangeRequest.getRequestedQuantity(), request.requestedQuantity())) {
+			return true;
+		}
+		Map<Long, Integer> currentOfferedItems = new HashMap<>();
+		exchangeRequest.getOfferedItems().forEach(
+				offered -> currentOfferedItems.put(offered.getItem().getId(), offered.getQuantity()));
+		Map<Long, Integer> requestedOfferedItems = new HashMap<>();
+		request.offeredItems().forEach(
+				offered -> requestedOfferedItems.put(offered.itemId(), offered.quantity()));
+		return !currentOfferedItems.equals(requestedOfferedItems);
 	}
 
 	private static void checkQuantity(Item item, int requestedQuantity, ApiErrorCode errorCode) {

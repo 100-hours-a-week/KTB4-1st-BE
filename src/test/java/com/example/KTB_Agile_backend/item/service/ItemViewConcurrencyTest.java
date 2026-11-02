@@ -16,6 +16,7 @@ import com.example.KTB_Agile_backend.item.price.application.ItemPriceLookupServi
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemStatsRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemViewRepository;
+import com.example.KTB_Agile_backend.notification.service.NotificationService;
 import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -51,6 +52,9 @@ class ItemViewConcurrencyTest {
 
 	@MockitoBean
 	private ItemPriceEstimationRequestPublisher priceEstimationRequestPublisher;
+
+	@MockitoBean
+	private NotificationService notificationService;
 
 	@Autowired
 	private ItemService service;

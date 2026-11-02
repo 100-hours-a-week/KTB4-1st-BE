@@ -1,0 +1,170 @@
+openapi: 3.0.3
+info:
+  title: KTB Notification HTTP API
+  version: 1.0.0
+  description: |
+    로그인한 사용자의 알림 목록을 최신순으로 조회하는 API입니다.
+    알림은 교환 상태 변경과 같은 트랜잭션에 저장됩니다.
+servers:
+  - url: /
+    description: Spring 백엔드
+tags:
+  - name: Notification
+    description: 내 알림 목록
+security:
+  - bearerAuth: []
+paths:
+  /users/me/notifications:
+    get:
+      tags: [Notification]
+      summary: 내 알림 목록 조회
+      operationId: findMyNotifications
+      description: |
+        인증된 사용자의 알림만 생성 시각 내림차순으로 조회합니다. 같은 생성 시각이면 알림 ID 내림차순입니다.
+        다음 페이지를 요청할 때 응답의 `nextCursor`를 그대로 전달하세요. 읽음 상태는 제공하지 않습니다.
+      parameters:
+        - name: size
+          in: query
+          required: false
+          description: 페이지 크기 (기본값 10, 최소 1, 최대 100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: cursor
+          in: query
+          required: false
+          description: 이전 응답의 `nextCursor`. opaque 값이며 이 API에서만 사용합니다.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 알림 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPageEnvelope'
+              example:
+                data:
+                  notifications:
+                    - notificationId: 101
+                      createdAt: '2026-11-02T09:30:00'
+                      text: 민지님이 교환을 요청했습니다.
+                  nextCursor: null
+                  hasNext: false
+                error: null
+        '400':
+          description: size 또는 cursor가 올바르지 않음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              example:
+                data: null
+                error:
+                  code: INVALID_CURSOR
+                  message: cursor가 올바르지 않습니다.
+                  details: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Unauthorized:
+      description: 로그인이 필요하거나 access token이 유효하지 않음
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+          example:
+            data: null
+            error:
+              code: AUTHENTICATION_REQUIRED
+              message: 로그인이 필요합니다.
+              details: []
+    ServerError:
+      description: 처리 중 서버 오류가 발생함
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+          example:
+            data: null
+            error:
+              code: INTERNAL_SERVER_ERROR
+              message: 서버 오류가 발생했습니다.
+              details: []
+  schemas:
+    NotificationPageEnvelope:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          $ref: '#/components/schemas/NotificationPage'
+        error:
+          type: object
+          nullable: true
+    NotificationPage:
+      type: object
+      required: [notifications, nextCursor, hasNext]
+      properties:
+        notifications:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+        nextCursor:
+          type: string
+          nullable: true
+          description: 다음 페이지가 없으면 null입니다.
+        hasNext:
+          type: boolean
+    Notification:
+      type: object
+      required: [notificationId, createdAt, text]
+      properties:
+        notificationId:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          description: 시간대 정보가 없는 LocalDateTime 형식입니다.
+          example: '2026-11-02T09:30:00'
+        text:
+          type: string
+          maxLength: 500
+          description: 화면에 그대로 표시할 알림 문구입니다. 문구를 파싱해 이벤트 종류를 판별하지 마세요.
+          example: 민지님이 교환을 요청했습니다.
+    ApiErrorResponse:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          type: object
+          nullable: true
+        error:
+          $ref: '#/components/schemas/ApiError'
+    ApiError:
+      type: object
+      required: [code, message, details]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+            required: [field, reason]
+            properties:
+              field:
+                type: string
+              reason:
+                type: string
