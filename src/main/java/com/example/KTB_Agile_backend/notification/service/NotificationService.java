@@ -137,7 +137,9 @@ public class NotificationService {
 					notificationMessagePublisher.publish(recipientUserId, new NotificationMessage(
 							notification.getId(), notification.getCreatedAt(), notification.getText()));
 				} catch (RuntimeException exception) {
-					log.warn("Could not publish notification {}", notification.getId(), exception);
+					if (log.isWarnEnabled()) {
+						log.warn("Could not publish notification {}", notification.getId(), exception);
+					}
 				}
 			}
 		});
