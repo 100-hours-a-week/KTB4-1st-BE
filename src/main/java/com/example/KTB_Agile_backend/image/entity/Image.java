@@ -46,6 +46,9 @@ public class Image extends BaseEntity {
 	@Column(name = "object_key", length = 512, unique = true)
 	private String objectKey;
 
+	@Column(name = "thumbnail_object_key", length = 512)
+	private String thumbnailObjectKey;
+
 	@Column(name = "image_url", columnDefinition = "TEXT")
 	private String imageUrl;
 
@@ -66,6 +69,10 @@ public class Image extends BaseEntity {
 			throw new IllegalStateException("image is already attached to an item");
 		}
 		this.item = requireNonNull(item, "item must not be null");
+	}
+
+	public void setThumbnailObjectKey(String thumbnailObjectKey) {
+		this.thumbnailObjectKey = thumbnailObjectKey;
 	}
 
 	@SuppressWarnings("PMD.NullAssignment")

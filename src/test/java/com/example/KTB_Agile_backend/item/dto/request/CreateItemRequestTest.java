@@ -25,7 +25,8 @@ class CreateItemRequestTest {
 				new BigDecimal("0.50"),
 				new BigDecimal("0.30"),
 				List.of(101L, 205L),
-				List.of("images/42/1001.jpg", "images/42/1002.jpg")
+				List.of("images/42/1001.jpg", "images/42/1002.jpg"),
+				null
 		);
 
 		assertThat(request.itemState()).isEqualTo(ItemState.AVAILABLE);
@@ -47,7 +48,8 @@ class CreateItemRequestTest {
 				new BigDecimal("1.001"),
 				new BigDecimal("0.30"),
 				List.of(),
-				List.of(" ")
+				List.of(" "),
+				null
 		);
 
 		assertThat(validator.validate(request)).isNotEmpty();
@@ -64,7 +66,8 @@ class CreateItemRequestTest {
 				new BigDecimal("0.50"),
 				new BigDecimal("0.30"),
 				List.of(101L, 101L),
-				List.of("images/42/1001.jpg", "images/42/1001.jpg")
+				List.of("images/42/1001.jpg", "images/42/1001.jpg"),
+				null
 		);
 
 		assertThat(validator.validate(request))
@@ -94,7 +97,8 @@ class CreateItemRequestTest {
 				new BigDecimal("0.50"),
 				new BigDecimal("0.30"),
 				List.of(101L),
-				List.of(1001L)
+				List.of(1001L),
+				null
 		);
 
 		assertThat(validator.validate(request))
@@ -112,7 +116,8 @@ class CreateItemRequestTest {
 				new BigDecimal("0.50"),
 				new BigDecimal("0.30"),
 				List.of(101L),
-				List.of(1001L)
+				List.of(1001L),
+				null
 		);
 
 		assertThat(validator.validate(request))
@@ -130,7 +135,8 @@ class CreateItemRequestTest {
 				new BigDecimal("0.50"),
 				new BigDecimal("0.30"),
 				List.of(101L),
-				List.of("images/42/1001.jpg")
+				List.of("images/42/1001.jpg"),
+				null
 		);
 	}
 }

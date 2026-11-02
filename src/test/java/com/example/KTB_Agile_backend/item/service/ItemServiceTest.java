@@ -216,7 +216,8 @@ class ItemServiceTest {
 				new BigDecimal("0.70"),
 				new BigDecimal("0.80"),
 				List.of(101L),
-				List.of(1001L)
+				List.of(1001L),
+				null
 		));
 
 		assertThat(List.of(
@@ -489,7 +490,8 @@ class ItemServiceTest {
 				new BigDecimal("0.50"),
 				new BigDecimal("0.30"),
 				groupIds,
-				objectKeys
+				objectKeys,
+				null
 		);
 	}
 
