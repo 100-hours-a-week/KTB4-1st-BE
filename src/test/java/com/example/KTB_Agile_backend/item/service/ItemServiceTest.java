@@ -199,7 +199,7 @@ class ItemServiceTest {
 		Image image = new Image(owner, "https://example.com/image.jpg");
 		ReflectionTestUtils.setField(image, "id", 1001L);
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(owner));
-		when(itemRepository.findByIdAndDeletedAtIsNull(123L)).thenReturn(Optional.of(item));
+		when(itemRepository.findAllForExchange(List.of(123L))).thenReturn(List.of(item));
 		when(groupRepository.findAllByIdInAndDeletedAtIsNull(List.of(101L)))
 				.thenReturn(List.of(group));
 		when(groupMemberRepository.countByGroup_IdInAndUser_IdAndStatus(
