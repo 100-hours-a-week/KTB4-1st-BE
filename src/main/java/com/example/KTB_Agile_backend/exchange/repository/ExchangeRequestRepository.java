@@ -29,6 +29,9 @@ public interface ExchangeRequestRepository extends JpaRepository<ExchangeRequest
 			ExchangeRequestStatus status
 	);
 
+	@EntityGraph(attributePaths = {"requester", "item.user"})
+	List<ExchangeRequest> findAllByItem_IdAndRequestedStatus(Long itemId, ExchangeRequestStatus status);
+
 	@Query("""
 		select request.id as exchangeRequestId, request.updatedAt as updatedAt
 		from ExchangeRequest request

@@ -19,6 +19,7 @@ import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemStats;
 import com.example.KTB_Agile_backend.item.entity.ItemView;
 import com.example.KTB_Agile_backend.item.entity.ItemPriceStatus;
+import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.exception.ItemErrorCode;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemStatsRepository;
@@ -29,6 +30,7 @@ import com.example.KTB_Agile_backend.user.repository.UserRepository;
 import com.example.KTB_Agile_backend.item.price.ItemPriceRangeCalculator;
 import com.example.KTB_Agile_backend.item.price.application.ItemPriceLookupService;
 import com.example.KTB_Agile_backend.item.price.application.ItemPriceEstimationRequestPublisher;
+import com.example.KTB_Agile_backend.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,6 +64,7 @@ public class ItemService {
 	private final ItemPriceLookupService itemPriceLookupService;
 	private final ItemPriceRangeCalculator itemPriceRangeCalculator;
 	private final ItemPriceEstimationRequestPublisher priceEstimationRequestPublisher;
+	private final NotificationService notificationService;
 
 	@Transactional
 	public ItemCreateResponse create(Long userId, CreateItemRequest request) {
@@ -133,11 +136,14 @@ public class ItemService {
 	public void update(Long userId, Long itemId, UpdateItemRequest request) {
 		userRepository.findActiveById(userId)
 				.orElseThrow(() -> new ApiException(ErrorCode.AUTHENTICATION_REQUIRED));
-		Item item = itemRepository.findByIdAndDeletedAtIsNull(itemId)
+		Item item = itemRepository.findAllForExchange(List.of(itemId)).stream()
+				.filter(candidate -> !candidate.isDeleted())
+				.findFirst()
 				.orElseThrow(() -> new ApiException(ItemErrorCode.ITEM_NOT_FOUND));
 		if (!item.getUser().getId().equals(userId)) {
 			throw new ApiException(ItemErrorCode.ITEM_UPDATE_FORBIDDEN);
 		}
+		ItemState previousItemState = item.getItemState();
 
 		List<Group> groups = findRegistrableGroups(userId, request.groupIds());
 		List<Image> images = findUpdatableImages(userId, itemId, request.imageIds());
@@ -157,6 +163,9 @@ public class ItemService {
 				request.exchangeUrgencyScore(),
 				request.valueGapToleranceScore()
 		);
+		if (previousItemState == ItemState.AVAILABLE && item.getItemState() == ItemState.UNAVAILABLE) {
+			notificationService.itemUnavailable(item, null);
+		}
 		if (item.getPriceStatus() == ItemPriceStatus.SUCCESS) {
 			ItemPriceRangeCalculator.PriceRange priceRange = itemPriceRangeCalculator.calculate(
 					item.getUnitPrice(), request.valueGapToleranceScore(), request.exchangeUrgencyScore());

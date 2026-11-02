@@ -1,6 +1,6 @@
 package com.example.KTB_Agile_backend.notification.dto;
 
-import java.util.Map;
+import java.time.LocalDateTime;
 
-public record NotificationMessage(String type, String title, String body, Map<String, Object> data) {
+public record NotificationMessage(Long notificationId, LocalDateTime createdAt, String text) {
 }
