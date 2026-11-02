@@ -80,8 +80,8 @@ cloud:
       presigned-url-duration-seconds: ${AWS_S3_PRESIGNED_URL_DURATION_SECONDS:600}
       read-url-duration-seconds: ${AWS_S3_READ_URL_DURATION_SECONDS:3600}
     cloudfront:
-      domain: ${AWS_CLOUDFRONT_DOMAIN:}
-      public-key-id: ${AWS_CLOUDFRONT_PUBLIC_KEY_ID:}
+      domain: ${CLOUDFRONT_BASE_URL:}
+      public-key-id: ${CLOUDFRONT_KEY_PAIR_ID:}
       private-key-pem: ${CLOUDFRONT_PRIVATE_KEY_PEM:}
 
 ai:
