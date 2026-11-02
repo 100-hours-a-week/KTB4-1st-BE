@@ -41,7 +41,9 @@ public final class ItemThumbnailBackfill {
 	private static final int THUMBNAIL_MAX_SIZE = 224;
 	private static final float JPEG_QUALITY = 0.8f;
 	private static final int BATCH_SIZE = 100;
+	private static final int UPDATED_ROW_COUNT = 1;
 	private static final String THUMBNAIL_KEY_PREFIX = "images/thumbnails/backfill/";
+	private static final System.Logger LOGGER = System.getLogger(ItemThumbnailBackfill.class.getName());
 
 	private ItemThumbnailBackfill() {
 	}
@@ -77,16 +79,17 @@ public final class ItemThumbnailBackfill {
 							.contentType("image/jpeg")
 							.tagging("pending=false")
 							.build(), RequestBody.fromBytes(thumbnail));
-					if (setThumbnailKey(connection, target.imageId(), thumbnailKey) == 1) {
+					if (setThumbnailKey(connection, target.imageId(), thumbnailKey) == UPDATED_ROW_COUNT) {
 						processed++;
 					}
 					if (processed > 0 && processed % BATCH_SIZE == 0) {
-						System.out.printf("Backfilled %d thumbnails (through image %d)%n", processed, lastImageId);
+						LOGGER.log(System.Logger.Level.INFO,
+								"Backfilled {0} thumbnails (through image {1})", processed, lastImageId);
 					}
 				}
 			}
-			System.out.printf("Backfill complete: %d thumbnails created, %d URL-only images skipped%n",
-					processed, urlOnlyImages);
+			LOGGER.log(System.Logger.Level.INFO,
+					"Backfill complete: {0} thumbnails created, {1} URL-only images skipped", processed, urlOnlyImages);
 		}
 	}
 
