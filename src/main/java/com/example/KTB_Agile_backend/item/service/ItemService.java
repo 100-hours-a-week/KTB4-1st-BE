@@ -40,6 +40,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -75,11 +77,16 @@ public class ItemService {
 		if (request.thumbnailObjectKey() != null) {
 			s3ImageObjectService.validatePendingObject(userId, request.thumbnailObjectKey());
 		}
+		Map<String, String> detailThumbnailKeysByObjectKey = validateDetailThumbnailKeys(userId, request);
 		if (imageRepository.existsByObjectKeyIn(request.objectKeys())) {
 			throw new ApiException(ItemErrorCode.ITEM_IMAGE_ALREADY_REGISTERED);
 		}
 		List<Image> images = request.objectKeys().stream()
-				.map(objectKey -> Image.fromS3Object(user, objectKey))
+				.map(objectKey -> {
+					Image image = Image.fromS3Object(user, objectKey);
+					image.setDetailThumbnailObjectKey(detailThumbnailKeysByObjectKey.get(objectKey));
+					return image;
+				})
 				.toList();
 		Image thumbnailImage = images.get(0);
 		thumbnailImage.setThumbnailObjectKey(request.thumbnailObjectKey());
@@ -127,9 +134,38 @@ public class ItemService {
 		if (request.thumbnailObjectKey() != null && !objectKeysToRegister.contains(request.thumbnailObjectKey())) {
 			objectKeysToRegister.add(request.thumbnailObjectKey());
 		}
+		objectKeysToRegister.addAll(detailThumbnailKeysByObjectKey.values());
 		s3ImageObjectService.markRegistered(objectKeysToRegister);
 
 		return new ItemCreateResponse(item.getId());
+	}
+
+	private Map<String, String> validateDetailThumbnailKeys(Long userId, CreateItemRequest request) {
+		List<CreateItemRequest.ImageDetailThumbnail> mappings = request.imageDetailThumbnails();
+		if (mappings == null || mappings.isEmpty()) {
+			return Map.of();
+		}
+
+		Set<String> objectKeys = Set.copyOf(request.objectKeys());
+		Map<String, String> detailThumbnailKeysByObjectKey = new LinkedHashMap<>();
+		Set<String> detailThumbnailKeys = new HashSet<>();
+		for (CreateItemRequest.ImageDetailThumbnail mapping : mappings) {
+			String objectKey = mapping.objectKey();
+			String detailThumbnailObjectKey = mapping.detailThumbnailObjectKey();
+			if (!objectKeys.contains(objectKey)
+					|| detailThumbnailKeysByObjectKey.containsKey(objectKey)
+					|| !detailThumbnailKeys.add(detailThumbnailObjectKey)
+					|| objectKeys.contains(detailThumbnailObjectKey)
+					|| detailThumbnailObjectKey.equals(request.thumbnailObjectKey())) {
+				throw new ApiException(ErrorCode.BAD_REQUEST, "상세용 썸네일 연결 정보가 올바르지 않습니다.");
+			}
+			detailThumbnailKeysByObjectKey.put(objectKey, detailThumbnailObjectKey);
+		}
+		if (!detailThumbnailKeysByObjectKey.keySet().equals(objectKeys)) {
+			throw new ApiException(ErrorCode.BAD_REQUEST, "상세용 썸네일 연결 정보가 올바르지 않습니다.");
+		}
+		detailThumbnailKeys.forEach(key -> s3ImageObjectService.validatePendingObject(userId, key));
+		return detailThumbnailKeysByObjectKey;
 	}
 
 	@Transactional
