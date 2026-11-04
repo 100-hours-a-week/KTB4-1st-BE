@@ -71,7 +71,7 @@ public final class ItemThumbnailBackfill {
 							.bucket(bucket)
 							.key(target.objectKey())
 							.build()).asByteArray();
-					byte[] thumbnail = createThumbnail(source);
+					byte[] thumbnail = createThumbnail(source, THUMBNAIL_MAX_SIZE, "jpeg", JPEG_QUALITY);
 					String thumbnailKey = THUMBNAIL_KEY_PREFIX + target.imageId() + ".jpg";
 					s3Client.putObject(PutObjectRequest.builder()
 							.bucket(bucket)
@@ -152,15 +152,15 @@ public final class ItemThumbnailBackfill {
 		}
 	}
 
-	private static byte[] createThumbnail(byte[] sourceBytes) throws IOException {
+	static byte[] createThumbnail(byte[] sourceBytes, int maxSize, String format, float quality) throws IOException {
 		int orientation = readOrientation(sourceBytes);
-		BufferedImage source = decode(sourceBytes);
+		BufferedImage source = decode(sourceBytes, maxSize);
 		BufferedImage oriented = orient(source, orientation);
 		int sourceMaxSize = Math.max(oriented.getWidth(), oriented.getHeight());
-		double scale = Math.min(1.0, (double) THUMBNAIL_MAX_SIZE / sourceMaxSize);
+		double scale = Math.min(1.0, (double) maxSize / sourceMaxSize);
 		int width = Math.max(1, (int) Math.round(oriented.getWidth() * scale));
 		int height = Math.max(1, (int) Math.round(oriented.getHeight() * scale));
-		if (Math.max(width, height) > THUMBNAIL_MAX_SIZE) {
+		if (Math.max(width, height) > maxSize) {
 			throw new IOException("Thumbnail exceeds the configured maximum size");
 		}
 
@@ -172,9 +172,9 @@ public final class ItemThumbnailBackfill {
 		graphics.drawImage(oriented, 0, 0, width, height, null);
 		graphics.dispose();
 
-		Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpeg");
+		Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName(format);
 		if (!writers.hasNext()) {
-			throw new IOException("No JPEG encoder is available");
+			throw new IOException("No " + format + " encoder is available");
 		}
 		ImageWriter writer = writers.next();
 		try (ByteArrayOutputStream bytes = new ByteArrayOutputStream();
@@ -182,7 +182,11 @@ public final class ItemThumbnailBackfill {
 			writer.setOutput(output);
 			ImageWriteParam parameters = writer.getDefaultWriteParam();
 			parameters.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
-			parameters.setCompressionQuality(JPEG_QUALITY);
+			String[] compressionTypes = parameters.getCompressionTypes();
+			if (compressionTypes != null) {
+				parameters.setCompressionType(compressionTypes[0]);
+			}
+			parameters.setCompressionQuality(quality);
 			writer.write(null, new IIOImage(thumbnail, null, null), parameters);
 			output.flush();
 			return bytes.toByteArray();
@@ -191,7 +195,7 @@ public final class ItemThumbnailBackfill {
 		}
 	}
 
-	private static BufferedImage decode(byte[] sourceBytes) throws IOException {
+	private static BufferedImage decode(byte[] sourceBytes, int maxSize) throws IOException {
 		try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(sourceBytes))) {
 			if (input == null) {
 				throw new IOException("Unable to read image data");
@@ -204,7 +208,7 @@ public final class ItemThumbnailBackfill {
 			try {
 				reader.setInput(input, true, true);
 				int maxDimension = Math.max(reader.getWidth(0), reader.getHeight(0));
-				int sampling = Math.max(1, maxDimension / THUMBNAIL_MAX_SIZE);
+				int sampling = Math.max(1, maxDimension / maxSize);
 				ImageReadParam parameters = reader.getDefaultReadParam();
 				parameters.setSourceSubsampling(sampling, sampling, 0, 0);
 				BufferedImage image = reader.read(0, parameters);
