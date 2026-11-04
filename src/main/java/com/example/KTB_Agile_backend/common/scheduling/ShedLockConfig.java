@@ -1,20 +1,17 @@
-package com.example.KTB_Agile_backend.notification.config;
+package com.example.KTB_Agile_backend.common.scheduling;
 
-import com.example.KTB_Agile_backend.common.config.KafkaAddressCondition;
 import net.javacrumbs.shedlock.core.LockProvider;
 import net.javacrumbs.shedlock.provider.jdbctemplate.JdbcTemplateLockProvider;
 import net.javacrumbs.shedlock.spring.annotation.EnableSchedulerLock;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
 
 @Configuration
-@Conditional(KafkaAddressCondition.Configured.class)
 @EnableSchedulerLock(defaultLockAtMostFor = "PT10M")
-public class ItemViewInterestSchedulerLockConfig {
+public class ShedLockConfig {
 
 	@Bean
 	public LockProvider lockProvider(DataSource dataSource) {
