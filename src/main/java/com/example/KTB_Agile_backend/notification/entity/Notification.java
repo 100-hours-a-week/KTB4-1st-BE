@@ -44,7 +44,7 @@ public class Notification extends BaseEntity {
 	@Column(name = "event_identity", nullable = false, length = 36)
 	private String eventIdentity;
 
-	@Column(name = "exchange_request_id", nullable = false)
+	@Column(name = "exchange_request_id")
 	private Long exchangeRequestId;
 
 	@Column(name = "item_id", nullable = false)

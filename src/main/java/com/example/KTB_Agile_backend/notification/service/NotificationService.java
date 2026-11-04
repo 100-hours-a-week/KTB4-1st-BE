@@ -104,6 +104,17 @@ public class NotificationService {
 		}
 	}
 
+	public void itemInterestIncreased(Long recipientUserId, Long itemId) {
+		persistNotification(
+				recipientUserId,
+				NotificationEventType.ITEM_VIEW_INTEREST,
+				null,
+				itemId,
+				UUID.randomUUID().toString(),
+				"최근 6시간 동안 이 물품의 관심도가 증가했습니다."
+		);
+	}
+
 	private void persist(
 			Long recipientUserId,
 			NotificationEventType eventType,
@@ -122,12 +133,23 @@ public class NotificationService {
 			String eventIdentity,
 			String text
 	) {
+		persistNotification(recipientUserId, eventType, request.getId(), item.getId(), eventIdentity, text);
+	}
+
+	private void persistNotification(
+			Long recipientUserId,
+			NotificationEventType eventType,
+			Long exchangeRequestId,
+			Long itemId,
+			String eventIdentity,
+			String text
+	) {
 		Notification notification = notificationRepository.save(new Notification(
 				recipientUserId,
 				eventType,
 				eventIdentity,
-				request.getId(),
-				item.getId(),
+				exchangeRequestId,
+				itemId,
 				text
 		));
 		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -135,7 +157,8 @@ public class NotificationService {
 			public void afterCommit() {
 				try {
 					notificationMessagePublisher.publish(recipientUserId, new NotificationMessage(
-							notification.getId(), notification.getCreatedAt(), notification.getText()));
+							notification.getId(), notification.getItemId(),
+							notification.getCreatedAt(), notification.getText()));
 				} catch (RuntimeException exception) {
 					if (log.isWarnEnabled()) {
 						log.warn("Could not publish notification {}", notification.getId(), exception);
