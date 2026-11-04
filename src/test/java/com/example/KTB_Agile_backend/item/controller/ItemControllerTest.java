@@ -147,7 +147,7 @@ class ItemControllerTest {
 				new ItemDetailResponse.Owner(
 						10L, "사용자1", "https://example.com/profile.jpg", UserStatus.ACTIVE),
 				List.of(new ItemDetailResponse.ImageInfo(
-						501L, "https://example.com/item1.jpg", 1)),
+						501L, "https://example.com/item1.jpg", "https://example.com/item1.jpg", 1)),
 				501L,
 				33L,
 				128L,

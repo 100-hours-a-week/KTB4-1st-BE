@@ -51,6 +51,7 @@ public record ItemDetailResponse(
 	public record ImageInfo(
 			Long imageId,
 			String imageUrl,
+			String detailThumbnailUrl,
 			Integer displayOrder
 	) {
 	}

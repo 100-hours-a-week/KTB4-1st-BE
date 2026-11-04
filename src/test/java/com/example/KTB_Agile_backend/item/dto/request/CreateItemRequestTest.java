@@ -6,6 +6,7 @@ import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -26,6 +27,7 @@ class CreateItemRequestTest {
 				new BigDecimal("0.30"),
 				List.of(101L, 205L),
 				List.of("images/42/1001.jpg", "images/42/1002.jpg"),
+				null,
 				null
 		);
 
@@ -49,6 +51,7 @@ class CreateItemRequestTest {
 				new BigDecimal("0.30"),
 				List.of(),
 				List.of(" "),
+				null,
 				null
 		);
 
@@ -67,12 +70,26 @@ class CreateItemRequestTest {
 				new BigDecimal("0.30"),
 				List.of(101L, 101L),
 				List.of("images/42/1001.jpg", "images/42/1001.jpg"),
+				null,
 				null
 		);
 
 		assertThat(validator.validate(request))
 				.extracting(violation -> violation.getMessage())
 				.contains("그룹 ID는 중복될 수 없습니다.", "이미지 objectKey는 중복될 수 없습니다.");
+	}
+
+	@Test
+	void validatesDetailThumbnailEntries() {
+		var request = request(1, List.of(new CreateItemRequest.ImageDetailThumbnail(" ", "x".repeat(513))));
+
+		assertThat(validator.validate(request))
+				.extracting(violation -> violation.getMessage())
+				.contains("원본 objectKey는 필수 입력값입니다.", "상세용 썸네일 objectKey는 512자 이하여야 합니다.");
+
+		assertThat(validator.validate(request(1, Collections.singletonList(null))))
+				.extracting(violation -> violation.getMessage())
+				.contains("상세용 썸네일 연결 항목은 필수입니다.");
 	}
 
 	@Test
@@ -126,6 +143,11 @@ class CreateItemRequestTest {
 	}
 
 	private static CreateItemRequest request(int quantity) {
+		return request(quantity, null);
+	}
+
+	private static CreateItemRequest request(
+			int quantity, List<CreateItemRequest.ImageDetailThumbnail> imageDetailThumbnails) {
 		return new CreateItemRequest(
 				"제목",
 				"내용",
@@ -136,7 +158,8 @@ class CreateItemRequestTest {
 				new BigDecimal("0.30"),
 				List.of(101L),
 				List.of("images/42/1001.jpg"),
-				null
+				null,
+				imageDetailThumbnails
 		);
 	}
 }

@@ -34,6 +34,8 @@ The first `objectKeys` entry when creating an item, or first `imageIds` entry wh
 
 The client must send the `requiredHeaders` returned by `POST /images/presigned-urls` with its S3 PUT, including when uploading one image. Configure bucket CORS to allow the frontend origin and the `PUT` method with the `Content-Type` and `x-amz-tagging` headers.
 
+After applying migration V26, run `./gradlew backfillItemDetailThumbnails` on Linux to generate missing detail images for active items with S3-backed originals. The task uses `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, and `AWS_S3_BUCKET`; `AWS_REGION` defaults to `ap-northeast-2`. It writes WebP files with a 1280px maximum long edge and 0.8 quality under `images/detail-thumbnails/backfill/`, and skips legacy rows without an S3 `object_key`.
+
 ## Smart search
 
 The backend calls the AI server's fixed `POST /api/search/rank-candidates` path under `AI_BASE_URL`. Call the backend's `POST /search/rank-candidates` with the selected `groupId`, `items` (`itemId` and `quantity`), and optional `preferenceText`, for example `{"groupId":1,"items":[{"itemId":101,"quantity":2}],"preferenceText":"야식으로 먹을 거 찾아요"}`. The backend sums each selected item's unit price multiplied by its requested quantity, fetches up to 30 recent requestable items in that group priced at no more than 120% of the total, and returns their summaries in the AI-ranked order in `data.items`. Missing or blank `preferenceText` returns candidates in recent-first order without calling AI; no candidates returns an empty list. AI failure messages are returned in the common API envelope's `error.message`.
@@ -81,3 +83,9 @@ Connect to `/ws` with STOMP `CONNECT` header `Authorization: Bearer <jwt>`. Subs
 Leaving a chat room, editing, rejecting, and canceling an exchange also persist and broadcast `SYSTEM` messages with the corresponding Korean notice as `content`. Exchange edits include the same request-card payload as request creation.
 
 Fetch the latest chat messages with `GET /chat/rooms/{chatRoomId}/messages`. Pass the returned `nextCursor` as the `cursor` query parameter to load older messages; each response contains messages in chronological order.
+
+## WebSocket notifications
+
+Notifications use the existing authenticated STOMP connection at `/ws`. A connected client subscribes to `/user/queue/notifications`; application code publishes an explicit user ID and payload through `NotificationMessagePublisher`. The server sends notifications only to sessions authenticated as that user.
+
+The notification publisher sends through Redis Pub/Sub so any backend instance can forward the event to its local WebSocket sessions. This path is online-only: disconnected clients do not receive or replay messages. No business event or recipient policy is connected yet; callers will choose those when defined. If notification history or reconnect replay becomes a requirement, add persistent notification storage separately.

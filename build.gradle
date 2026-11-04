@@ -64,6 +64,7 @@ repositories {
 
 dependencies {
 	implementation platform('software.amazon.awssdk:bom:2.54.17')
+	implementation 'software.amazon.awssdk:cloudfront'
 	implementation 'software.amazon.awssdk:s3'
 	implementation 'org.springframework.boot:spring-boot-h2console'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
@@ -96,4 +97,18 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+tasks.register('backfillItemThumbnails', JavaExec) {
+	group = 'application'
+	description = 'Create missing thumbnails for existing item representative images.'
+	classpath = sourceSets.main.runtimeClasspath
+	mainClass = 'com.example.KTB_Agile_backend.image.backfill.ItemThumbnailBackfill'
+}
+
+tasks.register('backfillItemDetailThumbnails', JavaExec) {
+	group = 'application'
+	description = 'Create missing detail thumbnails for existing item images.'
+	classpath = sourceSets.main.runtimeClasspath
+	mainClass = 'com.example.KTB_Agile_backend.image.backfill.ItemDetailThumbnailBackfill'
 }

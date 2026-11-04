@@ -19,6 +19,7 @@ import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemStats;
 import com.example.KTB_Agile_backend.item.entity.ItemView;
 import com.example.KTB_Agile_backend.item.entity.ItemPriceStatus;
+import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.exception.ItemErrorCode;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemStatsRepository;
@@ -29,6 +30,7 @@ import com.example.KTB_Agile_backend.user.repository.UserRepository;
 import com.example.KTB_Agile_backend.item.price.ItemPriceRangeCalculator;
 import com.example.KTB_Agile_backend.item.price.application.ItemPriceLookupService;
 import com.example.KTB_Agile_backend.item.price.application.ItemPriceEstimationRequestPublisher;
+import com.example.KTB_Agile_backend.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +40,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -62,6 +66,7 @@ public class ItemService {
 	private final ItemPriceLookupService itemPriceLookupService;
 	private final ItemPriceRangeCalculator itemPriceRangeCalculator;
 	private final ItemPriceEstimationRequestPublisher priceEstimationRequestPublisher;
+	private final NotificationService notificationService;
 
 	@Transactional
 	public ItemCreateResponse create(Long userId, CreateItemRequest request) {
@@ -72,11 +77,16 @@ public class ItemService {
 		if (request.thumbnailObjectKey() != null) {
 			s3ImageObjectService.validatePendingObject(userId, request.thumbnailObjectKey());
 		}
+		Map<String, String> detailThumbnailKeysByObjectKey = validateDetailThumbnailKeys(userId, request);
 		if (imageRepository.existsByObjectKeyIn(request.objectKeys())) {
 			throw new ApiException(ItemErrorCode.ITEM_IMAGE_ALREADY_REGISTERED);
 		}
 		List<Image> images = request.objectKeys().stream()
-				.map(objectKey -> Image.fromS3Object(user, objectKey))
+				.map(objectKey -> {
+					Image image = Image.fromS3Object(user, objectKey);
+					image.setDetailThumbnailObjectKey(detailThumbnailKeysByObjectKey.get(objectKey));
+					return image;
+				})
 				.toList();
 		Image thumbnailImage = images.get(0);
 		thumbnailImage.setThumbnailObjectKey(request.thumbnailObjectKey());
@@ -124,20 +134,52 @@ public class ItemService {
 		if (request.thumbnailObjectKey() != null && !objectKeysToRegister.contains(request.thumbnailObjectKey())) {
 			objectKeysToRegister.add(request.thumbnailObjectKey());
 		}
+		objectKeysToRegister.addAll(detailThumbnailKeysByObjectKey.values());
 		s3ImageObjectService.markRegistered(objectKeysToRegister);
 
 		return new ItemCreateResponse(item.getId());
+	}
+
+	private Map<String, String> validateDetailThumbnailKeys(Long userId, CreateItemRequest request) {
+		List<CreateItemRequest.ImageDetailThumbnail> mappings = request.imageDetailThumbnails();
+		if (mappings == null || mappings.isEmpty()) {
+			return Map.of();
+		}
+
+		Set<String> objectKeys = Set.copyOf(request.objectKeys());
+		Map<String, String> detailThumbnailKeysByObjectKey = new LinkedHashMap<>();
+		Set<String> detailThumbnailKeys = new HashSet<>();
+		for (CreateItemRequest.ImageDetailThumbnail mapping : mappings) {
+			String objectKey = mapping.objectKey();
+			String detailThumbnailObjectKey = mapping.detailThumbnailObjectKey();
+			if (!objectKeys.contains(objectKey)
+					|| detailThumbnailKeysByObjectKey.containsKey(objectKey)
+					|| !detailThumbnailKeys.add(detailThumbnailObjectKey)
+					|| objectKeys.contains(detailThumbnailObjectKey)
+					|| detailThumbnailObjectKey.equals(request.thumbnailObjectKey())) {
+				throw new ApiException(ErrorCode.BAD_REQUEST, "상세용 썸네일 연결 정보가 올바르지 않습니다.");
+			}
+			detailThumbnailKeysByObjectKey.put(objectKey, detailThumbnailObjectKey);
+		}
+		if (!detailThumbnailKeysByObjectKey.keySet().equals(objectKeys)) {
+			throw new ApiException(ErrorCode.BAD_REQUEST, "상세용 썸네일 연결 정보가 올바르지 않습니다.");
+		}
+		detailThumbnailKeys.forEach(key -> s3ImageObjectService.validatePendingObject(userId, key));
+		return detailThumbnailKeysByObjectKey;
 	}
 
 	@Transactional
 	public void update(Long userId, Long itemId, UpdateItemRequest request) {
 		userRepository.findActiveById(userId)
 				.orElseThrow(() -> new ApiException(ErrorCode.AUTHENTICATION_REQUIRED));
-		Item item = itemRepository.findByIdAndDeletedAtIsNull(itemId)
+		Item item = itemRepository.findAllForExchange(List.of(itemId)).stream()
+				.filter(candidate -> !candidate.isDeleted())
+				.findFirst()
 				.orElseThrow(() -> new ApiException(ItemErrorCode.ITEM_NOT_FOUND));
 		if (!item.getUser().getId().equals(userId)) {
 			throw new ApiException(ItemErrorCode.ITEM_UPDATE_FORBIDDEN);
 		}
+		ItemState previousItemState = item.getItemState();
 
 		List<Group> groups = findRegistrableGroups(userId, request.groupIds());
 		List<Image> images = findUpdatableImages(userId, itemId, request.imageIds());
@@ -157,6 +199,9 @@ public class ItemService {
 				request.exchangeUrgencyScore(),
 				request.valueGapToleranceScore()
 		);
+		if (previousItemState == ItemState.AVAILABLE && item.getItemState() == ItemState.UNAVAILABLE) {
+			notificationService.itemUnavailable(item, null);
+		}
 		if (item.getPriceStatus() == ItemPriceStatus.SUCCESS) {
 			ItemPriceRangeCalculator.PriceRange priceRange = itemPriceRangeCalculator.calculate(
 					item.getUnitPrice(), request.valueGapToleranceScore(), request.exchangeUrgencyScore());

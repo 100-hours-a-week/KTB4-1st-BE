@@ -414,6 +414,7 @@ public class ItemQueryService {
 			imageInfos.add(new ItemDetailResponse.ImageInfo(
 					image.getId(),
 					imageUrl(image),
+					imageUrlResolver.resolveDetailThumbnail(image),
 					index + 1
 			));
 		}

@@ -1,6 +1,7 @@
 package com.example.KTB_Agile_backend.item.dto.request;
 
 import com.example.KTB_Agile_backend.item.entity.ItemState;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
@@ -61,7 +62,9 @@ public record CreateItemRequest(
 		List<@NotBlank(message = "이미지 objectKey는 필수 입력값입니다.") String> objectKeys,
 
 		@Size(min = 1, max = 512, message = "썸네일 objectKey는 1자 이상 512자 이하여야 합니다.")
-		String thumbnailObjectKey
+		String thumbnailObjectKey,
+
+		List<@NotNull(message = "상세용 썸네일 연결 항목은 필수입니다.") @Valid ImageDetailThumbnail> imageDetailThumbnails
 ) {
 
 	public CreateItemRequest {
@@ -71,5 +74,16 @@ public record CreateItemRequest(
 
 	private static String strip(String value) {
 		return value == null ? null : value.strip();
+	}
+
+	public record ImageDetailThumbnail(
+			@NotBlank(message = "원본 objectKey는 필수 입력값입니다.")
+			@Size(max = 512, message = "원본 objectKey는 512자 이하여야 합니다.")
+			String objectKey,
+
+			@NotBlank(message = "상세용 썸네일 objectKey는 필수 입력값입니다.")
+			@Size(max = 512, message = "상세용 썸네일 objectKey는 512자 이하여야 합니다.")
+			String detailThumbnailObjectKey
+	) {
 	}
 }

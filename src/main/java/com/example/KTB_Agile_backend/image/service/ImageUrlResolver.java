@@ -10,4 +10,8 @@ public interface ImageUrlResolver {
 	default String resolveThumbnail(Image image) {
 		return resolve(image);
 	}
+
+	default String resolveDetailThumbnail(Image image) {
+		return resolve(image);
+	}
 }

@@ -460,6 +460,8 @@ JWT secret, Kakao client secret, Kakao Admin key는 Postman 요청에 넣지 않
 - 메인 application.yaml에는 외부 DB 접속 설정이 없습니다.
 - 현재 로컬 실행에서는 임베디드 H2 인메모리 DB가 사용되며, 애플리케이션을 재시작하면
   사용자, refresh token, OAuth state 데이터가 초기화될 수 있습니다.
+- `POST /items`는 선택 필드 `imageDetailThumbnails: [{objectKey, detailThumbnailObjectKey}]`를 받습니다. 생략·`null`·빈 배열은 기존 등록 방식으로 처리하며, 값이 있으면 모든 원본 키와 한 번씩 연결해야 합니다. 상세용 키는 서로 중복될 수 없고, 원본·목록용 키와 같을 수 없으며 요청 사용자의 pending S3 객체여야 합니다.
+- `GET /items/{itemId}` 응답의 각 `images[]` 항목은 원본 `imageUrl`과 상세용 `detailThumbnailUrl`을 반환합니다. 상세용 키가 없는 기존 이미지는 `imageUrl`을 `detailThumbnailUrl`로 반환합니다.
 - Spring 실행에는 다음 환경변수가 필요합니다.
 
 | 환경변수 | 필수 여부 | 기본값/조건 |
