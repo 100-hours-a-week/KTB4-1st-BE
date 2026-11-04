@@ -116,7 +116,7 @@ public class S3ImageObjectService {
 			return presignedGetUrl(objectKey, duration);
 		}
 		return CLOUDFRONT_UTILITIES.getSignedUrlWithCannedPolicy(cloudFrontSignerRequest.toBuilder()
-				.resourceUrl("https://" + cloudFrontDomain + "/" + objectKey)
+				.resourceUrl(cloudFrontDomain + "/" + objectKey)
 				.expirationDate(Instant.now().plus(duration))
 				.build())
 			.url();
@@ -136,7 +136,7 @@ public class S3ImageObjectService {
 			try {
 				Files.writeString(keyFile, privateKeyPem.replace("\\n", "\n"));
 				return CannedSignerRequest.builder()
-						.resourceUrl("https://" + domain + "/")
+						.resourceUrl(domain + "/")
 						.privateKey(keyFile)
 						.keyPairId(publicKeyId)
 						.expirationDate(Instant.now())

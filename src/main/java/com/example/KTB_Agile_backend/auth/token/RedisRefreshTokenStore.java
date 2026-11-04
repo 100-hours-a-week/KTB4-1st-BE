@@ -135,10 +135,10 @@ public class RedisRefreshTokenStore implements RefreshTokenStore {
 	}
 
 	private static String sessionKey(String sessionId) {
-		return KEY_PREFIX + "session:" + sessionId;
+		return KEY_PREFIX + "session:{" + sessionId + "}";
 	}
 
 	private static String usedTokensKey(String sessionId) {
-		return KEY_PREFIX + "used:" + sessionId;
+		return KEY_PREFIX + "used:{" + sessionId + "}";
 	}
 }

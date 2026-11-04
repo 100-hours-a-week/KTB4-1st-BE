@@ -147,10 +147,20 @@ class ItemServiceTest {
 		when(groupMemberRepository.countByGroup_IdInAndUser_IdAndStatus(
 				eq(List.of(101L, 205L)), eq(42L), any()))
 				.thenReturn(2L);
-		when(imageRepository.existsByObjectKeyIn(List.of("images/42/1001.jpg"))).thenReturn(false);
+		List<String> objectKeys = List.of("images/42/1001.jpg", "images/42/1002.jpg");
+		when(imageRepository.existsByObjectKeyIn(objectKeys)).thenReturn(false);
 		when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-		var response = service.create(42L, request(List.of(101L, 205L), List.of("images/42/1001.jpg")));
+		List<CreateItemRequest.ImageDetailThumbnail> detailThumbnailMappings = List.of(
+				new CreateItemRequest.ImageDetailThumbnail("images/42/1002.jpg", "images/42/detail-1002.jpg"),
+				new CreateItemRequest.ImageDetailThumbnail("images/42/1001.jpg", "images/42/detail-1001.jpg")
+		);
+		var exception = assertThrows(ApiException.class, () -> service.create(42L,
+				request(List.of(101L, 205L), objectKeys, List.of(detailThumbnailMappings.get(0)))));
+		assertThat(exception.status()).isEqualTo(HttpStatus.BAD_REQUEST);
+		verify(itemRepository, never()).save(any(Item.class));
+
+		var response = service.create(42L, request(List.of(101L, 205L), objectKeys, detailThumbnailMappings));
 
 		assertThat(response.itemId()).isNull();
 		ArgumentCaptor<Item> itemCaptor = ArgumentCaptor.forClass(Item.class);
@@ -166,8 +176,17 @@ class ItemServiceTest {
 		assertThat(((Iterable<?>) groupItemsCaptor.getValue())).hasSize(2);
 		ArgumentCaptor<Iterable<Image>> imagesCaptor = ArgumentCaptor.forClass(Iterable.class);
 		verify(imageRepository).saveAll(imagesCaptor.capture());
-		assertThat(imagesCaptor.getValue()).hasSize(1);
-		verify(s3ImageObjectService).markRegistered(List.of("images/42/1001.jpg"));
+		List<Image> savedImages = new ArrayList<>();
+		imagesCaptor.getValue().forEach(savedImages::add);
+		assertThat(savedImages).extracting(Image::getObjectKey)
+				.containsExactly("images/42/1001.jpg", "images/42/1002.jpg");
+		assertThat(savedImages).extracting(Image::getDetailThumbnailObjectKey)
+				.containsExactly("images/42/detail-1001.jpg", "images/42/detail-1002.jpg");
+		verify(s3ImageObjectService).validatePendingObject(42L, "images/42/detail-1001.jpg");
+		verify(s3ImageObjectService).validatePendingObject(42L, "images/42/detail-1002.jpg");
+		verify(s3ImageObjectService).markRegistered(List.of(
+				"images/42/1001.jpg", "images/42/1002.jpg",
+				"images/42/detail-1002.jpg", "images/42/detail-1001.jpg"));
 	}
 
 	@Test
@@ -424,8 +443,10 @@ class ItemServiceTest {
 				new ItemDetailResponse.Owner(
 						10L, "사용자1", "https://example.com/profile.jpg", UserStatus.ACTIVE),
 				List.of(
-						new ItemDetailResponse.ImageInfo(501L, "https://example.com/item1.jpg", 1),
-						new ItemDetailResponse.ImageInfo(502L, "https://example.com/item2.jpg", 2)
+						new ItemDetailResponse.ImageInfo(
+								501L, "https://example.com/item1.jpg", "https://example.com/item1.jpg", 1),
+						new ItemDetailResponse.ImageInfo(
+								502L, "https://example.com/item2.jpg", "https://example.com/item2.jpg", 2)
 				),
 				null,
 				33L,
@@ -482,6 +503,13 @@ class ItemServiceTest {
 	}
 
 	private static CreateItemRequest request(List<Long> groupIds, List<String> objectKeys) {
+		return request(groupIds, objectKeys, null);
+	}
+
+	private static CreateItemRequest request(
+			List<Long> groupIds,
+			List<String> objectKeys,
+			List<CreateItemRequest.ImageDetailThumbnail> imageDetailThumbnails) {
 		return new CreateItemRequest(
 				"제목",
 				"내용",
@@ -492,7 +520,8 @@ class ItemServiceTest {
 				new BigDecimal("0.30"),
 				groupIds,
 				objectKeys,
-				null
+				null,
+				imageDetailThumbnails
 		);
 	}
 

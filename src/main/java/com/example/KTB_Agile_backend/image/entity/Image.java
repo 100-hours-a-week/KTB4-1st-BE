@@ -49,6 +49,9 @@ public class Image extends BaseEntity {
 	@Column(name = "thumbnail_object_key", length = 512)
 	private String thumbnailObjectKey;
 
+	@Column(name = "detail_thumbnail_object_key", length = 512)
+	private String detailThumbnailObjectKey;
+
 	@Column(name = "image_url", columnDefinition = "TEXT")
 	private String imageUrl;
 
@@ -73,6 +76,10 @@ public class Image extends BaseEntity {
 
 	public void setThumbnailObjectKey(String thumbnailObjectKey) {
 		this.thumbnailObjectKey = thumbnailObjectKey;
+	}
+
+	public void setDetailThumbnailObjectKey(String detailThumbnailObjectKey) {
+		this.detailThumbnailObjectKey = detailThumbnailObjectKey;
 	}
 
 	@SuppressWarnings("PMD.NullAssignment")
