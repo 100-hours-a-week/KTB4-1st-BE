@@ -54,6 +54,7 @@ public class NotificationQueryService {
 	}
 
 	private static NotificationMessage toMessage(Notification notification) {
-		return new NotificationMessage(notification.getId(), notification.getCreatedAt(), notification.getText());
+		return new NotificationMessage(
+				notification.getId(), notification.getItemId(), notification.getCreatedAt(), notification.getText());
 	}
 }
