@@ -10,6 +10,8 @@ import java.util.List;
 
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
 
+	boolean existsByIdAndChatRoomId(Long id, Long chatRoomId);
+
 	List<ChatMessage> findAllByChatRoomIdOrderByIdDesc(Long chatRoomId, Pageable pageable);
 
 	List<ChatMessage> findAllByChatRoomIdAndIdLessThanOrderByIdDesc(

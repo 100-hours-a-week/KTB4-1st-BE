@@ -84,6 +84,8 @@ Leaving a chat room, editing, rejecting, and canceling an exchange also persist 
 
 Fetch the latest chat messages with `GET /chat/rooms/{chatRoomId}/messages`. Pass the returned `nextCursor` as the `cursor` query parameter to load older messages; each response contains messages in chronological order.
 
+For read receipts, send `PUT /chat/rooms/{chatRoomId}/read-cursor` with `{"messageId": <last displayed message ID>}` after displaying new messages. Coalesce rapid updates to the highest displayed ID and await the final acknowledgment before refreshing the room list. The first-page message GET still advances the read cursor for existing clients during migration; remove that compatibility behavior after all clients use the explicit read-cursor API.
+
 ## WebSocket notifications
 
 Notifications use the existing authenticated STOMP connection at `/ws`. A connected client subscribes to `/user/queue/notifications`; application code publishes an explicit user ID and payload through `NotificationMessagePublisher`. The server sends notifications only to sessions authenticated as that user.

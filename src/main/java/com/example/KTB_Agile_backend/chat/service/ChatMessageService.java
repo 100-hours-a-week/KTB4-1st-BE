@@ -76,8 +76,12 @@ public class ChatMessageService {
 
 	@Transactional
 	public void markReadThrough(Long chatRoomId, Long userId, Long messageId) {
-		ChatMember member = chatMemberRepository.findActiveMember(chatRoomId, userId)
+		ChatMember member = chatMemberRepository.findActiveMemberForReadUpdate(chatRoomId, userId)
 				.orElseThrow(() -> new ApiException(ErrorCode.FORBIDDEN));
+		if (messageId == null || messageId <= 0
+				|| !chatMessageRepository.existsByIdAndChatRoomId(messageId, chatRoomId)) {
+			throw new ApiException(ErrorCode.BAD_REQUEST, "messageId가 해당 채팅방의 메시지가 아닙니다.");
+		}
 		member.markReadThrough(messageId);
 	}
 
