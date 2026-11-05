@@ -3,6 +3,9 @@ package com.example.KTB_Agile_backend.notification.service;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequest;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
 import com.example.KTB_Agile_backend.exchange.repository.ExchangeRequestRepository;
+import com.example.KTB_Agile_backend.image.entity.Image;
+import com.example.KTB_Agile_backend.image.repository.ImageRepository;
+import com.example.KTB_Agile_backend.image.service.ImageUrlResolver;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.notification.dto.NotificationMessage;
 import com.example.KTB_Agile_backend.notification.entity.Notification;
@@ -29,6 +32,8 @@ public class NotificationService {
 	private final NotificationRepository notificationRepository;
 	private final ExchangeRequestRepository exchangeRequestRepository;
 	private final NotificationMessagePublisher notificationMessagePublisher;
+	private final ImageRepository imageRepository;
+	private final ImageUrlResolver imageUrlResolver;
 
 	public void requestCreated(ExchangeRequest request) {
 		persist(
@@ -105,13 +110,15 @@ public class NotificationService {
 	}
 
 	public void itemInterestIncreased(Long recipientUserId, Long itemId) {
+		String text = "최근 보신 물품에 대한 관심도가 증가했어요";
 		persistNotification(
 				recipientUserId,
 				NotificationEventType.ITEM_VIEW_INTEREST,
 				null,
 				itemId,
 				UUID.randomUUID().toString(),
-				"최근 6시간 동안 이 물품의 관심도가 증가했습니다."
+				text,
+				resolveThumbnailImageUrl(itemId)
 		);
 	}
 
@@ -133,7 +140,8 @@ public class NotificationService {
 			String eventIdentity,
 			String text
 	) {
-		persistNotification(recipientUserId, eventType, request.getId(), item.getId(), eventIdentity, text);
+		persistNotification(recipientUserId, eventType, request.getId(), item.getId(), eventIdentity, text,
+				resolveThumbnailImageUrl(item));
 	}
 
 	private void persistNotification(
@@ -142,7 +150,8 @@ public class NotificationService {
 			Long exchangeRequestId,
 			Long itemId,
 			String eventIdentity,
-			String text
+			String text,
+			String thumbnailImageUrl
 	) {
 		Notification notification = notificationRepository.save(new Notification(
 				recipientUserId,
@@ -158,7 +167,7 @@ public class NotificationService {
 				try {
 					notificationMessagePublisher.publish(recipientUserId, new NotificationMessage(
 							notification.getId(), notification.getItemId(),
-							notification.getCreatedAt(), notification.getText()));
+							notification.getCreatedAt(), notification.getText(), thumbnailImageUrl));
 				} catch (RuntimeException exception) {
 					if (log.isWarnEnabled()) {
 						log.warn("Could not publish notification {}", notification.getId(), exception);
@@ -166,5 +175,17 @@ public class NotificationService {
 				}
 			}
 		});
+	}
+
+	private String resolveThumbnailImageUrl(Item item) {
+		Image thumbnailImage = item.getThumbnailImage();
+		return thumbnailImage == null ? null : imageUrlResolver.resolveThumbnail(thumbnailImage);
+	}
+
+	private String resolveThumbnailImageUrl(Long itemId) {
+		return imageRepository.findThumbnailImagesByItemIds(List.of(itemId)).stream()
+				.findFirst()
+				.map(imageUrlResolver::resolveThumbnail)
+				.orElse(null);
 	}
 }
