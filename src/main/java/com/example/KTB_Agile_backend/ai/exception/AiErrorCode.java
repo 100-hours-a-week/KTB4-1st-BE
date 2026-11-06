@@ -11,7 +11,8 @@ public enum AiErrorCode implements ApiErrorCode {
 	AI_ITEM_PRICE_ENDPOINT_NOT_CONFIGURED("AI_ITEM_PRICE_ENDPOINT_NOT_CONFIGURED", HttpStatus.INTERNAL_SERVER_ERROR, "AI 가격 측정 서버 주소가 설정되지 않았습니다."),
 	AI_ITEM_PRICE_ESTIMATION_FAILED("AI_ITEM_PRICE_ESTIMATION_FAILED", HttpStatus.BAD_GATEWAY, "AI 가격 측정 서버 호출에 실패했습니다."),
 	AI_SMART_SEARCH_ENDPOINT_NOT_CONFIGURED("AI_SMART_SEARCH_ENDPOINT_NOT_CONFIGURED", HttpStatus.INTERNAL_SERVER_ERROR, "AI 스마트 검색 서버 주소가 설정되지 않았습니다."),
-	AI_SMART_SEARCH_FAILED("AI_SMART_SEARCH_FAILED", HttpStatus.INTERNAL_SERVER_ERROR, "스마트 검색에 실패했어요. 잠시 후 다시 시도해주세요.");
+	AI_SMART_SEARCH_FAILED("AI_SMART_SEARCH_FAILED", HttpStatus.INTERNAL_SERVER_ERROR, "스마트 검색에 실패했어요. 잠시 후 다시 시도해주세요."),
+	AI_MESSAGE_REFINE_FAILED("AI_MESSAGE_REFINE_FAILED", HttpStatus.BAD_GATEWAY, "AI 메시지 다듬기에 실패했습니다.");
 
 	private final String codeValue;
 	private final HttpStatus httpStatus;
