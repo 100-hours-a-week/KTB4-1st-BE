@@ -4,6 +4,7 @@ import com.example.KTB_Agile_backend.ai.config.AiEndpoints;
 import com.example.KTB_Agile_backend.ai.config.AiProperties;
 import com.example.KTB_Agile_backend.ai.exception.AiErrorCode;
 import com.example.KTB_Agile_backend.ai.messagerefine.dto.ai.MessageRefineAiRequest;
+import com.example.KTB_Agile_backend.ai.messagerefine.dto.ai.MessageRefineAiResponse;
 import com.example.KTB_Agile_backend.ai.messagerefine.dto.request.MessageRefineRequest;
 import com.example.KTB_Agile_backend.ai.messagerefine.dto.response.MessageRefineResponse;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
@@ -19,6 +20,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -47,31 +49,31 @@ public class MessageRefineService {
 	private final UserPreferenceQueryService userPreferenceQueryService;
 
 	public MessageRefineResponse refine(Long userId, MessageRefineRequest request) {
-		MessageRefineAiRequest aiRequest = new MessageRefineAiRequest(request.message(), styles(userId));
+		MessageRefineAiRequest aiRequest = new MessageRefineAiRequest(request.message(), answers(userId));
 		if (aiProperties.baseUrl().isBlank()) {
 			throw new ApiException(AiErrorCode.AI_MESSAGE_REFINE_FAILED);
 		}
 
-		MessageRefineResponse response;
+		MessageRefineAiResponse response;
 		try {
 			response = restClient.post()
 					.uri(AiEndpoints.MESSAGE_REFINE)
 					.contentType(MediaType.APPLICATION_JSON)
 					.body(aiRequest)
 					.retrieve()
-					.body(MessageRefineResponse.class);
+					.body(MessageRefineAiResponse.class);
 		} catch (RestClientException exception) {
 			throw new ApiException(AiErrorCode.AI_MESSAGE_REFINE_FAILED,
 					AiErrorCode.AI_MESSAGE_REFINE_FAILED.message(), exception);
 		}
 
-		if (response == null || response.refinedMessage() == null || response.refinedMessage().isBlank()) {
+		if (response == null || response.refined() == null || response.refined().isBlank()) {
 			throw new ApiException(AiErrorCode.AI_MESSAGE_REFINE_FAILED);
 		}
-		return response;
+		return new MessageRefineResponse(response.refined());
 	}
 
-	private MessageRefineAiRequest.Styles styles(Long userId) {
+	private List<MessageRefineAiRequest.Answer> answers(Long userId) {
 		UserPreferenceResponse preference = userPreferenceQueryService.get(userId);
 		Map<UserPreferenceQuestion, UserPreferenceAnswerOption> answers = new EnumMap<>(UserPreferenceQuestion.class);
 		for (UserPreferenceResponse.Answer answer : preference.answers()) {
@@ -92,7 +94,14 @@ public class MessageRefineService {
 				|| !OPINION_STYLES.contains(opinionStyle)) {
 			throw missingPreference();
 		}
-		return new MessageRefineAiRequest.Styles(conversationStyle, descriptionStyle, opinionStyle);
+		return List.of(
+				new MessageRefineAiRequest.Answer(
+						UserPreferenceQuestion.CONVERSATION_STYLE.name(), conversationStyle.name()),
+				new MessageRefineAiRequest.Answer(
+						UserPreferenceQuestion.DESCRIPTION_STYLE.name(), descriptionStyle.name()),
+				new MessageRefineAiRequest.Answer(
+						UserPreferenceQuestion.OPINION_STYLE.name(), opinionStyle.name())
+		);
 	}
 
 	private static ApiException missingPreference() {
