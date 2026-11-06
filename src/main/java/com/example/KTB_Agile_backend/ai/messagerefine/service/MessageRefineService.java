@@ -80,7 +80,7 @@ public class MessageRefineService {
 			}
 		}
 
-ㅈ		UserPreferenceAnswerOption conversationStyle = answers.get(UserPreferenceQuestion.CONVERSATION_STYLE);
+		UserPreferenceAnswerOption conversationStyle = answers.get(UserPreferenceQuestion.CONVERSATION_STYLE);
 		UserPreferenceAnswerOption descriptionStyle = answers.get(UserPreferenceQuestion.DESCRIPTION_STYLE);
 		UserPreferenceAnswerOption opinionStyle = answers.get(UserPreferenceQuestion.OPINION_STYLE);
 		if (answers.size() != UserPreferenceQuestion.values().length
