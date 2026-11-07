@@ -163,10 +163,12 @@ public class ExchangeRequestService {
 		}
 		ExchangeRequest exchangeRequest = exchangeRequestRepository.findByIdForUpdate(exchangeRequestId)
 				.orElseThrow(() -> new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_STATUS_NOT_FOUND));
-		boolean authorized = status == ExchangeRequestStatus.CANCELED
-				? exchangeRequest.getRequester().getId().equals(userId)
-				: exchangeRequest.getItem().getUser().getId().equals(userId);
-		if (!authorized) {
+		if (status == ExchangeRequestStatus.CANCELED
+				&& !exchangeRequest.getRequester().getId().equals(userId)) {
+			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_STATUS_FORBIDDEN);
+		}
+		if (status == ExchangeRequestStatus.REJECTED
+				&& !exchangeRequest.getItem().getUser().getId().equals(userId)) {
 			throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_STATUS_FORBIDDEN);
 		}
 		if (exchangeRequest.getRequestedStatus() != ExchangeRequestStatus.PENDING) {
@@ -183,9 +185,23 @@ public class ExchangeRequestService {
 			if (completedItems.size() != itemIds.size()) {
 				throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_STATUS_NOT_FOUND);
 			}
+			Item requestedItem = completedItems.get(exchangeRequest.getItem().getId());
+			if (!requestedItem.getUser().getId().equals(userId)) {
+				throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_STATUS_FORBIDDEN);
+			}
+			if (requestedItem.getItemState() != ItemState.AVAILABLE
+					|| requestedItem.getQuantity() < exchangeRequest.getRequestedQuantity()) {
+				throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_STATUS_CONFLICT);
+			}
+			for (OfferedItem offered : exchangeRequest.getOfferedItems()) {
+				Item offeredItem = completedItems.get(offered.getItem().getId());
+				if (offeredItem.getItemState() != ItemState.AVAILABLE
+						|| offeredItem.getQuantity() < offered.getQuantity()) {
+					throw new ApiException(ExchangeErrorCode.EXCHANGE_REQUEST_STATUS_CONFLICT);
+				}
+			}
 			completedItems.forEach((id, item) -> itemStatesBeforeCompletion.put(id, item.getItemState()));
-			completedItems.get(exchangeRequest.getItem().getId())
-					.deductForCompletedExchange(exchangeRequest.getRequestedQuantity());
+			requestedItem.deductForCompletedExchange(exchangeRequest.getRequestedQuantity());
 			for (OfferedItem offered : exchangeRequest.getOfferedItems()) {
 				completedItems.get(offered.getItem().getId()).deductForCompletedExchange(offered.getQuantity());
 			}
