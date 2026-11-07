@@ -92,24 +92,6 @@ src/test/java                    # 단위·서비스·저장소·동시성 테�
 | 이미지·AI | `POST /images/presigned-urls`, `POST /images/ai-analysis`, `POST /search/rank-candidates`, `POST /chatbot/ask` |
 | 알림 | `GET /users/me/notifications` |
 
-## 실행 방법
-
-### 사전 요구 사항
-
-- JDK 25
-- MySQL과 Redis
-
-기본 `dev` 프로필은 외부 MySQL과 `localhost:6379`의 Redis를 사용합니다. 데이터베이스 연결 정보를 설정하고 실행합니다.
-
-```bash
-SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/ktb \
-SPRING_DATASOURCE_USERNAME=ktb \
-SPRING_DATASOURCE_PASSWORD=your-password \
-./gradlew bootRun
-```
-
-최초 실행 시 Flyway가 스키마를 생성하므로 비어 있는 MySQL 데이터베이스를 사용합니다. 운영 프로필은 `SPRING_PROFILES_ACTIVE=prod`와 운영 환경 변수를 설정합니다.
-
 ## 테스트
 
 ```bash
