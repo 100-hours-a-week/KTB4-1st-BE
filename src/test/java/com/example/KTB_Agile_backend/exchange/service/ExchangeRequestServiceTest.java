@@ -110,7 +110,7 @@ class ExchangeRequestServiceTest {
 	}
 
 	@Test
-	void completesByClampingStockAndKeepingUnavailableStateAndOwnership() {
+	void rejectsCompletionWhenRequestedStockIsInsufficient() {
 		User owner = persist(new User("owner"));
 		User requester = persist(new User("requester"));
 		Item target = persist(item(owner, 2, ItemState.AVAILABLE));
@@ -118,23 +118,18 @@ class ExchangeRequestServiceTest {
 		var pending = service.create(requester.getId(), target.getId(), request(2, offered, 3));
 		target.update(target.getTitle(), target.getContent(), 1, ItemState.AVAILABLE,
 				new BigDecimal("0.50"), new BigDecimal("0.50"));
-		offered.update(offered.getTitle(), offered.getContent(), 1, ItemState.UNAVAILABLE,
-				new BigDecimal("0.50"), new BigDecimal("0.50"));
 		entityManager.flush();
 
-		var response = service.updateStatus(pending.exchangeRequestId(), owner.getId(), ExchangeRequestStatus.COMPLETED);
-
-		assertThat(response.status()).isEqualTo(ExchangeRequestStatus.COMPLETED);
-		assertThat(response.updatedAt()).isNotNull();
+		assertThatThrownBy(() -> service.updateStatus(
+				pending.exchangeRequestId(), owner.getId(), ExchangeRequestStatus.COMPLETED))
+				.isInstanceOf(ApiException.class)
+				.satisfies(exception -> assertThat(((ApiException) exception).code().value())
+						.isEqualTo("EXCHANGE_REQUEST_STATUS_CONFLICT"));
 		entityManager.clear();
-		Item completedTarget = itemRepository.findByIdAndDeletedAtIsNull(target.getId()).orElseThrow();
-		Item completedOffer = itemRepository.findByIdAndDeletedAtIsNull(offered.getId()).orElseThrow();
-		assertThat(completedTarget.getQuantity()).isZero();
-		assertThat(completedTarget.getItemState()).isEqualTo(ItemState.UNAVAILABLE);
-		assertThat(completedOffer.getQuantity()).isZero();
-		assertThat(completedOffer.getItemState()).isEqualTo(ItemState.UNAVAILABLE);
-		assertThat(completedTarget.getUser().getId()).isEqualTo(owner.getId());
-		assertThat(completedOffer.getUser().getId()).isEqualTo(requester.getId());
+		assertThat(exchangeRequestRepository.findById(pending.exchangeRequestId()).orElseThrow().getRequestedStatus())
+				.isEqualTo(ExchangeRequestStatus.PENDING);
+		assertThat(itemRepository.findByIdAndDeletedAtIsNull(target.getId()).orElseThrow().getQuantity()).isEqualTo(1);
+		assertThat(itemRepository.findByIdAndDeletedAtIsNull(offered.getId()).orElseThrow().getQuantity()).isEqualTo(3);
 	}
 
 	@Test
