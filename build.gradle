@@ -107,10 +107,3 @@ tasks.register('backfillItemThumbnails', JavaExec) {
 	classpath = sourceSets.main.runtimeClasspath
 	mainClass = 'com.example.KTB_Agile_backend.image.backfill.ItemThumbnailBackfill'
 }
-
-tasks.register('backfillItemDetailThumbnails', JavaExec) {
-	group = 'application'
-	description = 'Create missing detail thumbnails for existing item images.'
-	classpath = sourceSets.main.runtimeClasspath
-	mainClass = 'com.example.KTB_Agile_backend.image.backfill.ItemDetailThumbnailBackfill'
-}
