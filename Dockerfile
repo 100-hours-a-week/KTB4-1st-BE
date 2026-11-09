@@ -1,4 +1,4 @@
-# 자원 절약이 최우선으로, 외부 의존성 등 사용으로 문제가 발생할 요소나 대규모 트래픽 환경이 아니라서 alpine 사용으로 인한 문제가 없다.
+# WebP 네이티브 라이브러리 호환을 위해 런타임은 glibc 기반 이미지를 사용한다.
 FROM eclipse-temurin:25-jdk-alpine AS builder
 WORKDIR /workspace
 
@@ -15,10 +15,10 @@ RUN --mount=type=cache,target=/root/.gradle \
 WORKDIR /workspace/build/libs
 RUN java -Djarmode=tools -jar $(ls *.jar | grep -v plain) extract --layers --launcher --destination /workspace/extracted
 
-FROM eclipse-temurin:25-jre-alpine AS runner
+FROM eclipse-temurin:25-jre-noble AS runner
 WORKDIR /app
 
-RUN addgroup -g 10001 -S spring && adduser -u 10001 -S spring -G spring
+RUN groupadd --system --gid 10001 spring && useradd --system --uid 10001 --gid spring --no-create-home spring
 
 COPY --from=builder --chown=spring:spring /workspace/extracted/dependencies/ ./
 COPY --from=builder --chown=spring:spring /workspace/extracted/spring-boot-loader/ ./

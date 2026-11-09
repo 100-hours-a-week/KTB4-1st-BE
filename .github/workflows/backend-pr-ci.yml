@@ -86,6 +86,8 @@ jobs:
         with:
           context: .
           platforms: linux/arm64
+          provenance: false
+          sbom: false
           push: false
           cache-from: type=gha,scope=backend
 
