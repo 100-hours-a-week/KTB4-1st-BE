@@ -1,9 +1,11 @@
 package com.example.KTB_Agile_backend.search.dto.request;
 
+import com.example.KTB_Agile_backend.common.jackson.StrictIntegerDeserializer;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 import java.util.List;
 
@@ -28,6 +30,7 @@ public record SmartSearchRequest(
 
 			@NotNull(message = "수량은 필수 입력값입니다.")
 			@Positive(message = "수량은 양수여야 합니다.")
+			@JsonDeserialize(using = StrictIntegerDeserializer.class)
 			Integer quantity
 	) {
 	}

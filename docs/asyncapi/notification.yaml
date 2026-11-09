@@ -13,6 +13,10 @@ info:
     `AVAILABLE → UNAVAILABLE` 전환 때 생성됩니다. 완료 처리로 여러 물품이 불가 상태가 되면
     완료된 교환 건에는 완료 알림을 보내고, 영향받은 다른 대기 교환 건마다 상태 변경 알림을 보냅니다.
 
+    관심도 상승 알림은 조회 이벤트를 별도 consumer group으로 저장한 뒤 1분 주기로 집계합니다.
+    최근 6시간 동안 조회 이벤트가 10회 이상인 물품의 조회자에게 알림을 보냅니다.
+    같은 사용자·물품 조합에는 한 번만 발송하며, 집계 주기 때문에 즉시 도착하지 않을 수 있습니다.
+
     알림 저장은 교환 변경과 같은 DB 트랜잭션에서 처리하고 커밋 후 발행합니다. STOMP 발행에 실패해도
     저장된 알림은 HTTP 목록 API에서 확인할 수 있습니다. STOMP 재시도와 OS 푸시는 제공하지 않습니다.
 servers:
@@ -30,7 +34,8 @@ channels:
     title: 내 알림 구독
     description: |
       STOMP `SUBSCRIBE` destination입니다. CONNECT에서 인증된 사용자 본인의 알림만 수신합니다.
-      이 destination으로 클라이언트가 `SEND`하는 것은 허용되지 않습니다.
+      payload의 `itemId`로 알림 대상 물품을 식별할 수 있습니다. 이 destination으로 클라이언트가
+      `SEND`하는 것은 허용되지 않습니다.
     servers:
       - $ref: '#/servers/local'
     messages:
@@ -44,6 +49,7 @@ operations:
     description: |
       WebSocket 연결 후 STOMP `SUBSCRIBE` destination `/user/queue/notifications`를 구독합니다.
       받은 `text`는 표시용 문구이므로 앱에서 이벤트 종류를 추론하려고 파싱하지 마세요.
+      관심도 상승 알림은 1분 주기 집계 이후 발행되므로 조회 직후 도착하지 않을 수 있습니다.
     channel:
       $ref: '#/channels/userNotifications'
     messages:
@@ -61,19 +67,34 @@ components:
         - name: exchangeRequestCreated
           payload:
             notificationId: 101
+            itemId: 501
             createdAt: '2026-11-02T09:30:00'
             text: 민지님이 교환을 요청했습니다.
+            thumbnailImageUrl: https://example.com/items/501/thumbnail.jpg
+        - name: itemViewInterestIncreased
+          payload:
+            notificationId: 102
+            itemId: 502
+            createdAt: '2026-11-02T09:31:00'
+            text: 최근 보신 물품에 대한 관심도가 증가했어요
+            thumbnailImageUrl: https://example.com/items/502/thumbnail.jpg
   schemas:
     Notification:
       type: object
       required:
         - notificationId
+        - itemId
         - createdAt
         - text
+        - thumbnailImageUrl
       properties:
         notificationId:
           type: integer
           format: int64
+        itemId:
+          type: integer
+          format: int64
+          description: 알림 대상 물품 ID입니다. 해당 물품 상세 화면으로 이동할 때 사용합니다.
         createdAt:
           type: string
           description: 시간대 정보가 없는 LocalDateTime 형식입니다.
@@ -83,3 +104,8 @@ components:
           maxLength: 500
           description: 화면에 그대로 표시할 알림 문구입니다. 문구를 파싱해 이벤트 종류를 판별하지 마세요.
           examples: ['민지님이 교환을 요청했습니다.']
+        thumbnailImageUrl:
+          type: string
+          nullable: true
+          description: 물품 목록에서 사용하는 썸네일 URL입니다. 썸네일이 없으면 null입니다.
+          examples: ['https://example.com/items/501/thumbnail.jpg']

@@ -6,6 +6,7 @@ import com.example.KTB_Agile_backend.item.price.persistence.OutboxPollingRelaySt
 import com.example.KTB_Agile_backend.item.price.persistence.OutboxPollingRelayState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -24,6 +25,7 @@ public class ItemPriceEstimationOutboxPollingRelay {
 	private final KafkaTemplate<String, String> kafkaTemplate;
 
 	@Scheduled(fixedDelayString = "${app.kafka.outbox.poll-delay:1000}")
+	@SchedulerLock(name = "itemPriceEstimationOutboxPollingRelay")
 	public void publishPending() {
 		Long afterId = 0L;
 		while (true) {

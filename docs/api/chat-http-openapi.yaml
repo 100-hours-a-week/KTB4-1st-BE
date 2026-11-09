@@ -112,7 +112,8 @@ paths:
         활성 채팅 멤버만 조회할 수 있습니다. 최신 메시지부터 고정 크기 20개씩 페이지를 선택한 뒤,
         각 페이지 안에서는 messageId 오름차순으로 반환합니다.
         이전 메시지를 불러올 때 응답의 `nextCursor`를 그대로 전달하세요. 이 cursor는 채팅방 목록 cursor와 다릅니다.
-        cursor를 생략한 첫 페이지 조회는 해당 페이지의 최신 메시지까지 읽음 처리합니다.
+        cursor를 생략한 첫 페이지 조회는 기존 클라이언트 호환을 위해 해당 페이지의 최신 메시지까지 읽음 처리합니다.
+        새 클라이언트는 실시간 메시지를 화면에 표시한 뒤 `PUT /chat/rooms/{chatRoomId}/read-cursor`로 읽음 위치를 확인해야 합니다.
       parameters:
         - name: chatRoomId
           in: path
@@ -202,6 +203,59 @@ paths:
                   code: FORBIDDEN
                   message: 접근 권한이 없습니다.
                   details: []
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /chat/rooms/{chatRoomId}/read-cursor:
+    put:
+      tags: [Chat]
+      summary: 채팅 메시지 읽음 위치 갱신
+      operationId: markChatMessagesReadThrough
+      description: |
+        활성 채팅 멤버가 해당 채팅방에서 마지막으로 확인한 메시지까지 읽음 처리합니다.
+        요청은 멱등이며 읽음 위치는 뒤로 이동하지 않습니다. messageId는 해당 채팅방에 속해야 합니다.
+        클라이언트는 표시한 메시지 중 가장 큰 ID를 전달하고, 방을 나가기 전 마지막 요청 완료 후 목록을 갱신해야 합니다.
+      parameters:
+        - name: chatRoomId
+          in: path
+          required: true
+          description: 채팅방 ID
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+          example: 22
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [messageId]
+              properties:
+                messageId:
+                  type: integer
+                  format: int64
+                  minimum: 1
+                  description: 마지막으로 확인한 해당 채팅방 메시지 ID
+              example:
+                messageId: 102
+      responses:
+        '204':
+          description: 읽음 위치 갱신 성공 (응답 본문 없음)
+        '400':
+          description: messageId가 양수가 아니거나 해당 채팅방에 속하지 않음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: 활성 채팅 멤버가 아님
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
         '500':
           $ref: '#/components/responses/ServerError'
   /chat-rooms/{chatRoomId}:

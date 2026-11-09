@@ -1,6 +1,6 @@
 name: Publish Backend-dev
 run-name: >-
-  ${{ github.event_name == 'workflow_dispatch' && format('[dev] Publish 수동배포 {0} · {1}', inputs.digest || 'latest', github.actor) || format('[dev] Publish {0} · {1}', github.event.head_commit.message || github.sha, github.actor) }}
+  ${{ github.event_name == 'workflow_dispatch' && format('[dev] Publish 수동배포 {0}', inputs.digest || 'latest') || '' }}
 
 on:
   push:
@@ -69,6 +69,8 @@ jobs:
           context: .
           file: Dockerfile
           platforms: linux/arm64
+          provenance: false
+          sbom: false
           push: ${{ !env.ACT }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -83,6 +85,14 @@ jobs:
         env:
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
         run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}@${IMAGE_DIGEST}" >> "$GITHUB_OUTPUT"
+
+      - name: dev 이미지 정리 (최신 3개만 유지)
+        uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1
+        with:
+          package: ktb4-1st-be
+          delete-tags: "dev-*"
+          keep-n-tagged: 3
+          delete-untagged: true
 
   select-image:
     name: Select Dev Image
@@ -146,6 +156,7 @@ jobs:
     timeout-minutes: 90
     environment: dev
     permissions:
+      contents: read
       id-token: write
     env:
       AWS_REGION: ap-northeast-2
@@ -154,29 +165,35 @@ jobs:
       ECS_SERVICE: bakkucca-v2-dev-be
       CONTAINER_NAME: backend
       CONTAINER_PORT: "8080"
+      DEPLOY_STARTUP_MINUTES: "10"
+      AWS_MAX_ATTEMPTS: "2"
       IMAGE_URI: ${{ needs.build-and-publish.outputs.image || needs.select-image.outputs.image }}
     steps:
+      - name: Checkout deployment script
+        uses: actions/checkout@v7
+
       - name: Check deployment settings
         run: |
           : "${AWS_ROLE_ARN:?dev 환경의 AWS_ROLE_ARN Variable이 필요합니다}"
 
       - name: Configure AWS credentials
+        id: credentials
         uses: aws-actions/configure-aws-credentials@v6.3.0
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # 기존 태스크 세트 정리 후 다음 배포 시작, 빈 EC2의 축소는 Capacity Provider가 관리
+      # 이전 태스크 세트 정리만 확인하며 이미 진행 중인 다른 배포는 변경하지 않음
       - name: Wait for previous deployment cleanup
         id: previous
         run: |
-          service=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
-            --query 'services[0]' --output json)
-          echo "task-definition=$(jq -r '.taskDefinition' <<< "$service")" >> "$GITHUB_OUTPUT"
-          for attempt in {1..160}; do
-            task_sets=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
-              --query 'length(services[0].taskSets)' --output text)
-            if [[ "$task_sets" == "1" ]]; then
+          for attempt in {1..20}; do
+            service=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+              --query 'services[0]' --output json)
+            if jq -e '.desiredCount > 0 and (.taskSets | length) == 1 and
+                .taskSets[0].status == "PRIMARY" and .taskSets[0].stabilityStatus == "STEADY_STATE" and
+                .taskSets[0].runningCount == .desiredCount and .pendingCount == 0' <<< "$service" > /dev/null; then
+              echo "task-definition=$(jq -r '.taskSets[0].taskDefinition' <<< "$service")" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             sleep 15
@@ -216,8 +233,23 @@ jobs:
           codedeploy-application: ${{ env.ECS_SERVICE }}
           codedeploy-deployment-group: ${{ env.ECS_SERVICE }}
           codedeploy-deployment-description: ${{ github.sha }} / ${{ github.run_id }}
-          wait-for-service-stability: true
-          wait-for-minutes: 20
+          wait-for-service-stability: false
+
+      - name: Monitor deployment and rollback on timeout
+        id: monitor
+        env:
+          DEPLOYMENT_MODE: current
+          DEPLOYMENT_ID: ${{ steps.deploy.outputs.codedeploy-deployment-id }}
+        run: python3 .github/scripts/wait-for-deployment.py
+
+      - name: Stop AWS deployment when workflow is canceled
+        id: cancel
+        if: ${{ always() && cancelled() && steps.credentials.outcome == 'success' }}
+        timeout-minutes: 2
+        env:
+          DEPLOYMENT_MODE: cancel
+          DEPLOYMENT_ID: ${{ steps.deploy.outputs.codedeploy-deployment-id }}
+        run: python3 .github/scripts/wait-for-deployment.py
 
       - name: Record deployment
         if: always()
@@ -237,3 +269,31 @@ jobs:
             printf '| 새 태스크 정의 | `%s` |\n' "$TASK_DEFINITION_ARN"
             printf '| 배포 ID | `%s` |\n' "$DEPLOYMENT_ID"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notify deployment failure or stop
+        if: ${{ always() && (failure() || cancelled() || steps.monitor.outputs.stopped-deployment-id != '') }}
+        continue-on-error: true
+        timeout-minutes: 1
+        env:
+          WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DEPLOY_STATUS: ${{ job.status }}
+          STOP_STATUS: ${{ steps.cancel.outputs.stop-status || steps.monitor.outputs.stop-status }}
+          DEPLOYMENT_ID: ${{ steps.cancel.outputs.stopped-deployment-id || steps.deploy.outputs.codedeploy-deployment-id }}
+          STOP_REASON: ${{ steps.cancel.outputs.reason || steps.cancel.outputs.error || steps.monitor.outputs.reason || steps.monitor.outputs.error || '배포 실패 또는 실행 취소. 실행 로그에서 확인해야 함' }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [[ -z "$WEBHOOK_URL" ]]; then
+            echo "::warning::DISCORD_WEBHOOK_URL이 없어 배포 알림을 생략합니다"
+            exit 0
+          fi
+          deployment_url="https://${AWS_REGION}.console.aws.amazon.com/codesuite/codedeploy/deployments/${DEPLOYMENT_ID}?region=${AWS_REGION}"
+          logs_url="https://${AWS_REGION}.console.aws.amazon.com/cloudwatch/home?region=${AWS_REGION}#logsV2:log-groups/log-group/$(jq -rn --arg group "/ecs/$ECS_SERVICE" '$group | @uri')"
+          jq -n --arg service "$ECS_SERVICE" --arg status "$DEPLOY_STATUS" \
+            --arg reason "$STOP_REASON" --arg stop "$STOP_STATUS" --arg run "$RUN_URL" \
+            --arg id "$DEPLOYMENT_ID" --arg deployment "$deployment_url" --arg logs "$logs_url" \
+            '{content: ("[" + $service + "] 배포 결과: " + $status + "\n" + $reason +
+              "\n" + $stop + "\nGitHub Actions: " + $run +
+              (if $id == "" then "" else "\n배포 ID: " + $id + "\nCodeDeploy: " + $deployment end) +
+              "\nCloudWatch Logs: " + $logs)}' > "$RUNNER_TEMP/deploy-notification.json"
+          curl --silent --show-error --fail --connect-timeout 5 --max-time 15 \
+            -H 'Content-Type: application/json' --data-binary @"$RUNNER_TEMP/deploy-notification.json" "$WEBHOOK_URL"
