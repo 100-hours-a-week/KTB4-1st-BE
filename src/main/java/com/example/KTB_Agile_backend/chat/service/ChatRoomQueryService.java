@@ -172,7 +172,7 @@ public class ChatRoomQueryService {
 	private Map<Long, String> findThumbnails(List<Long> itemIds) {
 		Map<Long, String> thumbnails = new HashMap<>();
 		for (Image image : imageRepository.findThumbnailImagesByItemIds(itemIds)) {
-			thumbnails.putIfAbsent(image.getItem().getId(), imageUrlResolver.resolve(image));
+			thumbnails.putIfAbsent(image.getItem().getId(), imageUrlResolver.resolveThumbnail(image));
 		}
 		return thumbnails;
 	}
