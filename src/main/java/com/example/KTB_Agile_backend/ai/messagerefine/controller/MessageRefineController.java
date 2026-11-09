@@ -4,7 +4,6 @@ import com.example.KTB_Agile_backend.ai.messagerefine.dto.request.MessageRefineR
 import com.example.KTB_Agile_backend.ai.messagerefine.dto.response.MessageRefineResponse;
 import com.example.KTB_Agile_backend.ai.messagerefine.service.MessageRefineService;
 import com.example.KTB_Agile_backend.common.response.ApiResponse;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -23,7 +22,7 @@ public class MessageRefineController {
 	@PostMapping("/refine")
 	public ResponseEntity<ApiResponse<MessageRefineResponse>> refine(
 			Authentication authentication,
-			@Valid @RequestBody MessageRefineRequest request
+			@RequestBody MessageRefineRequest request
 	) {
 		MessageRefineResponse response = messageRefineService.refine(
 				Long.valueOf(authentication.getName()), request);
