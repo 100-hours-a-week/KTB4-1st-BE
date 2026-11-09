@@ -1,8 +1,8 @@
 package com.example.KTB_Agile_backend.chat.service;
 
 import com.example.KTB_Agile_backend.chat.dto.response.ChatMessageResponse;
+import com.example.KTB_Agile_backend.chat.entity.ChatMessage;
 import com.example.KTB_Agile_backend.chat.entity.ChatMessageType;
-import com.example.KTB_Agile_backend.chat.entity.ChatMessageView;
 import com.example.KTB_Agile_backend.chat.entity.ChatSystemEventType;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequest;
 import com.example.KTB_Agile_backend.exchange.entity.OfferedItem;
@@ -30,7 +30,7 @@ public class ChatMessageResponseMapper {
 	private final ImageUrlResolver imageUrlResolver;
 
 	public ChatMessageResponse toResponse(
-			ChatMessageView message,
+			ChatMessage message,
 			User user,
 			GroupMemberStatus groupMemberStatus,
 			ExchangeRequest request,
@@ -46,7 +46,7 @@ public class ChatMessageResponseMapper {
 	}
 
 	public Map<Long, String> findSystemMessageThumbnails(
-			List<? extends ChatMessageView> messages,
+			List<ChatMessage> messages,
 			ExchangeRequest request
 	) {
 		if (request == null || messages.stream().noneMatch(message ->
