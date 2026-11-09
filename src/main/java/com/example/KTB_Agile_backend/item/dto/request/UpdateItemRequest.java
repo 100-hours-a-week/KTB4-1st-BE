@@ -1,5 +1,6 @@
 package com.example.KTB_Agile_backend.item.dto.request;
 
+import com.example.KTB_Agile_backend.common.jackson.StrictIntegerDeserializer;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -11,6 +12,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import org.hibernate.validator.constraints.UniqueElements;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -27,6 +29,7 @@ public record UpdateItemRequest(
 		@NotNull(message = "수량은 필수 입력값입니다.")
 		@Min(value = 0, message = "수량은 0 이상이어야 합니다.")
 		@Max(value = 99, message = "수량은 99개 이하여야 합니다.")
+		@JsonDeserialize(using = StrictIntegerDeserializer.class)
 		Integer quantity,
 
 		@NotNull(message = "물품 상태는 필수 입력값입니다.")

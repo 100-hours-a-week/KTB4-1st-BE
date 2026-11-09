@@ -49,8 +49,15 @@ paths:
                 data:
                   notifications:
                     - notificationId: 101
+                      itemId: 501
                       createdAt: '2026-11-02T09:30:00'
                       text: 민지님이 교환을 요청했습니다.
+                      thumbnailImageUrl: https://example.com/items/501/thumbnail.jpg
+                    - notificationId: 102
+                      itemId: 502
+                      createdAt: '2026-11-02T09:31:00'
+                      text: 최근 보신 물품에 대한 관심도가 증가했어요
+                      thumbnailImageUrl: https://example.com/items/502/thumbnail.jpg
                   nextCursor: null
                   hasNext: false
                 error: null
@@ -127,11 +134,15 @@ components:
           type: boolean
     Notification:
       type: object
-      required: [notificationId, createdAt, text]
+      required: [notificationId, itemId, createdAt, text, thumbnailImageUrl]
       properties:
         notificationId:
           type: integer
           format: int64
+        itemId:
+          type: integer
+          format: int64
+          description: 알림 대상 물품 ID입니다. 해당 물품 상세 화면으로 이동할 때 사용합니다.
         createdAt:
           type: string
           description: 시간대 정보가 없는 LocalDateTime 형식입니다.
@@ -141,6 +152,11 @@ components:
           maxLength: 500
           description: 화면에 그대로 표시할 알림 문구입니다. 문구를 파싱해 이벤트 종류를 판별하지 마세요.
           example: 민지님이 교환을 요청했습니다.
+        thumbnailImageUrl:
+          type: string
+          nullable: true
+          description: 물품 목록에서 사용하는 썸네일 URL입니다. 썸네일이 없으면 null입니다.
+          example: https://example.com/items/501/thumbnail.jpg
     ApiErrorResponse:
       type: object
       required: [data, error]

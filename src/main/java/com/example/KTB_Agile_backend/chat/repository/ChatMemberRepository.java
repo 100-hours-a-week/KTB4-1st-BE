@@ -34,6 +34,23 @@ public interface ChatMemberRepository extends JpaRepository<ChatMember, Long> {
 		from chat_members cm
 		join chat_rooms room on room.chat_room_id = cm.chat_room_id
 		join users member_user on member_user.user_id = cm.user_id
+		where room.chat_room_id = :chatRoomId
+		  and room.deleted_at is null
+		  and cm.user_id = :memberUserId
+		  and member_user.deleted_at is null
+		  and cm.left_at is null
+		for update
+		""", nativeQuery = true)
+	Optional<ChatMember> findActiveMemberForReadUpdate(
+			@Param("chatRoomId") Long chatRoomId,
+			@Param("memberUserId") Long userId
+	);
+
+	@Query(value = """
+		select cm.*
+		from chat_members cm
+		join chat_rooms room on room.chat_room_id = cm.chat_room_id
+		join users member_user on member_user.user_id = cm.user_id
 		join exchange_requests request on request.exchange_request_id = room.exchange_request_id
 		where cm.user_id = :userId
 		  and member_user.deleted_at is null

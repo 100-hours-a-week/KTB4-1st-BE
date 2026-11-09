@@ -7,6 +7,7 @@ public final class AiEndpoints {
 	public static final String ITEM_PRICE = "/value/estimate-price";
 	public static final String SMART_SEARCH = "/api/search/rank-candidates";
 	public static final String CHATBOT_ASK = "/api/chatbot/ask";
+	public static final String MESSAGE_REFINE = "/api/message-refine/refine";
 
 	private AiEndpoints() {
 	}

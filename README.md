@@ -1,89 +1,111 @@
-# KTB Final Team Backend
+# 바꾸까 Backend
 
-Spring Boot backend project built with Java 25 and Gradle.
+> 그룹 안에서 물품을 등록하고 교환 요청과 채팅으로 연결하는 서비스의 Spring Boot 백엔드입니다.
 
-## Run
+[Backend Repository](https://github.com/100-hours-a-week/KTB4-1st-BE)
 
-```bash
-SPRING_DATASOURCE_URL=jdbc:mysql://mysql-server-host:3306/ktb \
-SPRING_DATASOURCE_USERNAME=ktb \
-SPRING_DATASOURCE_PASSWORD=your-password \
-./gradlew bootRun
+## 프로젝트 소개
+
+바꾸까는 그룹 구성원이 필요한 물품을 올리고, 교환 요청과 실시간 대화로 거래를 이어가는 서비스입니다. 이 저장소는 인증, 그룹·물품·교환 도메인과 이미지 저장, 검색·가격 추정 등 외부 AI 연동을 제공합니다.
+
+## 주요 기능
+
+- 카카오 OAuth 로그인, JWT 발급과 Refresh Token 회전
+- 그룹 생성·가입, 위치 인증, 사용자 선호도 관리
+- 물품 등록·수정·검색·추천, 좋아요와 조회수 관리
+- 물품 교환 요청, 상태 변경, 교환 참여자 채팅
+- STOMP 기반 실시간 채팅과 사용자 알림
+- S3 presigned URL 이미지 업로드, 썸네일 처리와 미완료 업로드 정리
+- AI 이미지 분석, 문구 검수, 가격 추정, 검색 후보 순위화와 챗봇 연동
+
+## 기술 스택
+
+| 분류 | 기술 |
+| --- | --- |
+| 언어·프레임워크 | Java 25, Spring Boot 4, Spring MVC, Spring Security |
+| 데이터 | MySQL, Spring Data JPA, Flyway |
+| 캐시·메시징 | Redis, Apache Kafka |
+| 통신 | REST API, WebSocket/STOMP |
+| 파일·AI | AWS S3, 외부 AI 서비스 |
+| 배포 | Docker, GitHub Actions, GitHub Container Registry, AWS ECS/CodeDeploy |
+| 품질·관측 | JUnit 5, SpotBugs, PMD, Actuator, Prometheus, Sentry |
+
+## 시스템 아키텍처
+
+```mermaid
+flowchart LR
+    Client[Web Client] -->|REST / STOMP| API[Spring Boot API]
+    API --> DB[(MySQL / Flyway)]
+    API <--> Redis[(Redis)]
+    API -->|비동기 이벤트| Kafka[Kafka]
+    Kafka -->|이벤트 소비| API
+    API -->|presigned URL| Client
+    Client -->|직접 업로드| S3[(Amazon S3)]
+    API -->|이미지 처리·URL 발급| S3
+    API -->|HTTP 연동| AI[AI Service]
 ```
 
-The `dev` profile is selected by default and connects to the MySQL server managed by Docker Compose outside this repository. Set the JDBC URL and credentials provided by that server's operator; Flyway applies pending migrations at startup. The dev profile uses a local-only JWT key when `JWT_SECRET` is unset. Tests continue to use an in-memory H2 database.
-To select the production profile, set `SPRING_PROFILES_ACTIVE=prod`.
+- MySQL은 회원·그룹·물품·교환·채팅 데이터를 보관하는 원본 저장소입니다. Flyway 마이그레이션 후 Hibernate가 스키마를 검증합니다.
+- Redis는 인증 상태와 캐시, 위치 인증, 여러 백엔드 인스턴스 사이의 실시간 메시지 전달에 사용합니다.
+- Kafka는 조회·검색 이력과 가격 추정 요청 등 비동기 이벤트를 전달합니다.
+- 이미지는 클라이언트가 presigned URL로 S3에 직접 업로드합니다. 미완료 객체 자동 삭제를 위해 S3 Lifecycle에 `pending=true` 객체의 1일 만료 규칙을 설정해야 합니다.
 
-The database must be empty on its first Flyway startup; migrations create the schema.
+## 폴더 구조
 
-The `prod` profile requires `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `AWS_S3_BUCKET`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS`, `FRONTEND_REDIRECT_URI`, `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, and `KAKAO_REDIRECT_URI`. Its schema mode defaults to `validate`. Item-price caching uses Redis in every profile. Development defaults to standalone Redis at `localhost:6379`; override it with `SPRING_DATA_REDIS_HOST` and `SPRING_DATA_REDIS_PORT`, or supply the standard Redis cluster, SSL, and authentication environment variables for a remote development Redis. Production uses `SPRING_DATA_REDIS_CLUSTER_NODES`, `SPRING_DATA_REDIS_SSL_ENABLED`, and `SPRING_DATA_REDIS_USERNAME`, plus `SPRING_DATA_REDIS_PASSWORD` when the Redis user has a password.
+```text
+src/main/java/com/example/KTB_Agile_backend/
+├── auth, user          # 로그인, 토큰, 사용자
+├── group               # 그룹, 가입, 위치 인증
+├── item                # 물품, 추천, 가격 추정
+├── exchange            # 교환 요청
+├── chat, notification  # 채팅, 알림
+├── image               # S3 업로드와 이미지 처리
+├── ai, search          # AI 연동과 검색
+└── common              # 공통 응답, 예외, 설정, 페이지네이션
+src/main/resources/db/migration  # Flyway 마이그레이션
+src/test/java                    # 단위·서비스·저장소·동시성 테스트
+.github/workflows                # PR 검사와 환경별 배포
+```
 
-## Test
+## 서버 설계
+
+| 계층 | 역할 |
+| --- | --- |
+| Controller | REST·STOMP 요청을 받고 인증 사용자와 입력값 검증 |
+| Service | 트랜잭션과 도메인 규칙 처리 |
+| Repository | JPA 기반 데이터 조회·저장 |
+| Integration | Redis, Kafka, S3, 외부 AI 서비스 연결 |
+
+- 채팅 내역은 커서 기반으로 조회하고, 실시간 메시지는 DB 저장 후 Redis Pub/Sub을 거쳐 각 서버의 STOMP 구독자에게 전달합니다.
+- 가격 추정 요청은 물품 저장 트랜잭션에서 Outbox에 기록한 뒤 Kafka로 전달하고, 실패 시 재시도 일정을 관리합니다.
+- 물품 목록은 Projection과 묶음 조회를 활용하며, 좋아요·조회수처럼 동시 요청이 가능한 값은 트랜잭션과 원자적 갱신으로 관리합니다.
+
+## API 요약
+
+| 도메인 | 대표 API |
+| --- | --- |
+| 인증 | `POST /auth/oauth`, `POST /auth/refresh`, `POST /auth/logout` |
+| 그룹 | `GET/POST /groups`, `POST /groups/{groupId}/location-verifications` |
+| 물품 | `GET/POST /items`, `GET/PUT/DELETE /items/{itemId}`, `GET /groups/{groupId}/items` |
+| 교환 | `POST /items/{itemId}/exchange-requests`, `PATCH /exchange-requests/{exchangeRequestId}/status` |
+| 채팅 | `GET /chat-rooms`, `GET /chat/rooms/{chatRoomId}/messages`, STOMP `/app/chat/rooms/{chatRoomId}/messages` |
+| 이미지·AI | `POST /images/presigned-urls`, `POST /images/ai-analysis`, `POST /search/rank-candidates`, `POST /chatbot/ask` |
+| 알림 | `GET /users/me/notifications` |
+
+## 테스트
 
 ```bash
 ./gradlew test
 ```
 
-## S3 image flow
+인증·사용자·그룹·물품·교환·채팅·이미지 기능을 검증하며, 좋아요 중복 요청과 조회수·가격 추정·교환 상태 갱신의 동시성 테스트를 포함합니다.
 
-Set `AWS_S3_BUCKET`, `AWS_REGION`, and `AI_BASE_URL` (for example, `http://fastapi:8000`). Backend AI paths are fixed in code: `/api/vision/analyze-item`, `/api/moderation/check-text`, `/value/estimate-price`, `/api/search/rank-candidates`, and `/api/chatbot/ask`. Image analysis sends `POST {"imageUrls":["<url-1>","<url-2>"]}` for 1–3 images. Its JSON response and HTTP status are forwarded to the frontend, including analysis errors. Connection and response timeouts can be set with `AI_CONNECT_TIMEOUT_SECONDS` and `AI_READ_TIMEOUT_SECONDS`. The bucket should remain private; item responses use 1-hour presigned image URLs by default (`AWS_S3_READ_URL_DURATION_SECONDS`), while AI receives a 10-minute URL.
+## CI/CD
 
-When the user starts analysis, request 1–3 upload URLs with `POST /images/presigned-urls` and `{"images":[{"contentType":"image/jpeg"},{"contentType":"image/png"}]}`. Upload each image to S3 using its `uploadUrl` and `requiredHeaders`, then call `POST /images/ai-analysis` with `{"objectKeys":["<object-key-1>","<object-key-2>"]}`. For an abandoned upload, call `DELETE /images?objectKey=...`. New `POST /items` requests send `objectKeys`; `PUT /items/{itemId}` continues to use `imageIds`.
+- `dev`, `main` 대상 Pull Request에 백엔드 코드나 빌드 설정 변경이 있으면 Java 25 환경에서 SpotBugs, PMD, 테스트와 ARM64 Docker 빌드 검증을 실행합니다.
+- `dev` 브랜치 Push는 ARM64 이미지를 GitHub Container Registry에 게시하고, GitHub OIDC로 발급한 AWS 자격 증명을 사용해 ECS에 배포합니다.
+- `main`에 포함된 커밋의 `vMAJOR.MINOR.PATCH` 태그는 운영 이미지를 게시하고 ECS CodeDeploy로 배포합니다.
 
-The first `objectKeys` entry when creating an item, or first `imageIds` entry when updating it, is the thumbnail image. The item detail response includes its `thumbnailImageId`.
+## 프로젝트 후기
 
-The client must send the `requiredHeaders` returned by `POST /images/presigned-urls` with its S3 PUT, including when uploading one image. Configure bucket CORS to allow the frontend origin and the `PUT` method with the `Content-Type` and `x-amz-tagging` headers.
-
-## Smart search
-
-The backend calls the AI server's fixed `POST /api/search/rank-candidates` path under `AI_BASE_URL`. Call the backend's `POST /search/rank-candidates` with the selected `groupId`, `items` (`itemId` and `quantity`), and optional `preferenceText`, for example `{"groupId":1,"items":[{"itemId":101,"quantity":2}],"preferenceText":"야식으로 먹을 거 찾아요"}`. The backend sums each selected item's unit price multiplied by its requested quantity, fetches up to 30 recent requestable items in that group priced at no more than 120% of the total, and returns their summaries in the AI-ranked order in `data.items`. Missing or blank `preferenceText` returns candidates in recent-first order without calling AI; no candidates returns an empty list. AI failure messages are returned in the common API envelope's `error.message`.
-
-## Chatbot
-
-The backend calls the AI server's fixed `POST /api/chatbot/ask` path under `AI_BASE_URL`. Call the authenticated backend's `POST /chatbot/ask` with a nonblank `message` and up to 10 previous `history` messages, each with a `role` of `user` or `assistant` and nonblank `content`. Missing or null `history` is treated as empty. The backend forwards the supplied history to the AI server and does not load or save chat history; the frontend owns it for the modal session and clears it when the modal closes. A successful response is wrapped in `data` with `answer` and nullable `action`; `action.screen` is one of `MY_PAGE`, `ITEM_LIST`, `ITEM_ADD`, `CHAT_LIST`, `GROUP_MANAGE`, `INTEREST_LIST`, or `INQUIRY`. The frontend maps that identifier to its route and displays `action.label` as the button text. AI errors are returned in the common API envelope as HTTP 500; an AI validation response (HTTP 422) is also mapped to the backend's chatbot failure response.
-
-## Item text moderation
-
-The backend calls the AI server's fixed `POST /api/moderation/check-text` path under `AI_BASE_URL`. Before creating an item, call `POST /moderation-checks` with `title` and `content`. The response includes `isAppropriate`, `rejectionReason`, and a five-minute `checkId` when approved. Send that `moderationCheckId` with the item payload to `POST /items`; it is bound to the authenticated user and checked title/content, and can be used once. Inappropriate content returns the AI rejection reason and no `checkId`.
-
-Configure an S3 Lifecycle rule on the bucket with the tag filter `pending=true` and expiration after 1 day. This repository has no bucket IaC, so apply a rule like this to the S3 bucket separately:
-
-```json
-{
-  "Rules": [
-    {
-      "ID": "expire-pending-images",
-      "Status": "Enabled",
-      "Filter": {
-        "And": {
-          "Prefix": "images/",
-          "Tags": [{ "Key": "pending", "Value": "true" }]
-        }
-      },
-      "Expiration": { "Days": 1 }
-    }
-  ]
-}
-```
-
-The backend role needs `s3:PutObject`, `s3:GetObject`, `s3:GetObjectTagging`, `s3:PutObjectTagging`, and `s3:DeleteObject` on the image prefix.
-
-Existing URL-backed image rows continue to work; newly uploaded images store their S3 key and receive fresh read URLs from item APIs.
-
-## Database schema
-
-In the `dev` and `prod` profiles, Flyway applies versioned migrations before Hibernate validates the schema. Point the server at an empty MySQL schema for its first startup; the database user needs permission to create tables, indexes, and foreign keys. Hibernate uses `ddl-auto=validate` and will not change the schema itself. After V1 has been deployed, add future schema changes as new versioned migrations instead of editing V1.
-
-## WebSocket chat messages
-
-Connect to `/ws` with STOMP `CONNECT` header `Authorization: Bearer <jwt>`. Subscribe to `/topic/chat/rooms/{chatRoomId}` and send `{"content":"안녕하세요"}` to `/app/chat/rooms/{chatRoomId}/messages`. The server persists each text message before broadcasting it to room subscribers.
-
-Leaving a chat room, editing, rejecting, and canceling an exchange also persist and broadcast `SYSTEM` messages with the corresponding Korean notice as `content`. Exchange edits include the same request-card payload as request creation.
-
-Fetch the latest chat messages with `GET /chat/rooms/{chatRoomId}/messages`. Pass the returned `nextCursor` as the `cursor` query parameter to load older messages; each response contains messages in chronological order.
-
-## WebSocket notifications
-
-Notifications use the existing authenticated STOMP connection at `/ws`. A connected client subscribes to `/user/queue/notifications`; application code publishes an explicit user ID and payload through `NotificationMessagePublisher`. The server sends notifications only to sessions authenticated as that user.
-
-The notification publisher sends through Redis Pub/Sub so any backend instance can forward the event to its local WebSocket sessions. This path is online-only: disconnected clients do not receive or replay messages. No business event or recipient policy is connected yet; callers will choose those when defined. If notification history or reconnect replay becomes a requirement, add persistent notification storage separately.
+인증, 그룹·물품 도메인, 실시간 채팅과 외부 AI·S3를 하나의 서비스 흐름으로 연결하는 경험을 했습니다. API 동작뿐 아니라 데이터 흐름과 외부 시스템 연동까지 함께 설계하는 과정에서 백엔드 서비스 전반을 다뤄볼 수 있었습니다.
