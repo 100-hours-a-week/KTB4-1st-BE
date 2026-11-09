@@ -1,7 +1,6 @@
 package com.example.KTB_Agile_backend.chat.entity;
 
 import com.example.KTB_Agile_backend.common.entity.BaseEntity;
-import org.bson.types.ObjectId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -20,15 +19,12 @@ import java.util.Objects;
 @Table(name = "chat_messages")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ChatMessage extends BaseEntity implements ChatMessageView {
+public class ChatMessage extends BaseEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "message_id", nullable = false)
 	private Long id;
-
-	@Column(name = "message_object_id", length = 24)
-	private String messageObjectId;
 
 	@Column(name = "chat_room_id", nullable = false)
 	private Long chatRoomId;
@@ -48,7 +44,6 @@ public class ChatMessage extends BaseEntity implements ChatMessageView {
 	private ChatSystemEventType systemEventType;
 
 	public ChatMessage(Long chatRoomId, Long userId, String content) {
-		this.messageObjectId = new ObjectId().toHexString();
 		this.chatRoomId = Objects.requireNonNull(chatRoomId, "chatRoomId must not be null");
 		this.userId = Objects.requireNonNull(userId, "userId must not be null");
 		this.content = content;
@@ -56,7 +51,6 @@ public class ChatMessage extends BaseEntity implements ChatMessageView {
 
 	public static ChatMessage system(Long chatRoomId, ChatSystemEventType eventType) {
 		ChatMessage message = new ChatMessage();
-		message.messageObjectId = new ObjectId().toHexString();
 		message.chatRoomId = Objects.requireNonNull(chatRoomId, "chatRoomId must not be null");
 		message.content = eventType.content();
 		message.messageType = ChatMessageType.SYSTEM;

@@ -1,8 +1,6 @@
 package com.example.KTB_Agile_backend.chat.service;
 
 import com.example.KTB_Agile_backend.chat.dto.response.ChatMessageResponse;
-import com.example.KTB_Agile_backend.chat.document.ChatMessageDocument;
-import com.example.KTB_Agile_backend.chat.document.ChatMessageDocumentRepository;
 import com.example.KTB_Agile_backend.chat.entity.ChatMember;
 import com.example.KTB_Agile_backend.chat.entity.ChatMessage;
 import com.example.KTB_Agile_backend.chat.entity.ChatRoom;
@@ -12,7 +10,6 @@ import com.example.KTB_Agile_backend.chat.messaging.ChatMessagePublisher;
 import com.example.KTB_Agile_backend.chat.repository.ChatMemberRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatMessageRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatRoomRepository;
-import com.example.KTB_Agile_backend.chat.storage.ChatMessageStorageRouter;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequest;
@@ -42,8 +39,6 @@ public class ChatMessageService {
 
 	private final ChatMemberRepository chatMemberRepository;
 	private final ChatMessageRepository chatMessageRepository;
-	private final ChatMessageDocumentRepository chatMessageDocumentRepository;
-	private final ChatMessageStorageRouter chatMessageStorageRouter;
 	private final ChatRoomRepository chatRoomRepository;
 	private final ExchangeRequestRepository exchangeRequestRepository;
 	private final UserRepository userRepository;
@@ -66,7 +61,7 @@ public class ChatMessageService {
 			throw new AccessDeniedException("현재 채팅방에서 메시지를 보낼 수 없습니다.");
 		}
 
-		ChatMessage message = saveMessage(new ChatMessage(chatRoom.getId(), member.getUserId(), content));
+		ChatMessage message = chatMessageRepository.save(new ChatMessage(chatRoom.getId(), member.getUserId(), content));
 		chatRoom.updateLastMessageAt(message.getCreatedAt());
 		User sender = userRepository.findById(member.getUserId()).orElse(null);
 		ExchangeRequest request = exchangeRequestRepository.findById(chatRoom.getExchangeRequestId()).orElse(null);
@@ -92,7 +87,7 @@ public class ChatMessageService {
 
 	@Transactional
 	public void sendSystemMessage(ChatRoom chatRoom, ChatSystemEventType eventType) {
-		ChatMessage message = saveMessage(ChatMessage.system(chatRoom.getId(), eventType));
+		ChatMessage message = chatMessageRepository.save(ChatMessage.system(chatRoom.getId(), eventType));
 		chatRoom.updateLastMessageAt(message.getCreatedAt());
 		ExchangeRequest request = ChatMessageResponseMapper.isExchangeRequestEvent(eventType)
 				? exchangeRequestRepository.findById(chatRoom.getExchangeRequestId()).orElse(null)
@@ -111,13 +106,5 @@ public class ChatMessageService {
 				}
 			}
 		});
-	}
-
-	private ChatMessage saveMessage(ChatMessage message) {
-		ChatMessage saved = chatMessageRepository.save(message);
-		if (chatMessageStorageRouter.writesToMongo()) {
-			chatMessageDocumentRepository.save(ChatMessageDocument.from(saved));
-		}
-		return saved;
 	}
 }
