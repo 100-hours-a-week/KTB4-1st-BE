@@ -596,7 +596,7 @@ class ItemServiceTest {
 	) {
 		ItemCoViewRecommendationService itemCoViewRecommendationService =
 				mock(ItemCoViewRecommendationService.class);
-		when(itemCoViewRecommendationService.findTopRelatedItemIds(123L, 50)).thenReturn(List.of());
+		lenient().when(itemCoViewRecommendationService.findTopRelatedItemIds(123L, 50)).thenReturn(List.of());
 		return new ItemQueryService(
 				itemRepository,
 				itemStatsRepository,

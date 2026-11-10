@@ -120,16 +120,16 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 				and groupItem.deletedAt is null
 				and item.id in :itemIds
 				and item.deletedAt is null
-				and owner.userStatus = :activeUserStatus
+				and owner.userStatus = :coViewUserStatus
 				and owner.id <> :viewerUserId
-				and viewerMembership.status = :activeMemberStatus
-				and ownerMembership.status = :activeMemberStatus
+				and viewerMembership.status = :coViewMemberStatus
+				and ownerMembership.status = :coViewMemberStatus
 			""")
 	List<ItemSummaryProjection> findActiveItemSummariesByUserIdAndItemIds(
 			@Param("viewerUserId") Long userId,
 			@Param("itemIds") Collection<Long> itemIds,
-			@Param("activeUserStatus") UserStatus activeUserStatus,
-			@Param("activeMemberStatus") GroupMemberStatus activeMemberStatus
+			@Param("coViewUserStatus") UserStatus activeUserStatus,
+			@Param("coViewMemberStatus") GroupMemberStatus activeMemberStatus
 	);
 
 	@Query("""
