@@ -114,3 +114,10 @@ tasks.register('backfillItemDetailThumbnails', JavaExec) {
 	classpath = sourceSets.main.runtimeClasspath
 	mainClass = 'com.example.KTB_Agile_backend.image.backfill.ItemDetailThumbnailBackfill'
 }
+
+tasks.register('backfillItemOriginalImages', JavaExec) {
+	group = 'application'
+	description = 'Convert existing item original images to WebP after thumbnails.'
+	classpath = sourceSets.main.runtimeClasspath
+	mainClass = 'com.example.KTB_Agile_backend.image.backfill.ItemOriginalImageWebpBackfill'
+}
