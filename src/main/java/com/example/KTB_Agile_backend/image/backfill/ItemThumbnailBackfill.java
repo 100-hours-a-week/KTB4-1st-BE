@@ -39,10 +39,9 @@ import java.util.List;
 public final class ItemThumbnailBackfill {
 
 	private static final int THUMBNAIL_MAX_SIZE = 224;
-	private static final float JPEG_QUALITY = 0.8f;
+	static final float THUMBNAIL_QUALITY = 0.5f;
 	private static final int BATCH_SIZE = 100;
 	private static final int UPDATED_ROW_COUNT = 1;
-	private static final String THUMBNAIL_KEY_PREFIX = "images/thumbnails/backfill/";
 	private static final System.Logger LOGGER = System.getLogger(ItemThumbnailBackfill.class.getName());
 
 	private ItemThumbnailBackfill() {
@@ -71,15 +70,15 @@ public final class ItemThumbnailBackfill {
 							.bucket(bucket)
 							.key(target.objectKey())
 							.build()).asByteArray();
-					byte[] thumbnail = createThumbnail(source, THUMBNAIL_MAX_SIZE, "jpeg", JPEG_QUALITY);
-					String thumbnailKey = THUMBNAIL_KEY_PREFIX + target.imageId() + ".jpg";
+					byte[] thumbnail = createThumbnail(source, THUMBNAIL_MAX_SIZE, "webp", THUMBNAIL_QUALITY);
+					String thumbnailKey = versionedThumbnailKey(target.imageId(), target.objectKey());
 					s3Client.putObject(PutObjectRequest.builder()
 							.bucket(bucket)
 							.key(thumbnailKey)
-							.contentType("image/jpeg")
+							.contentType("image/webp")
 							.tagging("pending=false")
 							.build(), RequestBody.fromBytes(thumbnail));
-					if (setThumbnailKey(connection, target.imageId(), thumbnailKey) == UPDATED_ROW_COUNT) {
+					if (setThumbnailKey(connection, target, thumbnailKey) == UPDATED_ROW_COUNT) {
 						processed++;
 					}
 					if (processed > 0 && processed % BATCH_SIZE == 0) {
@@ -96,12 +95,17 @@ public final class ItemThumbnailBackfill {
 	private static List<Target> findTargets(Connection connection, long afterImageId) throws SQLException {
 		// shortcut: S3-backed rows only; add allowlisted URL reads if production contains URL-only images.
 		String sql = """
-				select image.image_id, image.object_key
+				select image.image_id, image.object_key, image.thumbnail_object_key
 				from images image
 				join items item on item.thumbnail_image_id = image.image_id
 				where item.deleted_at is null
-				  and image.thumbnail_object_key is null
 				  and image.object_key is not null
+				  and (image.thumbnail_object_key is null
+				       or image.thumbnail_object_key <> concat(
+				           'images/thumbnails/backfill/v2/', image.image_id, '-',
+				           case when image.object_key like 'images/originals/backfill/v2/%'
+				                then substring_index(substring_index(image.object_key, '/', -1), '-', -1)
+				                else concat(sha2(image.object_key, 256), '.webp') end))
 				  and image.image_id > ?
 				order by image.image_id
 				limit ?
@@ -112,7 +116,8 @@ public final class ItemThumbnailBackfill {
 			try (ResultSet resultSet = statement.executeQuery()) {
 				List<Target> targets = new ArrayList<>();
 				while (resultSet.next()) {
-					targets.add(new Target(resultSet.getLong("image_id"), resultSet.getString("object_key")));
+					targets.add(new Target(resultSet.getLong("image_id"), resultSet.getString("object_key"),
+							resultSet.getString("thumbnail_object_key")));
 				}
 				return targets;
 			}
@@ -125,7 +130,6 @@ public final class ItemThumbnailBackfill {
 				from images image
 				join items item on item.thumbnail_image_id = image.image_id
 				where item.deleted_at is null
-				  and image.thumbnail_object_key is null
 				  and image.object_key is null
 				  and image.image_url is not null
 				""";
@@ -135,19 +139,24 @@ public final class ItemThumbnailBackfill {
 		}
 	}
 
-	private static int setThumbnailKey(Connection connection, long imageId, String thumbnailKey) throws SQLException {
+	private static int setThumbnailKey(Connection connection, Target target, String thumbnailKey) throws SQLException {
 		String sql = """
 				update images
 				set thumbnail_object_key = ?
 				where image_id = ?
-				  and thumbnail_object_key is null
+				  and object_key = ?
+				  and (thumbnail_object_key = ? or (thumbnail_object_key is null and ? is null))
 				  and exists (
-				      select 1 from items where items.thumbnail_image_id = images.image_id
+				      select 1 from items
+				      where items.thumbnail_image_id = images.image_id and items.deleted_at is null
 				  )
 				""";
 		try (PreparedStatement statement = connection.prepareStatement(sql)) {
 			statement.setString(1, thumbnailKey);
-			statement.setLong(2, imageId);
+			statement.setLong(2, target.imageId());
+			statement.setString(3, target.objectKey());
+			statement.setString(4, target.thumbnailObjectKey());
+			statement.setString(5, target.thumbnailObjectKey());
 			return statement.executeUpdate();
 		}
 	}
@@ -172,6 +181,28 @@ public final class ItemThumbnailBackfill {
 		graphics.drawImage(oriented, 0, 0, width, height, null);
 		graphics.dispose();
 
+		return encode(thumbnail, format, quality);
+	}
+
+	static String versionedThumbnailKey(long imageId, String objectKey) {
+		return ItemImageBackfillKeys.thumbnailKey(imageId, objectKey);
+	}
+
+	static byte[] createOriginalWebp(byte[] sourceBytes, float quality) throws IOException {
+		BufferedImage source = decode(sourceBytes, Integer.MAX_VALUE);
+		BufferedImage oriented = orient(source, readOrientation(sourceBytes));
+		return encode(oriented, "webp", quality);
+	}
+
+	static boolean isWebp(byte[] sourceBytes) {
+		return sourceBytes.length >= 12
+				&& sourceBytes[0] == 'R' && sourceBytes[1] == 'I'
+				&& sourceBytes[2] == 'F' && sourceBytes[3] == 'F'
+				&& sourceBytes[8] == 'W' && sourceBytes[9] == 'E'
+				&& sourceBytes[10] == 'B' && sourceBytes[11] == 'P';
+	}
+
+	private static byte[] encode(BufferedImage image, String format, float quality) throws IOException {
 		Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName(format);
 		if (!writers.hasNext()) {
 			throw new IOException("No " + format + " encoder is available");
@@ -187,7 +218,7 @@ public final class ItemThumbnailBackfill {
 				parameters.setCompressionType(compressionTypes[0]);
 			}
 			parameters.setCompressionQuality(quality);
-			writer.write(null, new IIOImage(thumbnail, null, null), parameters);
+			writer.write(null, new IIOImage(image, null, null), parameters);
 			output.flush();
 			return bytes.toByteArray();
 		} finally {
@@ -268,6 +299,6 @@ public final class ItemThumbnailBackfill {
 		return value;
 	}
 
-	private record Target(long imageId, String objectKey) {
+	private record Target(long imageId, String objectKey, String thumbnailObjectKey) {
 	}
 }

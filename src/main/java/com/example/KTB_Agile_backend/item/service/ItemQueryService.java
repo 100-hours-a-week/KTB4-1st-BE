@@ -44,6 +44,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -53,6 +54,8 @@ public class ItemQueryService {
 	private static final int PAGE_SIZE = 20;
 	private static final int FETCH_SIZE = PAGE_SIZE + 1;
 	private static final int MAX_PAGE_SIZE = 100;
+	private static final int DETAIL_RECOMMENDATION_SIZE = 5;
+	private static final int DETAIL_RECOMMENDATION_CANDIDATE_LIMIT = 50;
 	private static final String MY_ITEMS_BAD_REQUEST_MESSAGE = "size 또는 cursor 값이 올바르지 않습니다.";
 	private static final int CONTENT_PREVIEW_LENGTH = 70;
 
@@ -66,6 +69,7 @@ public class ItemQueryService {
 	private final ImageUrlResolver imageUrlResolver;
 	private final ExchangeRequestRepository exchangeRequestRepository;
 	private final SearchHistoryEventPublisher searchHistoryEventPublisher;
+	private final ItemCoViewRecommendationService itemCoViewRecommendationService;
 
 	@Transactional(readOnly = true)
 	public ItemDetailResponse findDetail(Long userId, Long itemId) {
@@ -77,6 +81,7 @@ public class ItemQueryService {
 		List<GroupItem> activeGroupItems = groupItemRepository.findActiveGroupItemsByItemId(itemId);
 		Map<Long, GroupMemberStatus> ownerMembershipStatuses = findOwnerMembershipStatuses(
 				item.getUser().getId(), activeGroupItems);
+		List<ItemSummary> recommendations = findCoViewRecommendations(userId, itemId);
 
 		return new ItemDetailResponse(
 				item.getId(),
@@ -108,8 +113,29 @@ public class ItemQueryService {
 				item.getCreatedAt(),
 				item.getUpdatedAt(),
 				item.getExchangeUrgencyScore(),
-				item.getValueGapToleranceScore()
+				item.getValueGapToleranceScore(),
+				recommendations
 		);
+	}
+
+	private List<ItemSummary> findCoViewRecommendations(Long userId, Long itemId) {
+		List<Long> rankedItemIds = itemCoViewRecommendationService.findTopRelatedItemIds(
+				itemId, DETAIL_RECOMMENDATION_CANDIDATE_LIMIT);
+		if (rankedItemIds.isEmpty()) {
+			return List.of();
+		}
+
+		Map<Long, ItemSummaryProjection> visibleSummariesById = new HashMap<>();
+		groupItemRepository.findActiveItemSummariesByUserIdAndItemIds(
+				userId, rankedItemIds, UserStatus.ACTIVE, GroupMemberStatus.ACTIVE)
+				.forEach(summary -> visibleSummariesById.put(summary.itemId(), summary));
+
+		List<ItemSummaryProjection> summaries = rankedItemIds.stream()
+				.map(visibleSummariesById::get)
+				.filter(Objects::nonNull)
+				.limit(DETAIL_RECOMMENDATION_SIZE)
+				.toList();
+		return summaries.isEmpty() ? List.of() : toSummariesForUser(userId, summaries);
 	}
 
 	@Transactional(readOnly = true)

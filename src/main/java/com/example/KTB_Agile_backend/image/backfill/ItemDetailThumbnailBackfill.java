@@ -17,10 +17,9 @@ import java.util.List;
 public final class ItemDetailThumbnailBackfill {
 
 	private static final int DETAIL_THUMBNAIL_MAX_SIZE = 1280;
-	private static final float DETAIL_THUMBNAIL_QUALITY = 0.8f;
+	static final float DETAIL_THUMBNAIL_QUALITY = 0.6f;
 	private static final int BATCH_SIZE = 100;
 	private static final int UPDATED_ROW_COUNT = 1;
-	private static final String DETAIL_THUMBNAIL_KEY_PREFIX = "images/detail-thumbnails/backfill/";
 	private static final System.Logger LOGGER = System.getLogger(ItemDetailThumbnailBackfill.class.getName());
 
 	private ItemDetailThumbnailBackfill() {
@@ -51,14 +50,14 @@ public final class ItemDetailThumbnailBackfill {
 							.build()).asByteArray();
 					byte[] thumbnail = ItemThumbnailBackfill.createThumbnail(
 							source, DETAIL_THUMBNAIL_MAX_SIZE, "webp", DETAIL_THUMBNAIL_QUALITY);
-					String thumbnailKey = DETAIL_THUMBNAIL_KEY_PREFIX + target.imageId() + ".webp";
+					String thumbnailKey = versionedThumbnailKey(target.imageId(), target.objectKey());
 					s3Client.putObject(PutObjectRequest.builder()
 							.bucket(bucket)
 							.key(thumbnailKey)
 							.contentType("image/webp")
 							.tagging("pending=false")
 							.build(), RequestBody.fromBytes(thumbnail));
-					if (setDetailThumbnailKey(connection, target.imageId(), thumbnailKey) == UPDATED_ROW_COUNT) {
+					if (setDetailThumbnailKey(connection, target, thumbnailKey) == UPDATED_ROW_COUNT) {
 						processed++;
 					}
 					if (processed > 0 && processed % BATCH_SIZE == 0) {
@@ -75,12 +74,17 @@ public final class ItemDetailThumbnailBackfill {
 
 	private static List<Target> findTargets(Connection connection, long afterImageId) throws SQLException {
 		String sql = """
-				select image.image_id, image.object_key
+				select image.image_id, image.object_key, image.detail_thumbnail_object_key
 				from images image
 				join items item on item.item_id = image.item_id
 				where item.deleted_at is null
-				  and image.detail_thumbnail_object_key is null
 				  and image.object_key is not null
+				  and (image.detail_thumbnail_object_key is null
+				       or image.detail_thumbnail_object_key <> concat(
+				           'images/detail-thumbnails/backfill/v2/', image.image_id, '-',
+				           case when image.object_key like 'images/originals/backfill/v2/%'
+				                then substring_index(substring_index(image.object_key, '/', -1), '-', -1)
+				                else concat(sha2(image.object_key, 256), '.webp') end))
 				  and image.image_id > ?
 				order by image.image_id
 				limit ?
@@ -91,7 +95,8 @@ public final class ItemDetailThumbnailBackfill {
 			try (ResultSet resultSet = statement.executeQuery()) {
 				List<Target> targets = new ArrayList<>();
 				while (resultSet.next()) {
-					targets.add(new Target(resultSet.getLong("image_id"), resultSet.getString("object_key")));
+					targets.add(new Target(resultSet.getLong("image_id"), resultSet.getString("object_key"),
+							resultSet.getString("detail_thumbnail_object_key")));
 				}
 				return targets;
 			}
@@ -104,7 +109,6 @@ public final class ItemDetailThumbnailBackfill {
 				from images image
 				join items item on item.item_id = image.item_id
 				where item.deleted_at is null
-				  and image.detail_thumbnail_object_key is null
 				  and image.object_key is null
 				  and image.image_url is not null
 				""";
@@ -114,13 +118,14 @@ public final class ItemDetailThumbnailBackfill {
 		}
 	}
 
-	private static int setDetailThumbnailKey(Connection connection, long imageId, String thumbnailKey)
+	private static int setDetailThumbnailKey(Connection connection, Target target, String thumbnailKey)
 			throws SQLException {
 		String sql = """
 				update images
 				set detail_thumbnail_object_key = ?
 				where image_id = ?
-				  and detail_thumbnail_object_key is null
+				  and object_key = ?
+				  and (detail_thumbnail_object_key = ? or (detail_thumbnail_object_key is null and ? is null))
 				  and exists (
 				      select 1 from items
 				      where items.item_id = images.item_id and items.deleted_at is null
@@ -128,9 +133,16 @@ public final class ItemDetailThumbnailBackfill {
 				""";
 		try (PreparedStatement statement = connection.prepareStatement(sql)) {
 			statement.setString(1, thumbnailKey);
-			statement.setLong(2, imageId);
+			statement.setLong(2, target.imageId());
+			statement.setString(3, target.objectKey());
+			statement.setString(4, target.detailThumbnailObjectKey());
+			statement.setString(5, target.detailThumbnailObjectKey());
 			return statement.executeUpdate();
 		}
+	}
+
+	static String versionedThumbnailKey(long imageId, String objectKey) {
+		return ItemImageBackfillKeys.detailThumbnailKey(imageId, objectKey);
 	}
 
 	private static String requiredEnvironmentVariable(String name) {
@@ -141,6 +153,6 @@ public final class ItemDetailThumbnailBackfill {
 		return value;
 	}
 
-	private record Target(long imageId, String objectKey) {
+	private record Target(long imageId, String objectKey, String detailThumbnailObjectKey) {
 	}
 }

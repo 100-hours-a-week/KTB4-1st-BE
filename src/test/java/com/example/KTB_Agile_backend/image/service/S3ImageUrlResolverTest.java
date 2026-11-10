@@ -11,6 +11,25 @@ import static org.mockito.Mockito.when;
 class S3ImageUrlResolverTest {
 
 	@Test
+	void resolvesOriginalAndBothThumbnailKeysForTheirIntendedUses() {
+		S3ImageObjectService s3ImageObjectService = mock(S3ImageObjectService.class);
+		when(s3ImageObjectService.presignedReadUrl("images/42/original.webp"))
+				.thenReturn("https://example.com/original.webp");
+		when(s3ImageObjectService.presignedReadUrl("images/42/list.webp"))
+				.thenReturn("https://example.com/list.webp");
+		when(s3ImageObjectService.presignedReadUrl("images/42/detail.webp"))
+				.thenReturn("https://example.com/detail.webp");
+		S3ImageUrlResolver resolver = new S3ImageUrlResolver(s3ImageObjectService);
+		Image image = Image.fromS3Object(mock(User.class), "images/42/original.webp");
+		image.setThumbnailObjectKey("images/42/list.webp");
+		image.setDetailThumbnailObjectKey("images/42/detail.webp");
+
+		assertThat(resolver.resolve(image)).isEqualTo("https://example.com/original.webp");
+		assertThat(resolver.resolveThumbnail(image)).isEqualTo("https://example.com/list.webp");
+		assertThat(resolver.resolveDetailThumbnail(image)).isEqualTo("https://example.com/detail.webp");
+	}
+
+	@Test
 	void resolvesDetailThumbnailUrlAndFallsBackToOriginal() {
 		S3ImageObjectService s3ImageObjectService = mock(S3ImageObjectService.class);
 		when(s3ImageObjectService.presignedReadUrl("images/42/detail.webp"))

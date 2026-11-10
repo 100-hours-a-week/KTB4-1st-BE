@@ -25,12 +25,14 @@ public record ItemDetailResponse(
 		LocalDateTime createdAt,
 		LocalDateTime updatedAt,
 		BigDecimal exchangeUrgencyScore,
-		BigDecimal valueGapToleranceScore
+		BigDecimal valueGapToleranceScore,
+		List<ItemSummary> recommendations
 ) {
 
 	public ItemDetailResponse {
 		groups = List.copyOf(groups);
 		images = List.copyOf(images);
+		recommendations = List.copyOf(recommendations);
 	}
 
 	public record GroupInfo(
