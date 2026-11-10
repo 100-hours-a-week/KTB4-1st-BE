@@ -156,7 +156,8 @@ class ItemControllerTest {
 				LocalDateTime.parse("2026-09-04T13:30:00"),
 				LocalDateTime.parse("2026-09-04T13:30:00"),
 				null,
-				null
+				null,
+				List.of()
 		));
 
 		mockMvc.perform(get("/items/123")

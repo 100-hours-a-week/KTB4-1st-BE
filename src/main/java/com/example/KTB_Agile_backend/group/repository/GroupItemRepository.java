@@ -106,6 +106,34 @@ public interface GroupItemRepository extends JpaRepository<GroupItem, Long> {
 
 	@Query("""
 			select distinct new com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection(
+				item.id, item.title, item.content, item.quantity, owner.id, owner.nickname,
+				item.itemState, item.createdAt
+			)
+			from GroupItem groupItem
+			join groupItem.item item
+			join item.user owner
+			join GroupMember viewerMembership on viewerMembership.group = groupItem.group
+				and viewerMembership.user.id = :viewerUserId
+			join GroupMember ownerMembership on ownerMembership.group = groupItem.group
+				and ownerMembership.user = owner
+			where groupItem.group.deletedAt is null
+				and groupItem.deletedAt is null
+				and item.id in :itemIds
+				and item.deletedAt is null
+				and owner.userStatus = :coViewUserStatus
+				and owner.id <> :viewerUserId
+				and viewerMembership.status = :coViewMemberStatus
+				and ownerMembership.status = :coViewMemberStatus
+			""")
+	List<ItemSummaryProjection> findActiveItemSummariesByUserIdAndItemIds(
+			@Param("viewerUserId") Long userId,
+			@Param("itemIds") Collection<Long> itemIds,
+			@Param("coViewUserStatus") UserStatus activeUserStatus,
+			@Param("coViewMemberStatus") GroupMemberStatus activeMemberStatus
+	);
+
+	@Query("""
+			select distinct new com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection(
 				item.id,
 				item.title,
 				item.content,
