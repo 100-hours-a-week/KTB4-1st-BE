@@ -456,7 +456,8 @@ class ItemServiceTest {
 				LocalDateTime.parse("2026-09-04T13:30:00"),
 				LocalDateTime.parse("2026-09-04T13:30:00"),
 				null,
-				null
+				null,
+				List.of()
 		));
 	}
 
@@ -593,6 +594,9 @@ class ItemServiceTest {
 			GroupItemRepository groupItemRepository,
 			ImageRepository imageRepository
 	) {
+		ItemCoViewRecommendationService itemCoViewRecommendationService =
+				mock(ItemCoViewRecommendationService.class);
+		lenient().when(itemCoViewRecommendationService.findTopRelatedItemIds(123L, 50)).thenReturn(List.of());
 		return new ItemQueryService(
 				itemRepository,
 				itemStatsRepository,
@@ -603,7 +607,8 @@ class ItemServiceTest {
 				imageRepository,
 				Image::getImageUrl,
 				mock(ExchangeRequestRepository.class),
-				mock(SearchHistoryEventPublisher.class)
+				mock(SearchHistoryEventPublisher.class),
+				itemCoViewRecommendationService
 		);
 	}
 
