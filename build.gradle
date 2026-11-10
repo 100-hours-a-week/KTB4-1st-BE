@@ -79,8 +79,6 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
-	runtimeOnly 'com.github.gotson:webp-imageio:0.2.2'
-	implementation 'com.drewnoakes:metadata-extractor:2.19.0'
 	implementation 'io.sentry:sentry-async-profiler:8.58.0'
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'com.h2database:h2'
@@ -99,25 +97,4 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
-}
-
-tasks.register('backfillItemThumbnails', JavaExec) {
-	group = 'application'
-	description = 'Create missing thumbnails for existing item representative images.'
-	classpath = sourceSets.main.runtimeClasspath
-	mainClass = 'com.example.KTB_Agile_backend.image.backfill.ItemThumbnailBackfill'
-}
-
-tasks.register('backfillItemDetailThumbnails', JavaExec) {
-	group = 'application'
-	description = 'Create missing detail thumbnails for existing item images.'
-	classpath = sourceSets.main.runtimeClasspath
-	mainClass = 'com.example.KTB_Agile_backend.image.backfill.ItemDetailThumbnailBackfill'
-}
-
-tasks.register('backfillItemOriginalImages', JavaExec) {
-	group = 'application'
-	description = 'Convert existing item original images to WebP after thumbnails.'
-	classpath = sourceSets.main.runtimeClasspath
-	mainClass = 'com.example.KTB_Agile_backend.image.backfill.ItemOriginalImageWebpBackfill'
 }
