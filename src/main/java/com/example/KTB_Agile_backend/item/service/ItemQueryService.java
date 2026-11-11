@@ -145,8 +145,10 @@ public class ItemQueryService {
 		Map<Long, Long> exchangeRequestCounts = findExchangeRequestCounts(itemIds);
 		Set<Long> likedItemIds = findLikedItemIds(userId, itemIds);
 		Map<Long, String> thumbnails = findThumbnails(itemIds);
+		Map<Long, String> detailThumbnailImageUrls = findDetailThumbnailImageUrls(itemIds);
 		return summaries.stream()
-				.map(summary -> toSummary(summary, statsByItemId, exchangeRequestCounts, likedItemIds, thumbnails))
+				.map(summary -> toSummary(summary, statsByItemId, exchangeRequestCounts, likedItemIds, thumbnails,
+						detailThumbnailImageUrls))
 				.toList();
 	}
 
@@ -179,10 +181,12 @@ public class ItemQueryService {
 		Map<Long, Long> exchangeRequestCounts = findExchangeRequestCounts(itemIds);
 		Set<Long> likedItemIds = findLikedItemIds(userId, itemIds);
 		Map<Long, String> thumbnails = findThumbnails(itemIds);
+		Map<Long, String> detailThumbnailImageUrls = findDetailThumbnailImageUrls(itemIds);
 
 		return new ItemPageResponse(
 				page.items().stream()
-						.map(summary -> toSummary(summary, statsByItemId, exchangeRequestCounts, likedItemIds, thumbnails))
+						.map(summary -> toSummary(summary, statsByItemId, exchangeRequestCounts, likedItemIds, thumbnails,
+								detailThumbnailImageUrls))
 						.toList(),
 				page.nextCursor(),
 				page.hasNext()
@@ -252,10 +256,12 @@ public class ItemQueryService {
 		Map<Long, Long> exchangeRequestCounts = findExchangeRequestCounts(itemIds);
 		Set<Long> likedItemIds = findLikedItemIds(userId, itemIds);
 		Map<Long, String> thumbnails = findThumbnails(itemIds);
+		Map<Long, String> detailThumbnailImageUrls = findDetailThumbnailImageUrls(itemIds);
 
 		return new ItemPageResponse(
 				page.items().stream()
-						.map(summary -> toSummary(summary, statsByItemId, exchangeRequestCounts, likedItemIds, thumbnails))
+						.map(summary -> toSummary(summary, statsByItemId, exchangeRequestCounts, likedItemIds, thumbnails,
+								detailThumbnailImageUrls))
 						.toList(),
 				page.nextCursor(),
 				page.hasNext()
@@ -429,6 +435,17 @@ public class ItemQueryService {
 		return thumbnails;
 	}
 
+	private Map<Long, String> findDetailThumbnailImageUrls(List<Long> itemIds) {
+		if (itemIds.isEmpty()) {
+			return Map.of();
+		}
+		Map<Long, String> detailThumbnailImageUrls = new HashMap<>();
+		imageRepository.findFirstImagesByItemIds(itemIds).forEach(image ->
+				detailThumbnailImageUrls.put(image.getItem().getId(), imageUrlResolver.resolveDetailThumbnail(image))
+		);
+		return detailThumbnailImageUrls;
+	}
+
 	private static List<Long> itemIds(List<Item> items) {
 		return items.stream().map(Item::getId).toList();
 	}
@@ -456,7 +473,8 @@ public class ItemQueryService {
 			Map<Long, ItemStats> statsByItemId,
 			Map<Long, Long> exchangeRequestCounts,
 			Set<Long> likedItemIds,
-			Map<Long, String> thumbnails
+			Map<Long, String> thumbnails,
+			Map<Long, String> detailThumbnailImageUrls
 	) {
 		ItemStats stats = statsByItemId.get(item.itemId());
 		return new ItemSummary(
@@ -467,6 +485,7 @@ public class ItemQueryService {
 				new ItemSummary.Owner(item.ownerId(), item.ownerNickname()),
 				item.itemState(),
 				thumbnails.get(item.itemId()),
+				detailThumbnailImageUrls.get(item.itemId()),
 				stats == null ? 0L : stats.getLikeCount(),
 				stats == null ? 0L : stats.getViewCount(),
 				exchangeRequestCounts.getOrDefault(item.itemId(), 0L),

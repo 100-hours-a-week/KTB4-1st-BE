@@ -142,6 +142,6 @@ class ItemRecommendationServiceTest {
 	private static ItemSummary summary(Long itemId) {
 		return new ItemSummary(
 				itemId, "title", "content", 1, new ItemSummary.Owner(42L, "owner"),
-				ItemState.AVAILABLE, null, 0L, 0L, 0L, false, LocalDateTime.now());
+				ItemState.AVAILABLE, null, null, 0L, 0L, 0L, false, LocalDateTime.now());
 	}
 }

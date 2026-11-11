@@ -131,7 +131,7 @@ class SmartSearchServiceTest {
 
 	private static ItemSummary summary(Long itemId) {
 		return new ItemSummary(itemId, "라면", "", 2, null, ItemState.AVAILABLE, null,
-				0L, 0L, 0L, false, LocalDateTime.now());
+				null, 0L, 0L, 0L, false, LocalDateTime.now());
 	}
 
 	private record Fixture(
