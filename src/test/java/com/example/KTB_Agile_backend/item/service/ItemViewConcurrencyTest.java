@@ -10,6 +10,7 @@ import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.entity.ItemStats;
 import com.example.KTB_Agile_backend.item.entity.ItemView;
+import com.example.KTB_Agile_backend.item.cache.RedisItemDetailCache;
 import com.example.KTB_Agile_backend.item.price.ItemPriceRangeCalculator;
 import com.example.KTB_Agile_backend.item.price.application.ItemPriceEstimationRequestPublisher;
 import com.example.KTB_Agile_backend.item.price.application.ItemPriceLookupService;
@@ -55,6 +56,9 @@ class ItemViewConcurrencyTest {
 
 	@MockitoBean
 	private NotificationService notificationService;
+
+	@MockitoBean
+	private RedisItemDetailCache itemDetailCache;
 
 	@Autowired
 	private ItemService service;

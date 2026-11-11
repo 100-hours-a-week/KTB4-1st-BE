@@ -14,6 +14,7 @@ import com.example.KTB_Agile_backend.image.repository.ImageRepository;
 import com.example.KTB_Agile_backend.image.service.S3ImageObjectService;
 import com.example.KTB_Agile_backend.item.dto.request.CreateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.request.UpdateItemRequest;
+import com.example.KTB_Agile_backend.item.cache.RedisItemDetailCache;
 import com.example.KTB_Agile_backend.item.dto.response.ItemCreateResponse;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemStats;
@@ -67,6 +68,7 @@ public class ItemService {
 	private final ItemPriceRangeCalculator itemPriceRangeCalculator;
 	private final ItemPriceEstimationRequestPublisher priceEstimationRequestPublisher;
 	private final NotificationService notificationService;
+	private final RedisItemDetailCache itemDetailCache;
 
 	@Transactional
 	public ItemCreateResponse create(Long userId, CreateItemRequest request) {
@@ -246,6 +248,7 @@ public class ItemService {
 		if (!objectKeysToRegister.isEmpty()) {
 			s3ImageObjectService.markRegistered(objectKeysToRegister);
 		}
+		itemDetailCache.evictAfterCommit(List.of(itemId));
 	}
 
 	@Transactional
@@ -258,6 +261,7 @@ public class ItemService {
 			throw new ApiException(ItemErrorCode.ITEM_DELETE_FORBIDDEN);
 		}
 		item.delete();
+		itemDetailCache.evictAfterCommit(List.of(itemId));
 	}
 
 	@Transactional
