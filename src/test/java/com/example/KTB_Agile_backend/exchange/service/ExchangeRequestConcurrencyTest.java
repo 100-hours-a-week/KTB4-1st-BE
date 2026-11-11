@@ -7,6 +7,7 @@ import com.example.KTB_Agile_backend.exchange.dto.request.ExchangeRequestCreateR
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequestStatus;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
+import com.example.KTB_Agile_backend.item.cache.RedisItemDetailCache;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.notification.service.NotificationService;
 import com.example.KTB_Agile_backend.user.entity.User;
@@ -38,6 +39,9 @@ class ExchangeRequestConcurrencyTest {
 
 	@MockitoBean
 	private NotificationService notificationService;
+
+	@MockitoBean
+	private RedisItemDetailCache itemDetailCache;
 
 	@Autowired
 	private ExchangeRequestService service;

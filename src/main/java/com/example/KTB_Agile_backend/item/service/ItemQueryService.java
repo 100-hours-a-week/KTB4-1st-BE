@@ -15,6 +15,8 @@ import com.example.KTB_Agile_backend.group.repository.GroupRepository;
 import com.example.KTB_Agile_backend.image.entity.Image;
 import com.example.KTB_Agile_backend.image.repository.ImageRepository;
 import com.example.KTB_Agile_backend.image.service.ImageUrlResolver;
+import com.example.KTB_Agile_backend.item.cache.ItemDetailCacheValue;
+import com.example.KTB_Agile_backend.item.cache.RedisItemDetailCache;
 import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemSummary;
@@ -28,7 +30,9 @@ import com.example.KTB_Agile_backend.item.exception.ItemErrorCode;
 import com.example.KTB_Agile_backend.item.repository.ItemLikeRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.item.repository.ItemStatsRepository;
+import com.example.KTB_Agile_backend.user.entity.User;
 import com.example.KTB_Agile_backend.user.entity.UserStatus;
+import com.example.KTB_Agile_backend.user.repository.UserRepository;
 import com.example.KTB_Agile_backend.search.entity.SearchHistory;
 import com.example.KTB_Agile_backend.search.event.SearchHistoryEvent;
 import com.example.KTB_Agile_backend.search.event.SearchHistoryEventPublisher;
@@ -60,6 +64,8 @@ public class ItemQueryService {
 	private static final int CONTENT_PREVIEW_LENGTH = 70;
 
 	private final ItemRepository itemRepository;
+	private final UserRepository userRepository;
+	private final RedisItemDetailCache itemDetailCache;
 	private final ItemStatsRepository itemStatsRepository;
 	private final ItemLikeRepository itemLikeRepository;
 	private final GroupRepository groupRepository;
@@ -73,20 +79,30 @@ public class ItemQueryService {
 
 	@Transactional(readOnly = true)
 	public ItemDetailResponse findDetail(Long userId, Long itemId) {
-		Item item = itemRepository.findByIdAndDeletedAtIsNull(itemId)
-				.orElseThrow(() -> new ApiException(ItemErrorCode.ITEM_NOT_FOUND));
+		ItemDetailCacheValue core = itemDetailCache.get(itemId).orElse(null);
+		User owner;
+		if (core == null) {
+			Item item = itemRepository.findByIdAndDeletedAtIsNull(itemId)
+					.orElseThrow(() -> new ApiException(ItemErrorCode.ITEM_NOT_FOUND));
+			core = toItemDetailCacheValue(item);
+			owner = item.getUser();
+			// shortcut: concurrent misses can repopulate stale data until TTL expiry, add versioned writes if observed.
+			itemDetailCache.put(itemId, core);
+		} else {
+			owner = userRepository.findById(core.ownerUserId())
+					.orElseThrow(() -> new ApiException(ItemErrorCode.ITEM_NOT_FOUND));
+		}
 		ItemStats stats = itemStatsRepository.findById(itemId).orElse(null);
 		Long exchangeRequestCount = findExchangeRequestCounts(List.of(itemId)).getOrDefault(itemId, 0L);
-		Image thumbnailImage = item.getThumbnailImage();
 		List<GroupItem> activeGroupItems = groupItemRepository.findActiveGroupItemsByItemId(itemId);
 		Map<Long, GroupMemberStatus> ownerMembershipStatuses = findOwnerMembershipStatuses(
-				item.getUser().getId(), activeGroupItems);
+				owner.getId(), activeGroupItems);
 		List<ItemSummary> recommendations = findCoViewRecommendations(userId, itemId);
 
 		return new ItemDetailResponse(
-				item.getId(),
+				itemId,
 				activeGroupItems.stream()
-						.filter(groupItem -> item.getUser().getUserStatus() == UserStatus.ACTIVE
+						.filter(groupItem -> owner.getUserStatus() == UserStatus.ACTIVE
 								&& ownerMembershipStatuses.get(groupItem.getGroup().getId()) == GroupMemberStatus.ACTIVE)
 						.map(groupItem -> new ItemDetailResponse.GroupInfo(
 								groupItem.getGroup().getId(),
@@ -94,27 +110,43 @@ public class ItemQueryService {
 								ownerMembershipStatuses.get(groupItem.getGroup().getId())
 						))
 						.toList(),
-				item.getTitle(),
-				item.getContent(),
-				item.getQuantity(),
-				item.getItemState(),
+				core.title(),
+				core.content(),
+				core.quantity(),
+				core.itemState(),
 				new ItemDetailResponse.Owner(
-						item.getUser().getId(),
-						item.getUser().getNickname(),
-						item.getUser().getProfileImageUrl(),
-						item.getUser().getUserStatus()
+						owner.getId(),
+						owner.getNickname(),
+						owner.getProfileImageUrl(),
+						owner.getUserStatus()
 				),
 				toImageInfos(imageRepository.findAllByItem_IdOrderByIdAsc(itemId)),
-				thumbnailImage == null ? null : thumbnailImage.getId(),
+				core.thumbnailImageId(),
 				stats == null ? 0L : stats.getLikeCount(),
 				stats == null ? 0L : stats.getViewCount(),
 				exchangeRequestCount,
 				itemLikeRepository.existsByItem_IdAndUser_Id(itemId, userId),
+				core.createdAt(),
+				core.updatedAt(),
+				core.exchangeUrgencyScore(),
+				core.valueGapToleranceScore(),
+				recommendations
+		);
+	}
+
+	private static ItemDetailCacheValue toItemDetailCacheValue(Item item) {
+		Image thumbnailImage = item.getThumbnailImage();
+		return new ItemDetailCacheValue(
+				item.getUser().getId(),
+				item.getTitle(),
+				item.getContent(),
+				item.getQuantity(),
+				item.getItemState(),
+				thumbnailImage == null ? null : thumbnailImage.getId(),
 				item.getCreatedAt(),
 				item.getUpdatedAt(),
 				item.getExchangeUrgencyScore(),
-				item.getValueGapToleranceScore(),
-				recommendations
+				item.getValueGapToleranceScore()
 		);
 	}
 

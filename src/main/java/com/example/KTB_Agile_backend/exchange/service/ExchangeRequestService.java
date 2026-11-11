@@ -22,6 +22,7 @@ import com.example.KTB_Agile_backend.exchange.repository.ExchangeRequestReposito
 import com.example.KTB_Agile_backend.group.entity.Group;
 import com.example.KTB_Agile_backend.group.entity.GroupItem;
 import com.example.KTB_Agile_backend.group.repository.GroupItemRepository;
+import com.example.KTB_Agile_backend.item.cache.RedisItemDetailCache;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
@@ -53,6 +54,7 @@ public class ExchangeRequestService {
 	private final GroupItemRepository groupItemRepository;
 	private final UserRepository userRepository;
 	private final NotificationService notificationService;
+	private final RedisItemDetailCache itemDetailCache;
 
 	@Transactional
 	public ExchangeRequestCreatedResponse create(
@@ -226,6 +228,9 @@ public class ExchangeRequestService {
 			closeChatRoomAndSendSystemMessage(exchangeRequestId, status == ExchangeRequestStatus.REJECTED
 					? ChatSystemEventType.EXCHANGE_REQUEST_REJECTED
 					: ChatSystemEventType.EXCHANGE_REQUEST_CANCELED);
+		}
+		if (status == ExchangeRequestStatus.COMPLETED) {
+			itemDetailCache.evictAfterCommit(completedItems.keySet());
 		}
 		return new ExchangeRequestStatusResponse(
 				exchangeRequest.getId(), exchangeRequest.getItem().getId(), status,
