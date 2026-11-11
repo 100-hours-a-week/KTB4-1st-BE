@@ -2,6 +2,7 @@ package com.example.KTB_Agile_backend.item.dto.request;
 
 import com.example.KTB_Agile_backend.common.jackson.StrictIntegerDeserializer;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
@@ -53,17 +54,29 @@ public record UpdateItemRequest(
 		List<@NotNull(message = "그룹 ID는 필수 입력값입니다.") @Positive(message = "그룹 ID는 양수여야 합니다.") Long> groupIds,
 
 		@NotNull(message = "이미지는 필수 입력값입니다.")
-		@Size(min = 1, message = "이미지를 하나 이상 등록해야 합니다.")
+		@Size(max = 3, message = "이미지는 3장 이하로 등록해야 합니다.")
 		@UniqueElements(message = "이미지 ID는 중복될 수 없습니다.")
 		List<@NotNull(message = "이미지 ID는 필수 입력값입니다.") @Positive(message = "이미지 ID는 양수여야 합니다.") Long> imageIds,
 
 		@Size(min = 1, max = 512, message = "썸네일 objectKey는 1자 이상 512자 이하여야 합니다.")
-		String thumbnailObjectKey
+		String thumbnailObjectKey,
+
+		@NotNull(message = "이미지 objectKey 목록은 필수 입력값입니다.")
+		@Size(max = 3, message = "이미지는 3장 이하로 등록해야 합니다.")
+		@UniqueElements(message = "이미지 objectKey는 중복될 수 없습니다.")
+		List<@NotBlank(message = "이미지 objectKey는 필수 입력값입니다.") @Size(max = 512, message = "이미지 objectKey는 512자 이하여야 합니다.") String> objectKeys,
+
+		@Size(max = 3, message = "상세용 썸네일은 3개 이하여야 합니다.")
+		@Valid
+		List<CreateItemRequest.@NotNull(message = "상세용 썸네일 연결 항목은 필수입니다.") ImageDetailThumbnail> imageDetailThumbnails
 ) {
 
 	public UpdateItemRequest {
 		title = strip(title);
 		content = strip(content);
+		// Older callers send only imageIds.
+		objectKeys = objectKeys == null ? List.of() : objectKeys;
+		imageDetailThumbnails = imageDetailThumbnails == null ? List.of() : imageDetailThumbnails;
 	}
 
 	private static String strip(String value) {

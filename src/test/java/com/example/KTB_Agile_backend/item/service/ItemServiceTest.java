@@ -237,7 +237,9 @@ class ItemServiceTest {
 				new BigDecimal("0.80"),
 				List.of(101L),
 				List.of(1001L),
-				null
+				null,
+				List.of(),
+				List.of()
 		));
 
 		assertThat(List.of(
