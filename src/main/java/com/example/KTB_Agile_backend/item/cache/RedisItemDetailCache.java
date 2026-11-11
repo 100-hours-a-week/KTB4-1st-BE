@@ -24,6 +24,7 @@ public class RedisItemDetailCache {
 	private static final Duration TTL = Duration.ofMinutes(5);
 	private static final String OPERATION_TIMER = "item.detail.cache.command";
 	private static final String RESULT_COUNTER = "item.detail.cache";
+	private static final String RESULT_ERROR = "error";
 
 	private final StringRedisTemplate redisTemplate;
 	private final ObjectMapper objectMapper;
@@ -35,7 +36,7 @@ public class RedisItemDetailCache {
 		try {
 			payload = redisTemplate.opsForValue().get(key(itemId));
 		} catch (RuntimeException exception) {
-			count("error");
+			count(RESULT_ERROR);
 			count("fallback");
 			log.warn("Could not read item detail cache for item {}", itemId, exception);
 			return Optional.empty();
@@ -56,7 +57,7 @@ public class RedisItemDetailCache {
 			count("hit");
 			return Optional.of(value);
 		} catch (JacksonException exception) {
-			count("error");
+			count(RESULT_ERROR);
 			count("fallback");
 			log.warn("Could not deserialize item detail cache for item {}", itemId, exception);
 			return Optional.empty();
@@ -68,7 +69,7 @@ public class RedisItemDetailCache {
 		try {
 			payload = objectMapper.writeValueAsString(value);
 		} catch (JacksonException exception) {
-			count("error");
+			count(RESULT_ERROR);
 			log.warn("Could not serialize item detail cache for item {}", itemId, exception);
 			return;
 		}
@@ -77,7 +78,7 @@ public class RedisItemDetailCache {
 		try {
 			redisTemplate.opsForValue().set(key(itemId), payload, TTL);
 		} catch (RuntimeException exception) {
-			count("error");
+			count(RESULT_ERROR);
 			log.warn("Could not write item detail cache for item {}", itemId, exception);
 		} finally {
 			sample.stop(meterRegistry.timer(OPERATION_TIMER, "operation", "set"));
@@ -110,7 +111,7 @@ public class RedisItemDetailCache {
 		try {
 			redisTemplate.delete(key(itemId));
 		} catch (RuntimeException exception) {
-			count("error");
+			count(RESULT_ERROR);
 			log.warn("Could not evict item detail cache for item {}", itemId, exception);
 		} finally {
 			sample.stop(meterRegistry.timer(OPERATION_TIMER, "operation", "delete"));
