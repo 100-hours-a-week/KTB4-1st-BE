@@ -12,6 +12,7 @@ public record ItemSummary(
 		Owner owner,
 		ItemState itemState,
 		String thumbnailImageUrl,
+		String detailThumbnailImageUrl,
 		Long likeCount,
 		Long viewCount,
 		Long exchangeRequestCount,

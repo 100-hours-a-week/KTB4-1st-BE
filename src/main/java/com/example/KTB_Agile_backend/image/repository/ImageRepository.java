@@ -29,6 +29,18 @@ public interface ImageRepository extends JpaRepository<Image, Long> {
 			""")
 	List<Image> findThumbnailImagesByItemIds(@Param("itemIds") Collection<Long> itemIds);
 
+	@Query("""
+			select image
+			from Image image
+			where image.item.id in :itemIds
+			and image.id = (
+				select min(firstImage.id)
+				from Image firstImage
+				where firstImage.item.id = image.item.id
+			)
+			""")
+	List<Image> findFirstImagesByItemIds(@Param("itemIds") Collection<Long> itemIds);
+
 	List<Image> findAllByItem_IdOrderByIdAsc(Long itemId);
 
 	boolean existsByObjectKeyIn(Collection<String> objectKeys);

@@ -112,6 +112,7 @@ class ItemControllerTest {
 				new ItemSummary.Owner(7L, "판매자"),
 				ItemState.AVAILABLE,
 				null,
+				null,
 				0L,
 				4L,
 				0L,
