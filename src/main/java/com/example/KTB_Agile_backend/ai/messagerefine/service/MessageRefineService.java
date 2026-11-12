@@ -18,16 +18,26 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
+import java.net.SocketTimeoutException;
+import java.net.http.HttpTimeoutException;
+import java.util.Collections;
 import java.util.EnumMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeoutException;
 
 @Service
 @RequiredArgsConstructor
 public class MessageRefineService {
 
+	private static final int MAX_MESSAGE_CODE_POINTS = 500;
 	private static final Set<UserPreferenceAnswerOption> CONVERSATION_STYLES = Set.of(
 			UserPreferenceAnswerOption.CONCISE,
 			UserPreferenceAnswerOption.COMFORTABLE,
@@ -47,11 +57,20 @@ public class MessageRefineService {
 	private final AiProperties aiProperties;
 	private final RestClient restClient;
 	private final UserPreferenceQueryService userPreferenceQueryService;
+	private final ObjectMapper objectMapper;
 
 	public MessageRefineResponse refine(Long userId, MessageRefineRequest request) {
-		MessageRefineAiRequest aiRequest = new MessageRefineAiRequest(request.message(), answers(userId));
+		String message = request == null ? null : request.message();
+		if (message == null || message.isBlank()) {
+			throw new ApiException(AiErrorCode.MESSAGE_REFINE_EMPTY_MESSAGE);
+		}
+		if (message.codePointCount(0, message.length()) > MAX_MESSAGE_CODE_POINTS) {
+			throw new ApiException(AiErrorCode.MESSAGE_REFINE_MESSAGE_TOO_LONG);
+		}
+
+		MessageRefineAiRequest aiRequest = new MessageRefineAiRequest(message, answers(userId));
 		if (aiProperties.baseUrl().isBlank()) {
-			throw new ApiException(AiErrorCode.AI_MESSAGE_REFINE_FAILED);
+			throw new ApiException(AiErrorCode.MESSAGE_REFINE_SERVER_UNAVAILABLE);
 		}
 
 		MessageRefineAiResponse response;
@@ -62,15 +81,49 @@ public class MessageRefineService {
 					.body(aiRequest)
 					.retrieve()
 					.body(MessageRefineAiResponse.class);
+		} catch (RestClientResponseException exception) {
+			String aiCode = null;
+			String aiMessage = null;
+			try {
+				JsonNode body = objectMapper.readTree(exception.getResponseBodyAsString());
+				JsonNode error = body.get("error");
+				if (error != null && error.isString()) {
+					aiCode = error.stringValue();
+				}
+				JsonNode aiMessageNode = body.get("message");
+				if (aiMessageNode != null && aiMessageNode.isString() && !aiMessageNode.stringValue().isBlank()) {
+					aiMessage = aiMessageNode.stringValue();
+				}
+			} catch (JacksonException ignored) {
+				// Use the status code when the AI error body is not JSON.
+			}
+
+			AiErrorCode code = AiErrorCode.fromMessageRefineAiCode(
+					aiCode, exception.getStatusCode().value());
+			throw new ApiException(code, aiMessage == null ? code.message() : aiMessage, exception);
 		} catch (RestClientException exception) {
-			throw new ApiException(AiErrorCode.AI_MESSAGE_REFINE_FAILED,
-					AiErrorCode.AI_MESSAGE_REFINE_FAILED.message(), exception);
+			AiErrorCode code = isTimeout(exception)
+					? AiErrorCode.MESSAGE_REFINE_SERVER_TIMEOUT
+					: AiErrorCode.MESSAGE_REFINE_SERVER_UNAVAILABLE;
+			throw new ApiException(code, code.message(), exception);
 		}
 
 		if (response == null || response.refined() == null || response.refined().isBlank()) {
-			throw new ApiException(AiErrorCode.AI_MESSAGE_REFINE_FAILED);
+			throw new ApiException(AiErrorCode.INVALID_MESSAGE_REFINE_RESPONSE);
 		}
 		return new MessageRefineResponse(response.refined());
+	}
+
+	private static boolean isTimeout(Throwable exception) {
+		Set<Throwable> causes = Collections.newSetFromMap(new IdentityHashMap<>());
+		for (Throwable cause = exception; cause != null && causes.add(cause); cause = cause.getCause()) {
+			if (cause instanceof SocketTimeoutException
+					|| cause instanceof HttpTimeoutException
+					|| cause instanceof TimeoutException) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private List<MessageRefineAiRequest.Answer> answers(Long userId) {

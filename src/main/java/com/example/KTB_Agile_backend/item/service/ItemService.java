@@ -14,6 +14,7 @@ import com.example.KTB_Agile_backend.image.repository.ImageRepository;
 import com.example.KTB_Agile_backend.image.service.S3ImageObjectService;
 import com.example.KTB_Agile_backend.item.dto.request.CreateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.request.UpdateItemRequest;
+import com.example.KTB_Agile_backend.item.cache.RedisItemDetailCache;
 import com.example.KTB_Agile_backend.item.dto.response.ItemCreateResponse;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemStats;
@@ -67,6 +68,7 @@ public class ItemService {
 	private final ItemPriceRangeCalculator itemPriceRangeCalculator;
 	private final ItemPriceEstimationRequestPublisher priceEstimationRequestPublisher;
 	private final NotificationService notificationService;
+	private final RedisItemDetailCache itemDetailCache;
 
 	@Transactional
 	public ItemCreateResponse create(Long userId, CreateItemRequest request) {
@@ -77,7 +79,8 @@ public class ItemService {
 		if (request.thumbnailObjectKey() != null) {
 			s3ImageObjectService.validatePendingObject(userId, request.thumbnailObjectKey());
 		}
-		Map<String, String> detailThumbnailKeysByObjectKey = validateDetailThumbnailKeys(userId, request);
+		Map<String, String> detailThumbnailKeysByObjectKey = validateDetailThumbnailKeys(
+				userId, request.objectKeys(), request.thumbnailObjectKey(), request.imageDetailThumbnails());
 		if (imageRepository.existsByObjectKeyIn(request.objectKeys())) {
 			throw new ApiException(ItemErrorCode.ITEM_IMAGE_ALREADY_REGISTERED);
 		}
@@ -140,28 +143,32 @@ public class ItemService {
 		return new ItemCreateResponse(item.getId());
 	}
 
-	private Map<String, String> validateDetailThumbnailKeys(Long userId, CreateItemRequest request) {
-		List<CreateItemRequest.ImageDetailThumbnail> mappings = request.imageDetailThumbnails();
+	private Map<String, String> validateDetailThumbnailKeys(
+			Long userId,
+			List<String> objectKeys,
+			String thumbnailObjectKey,
+			List<CreateItemRequest.ImageDetailThumbnail> mappings
+	) {
 		if (mappings == null || mappings.isEmpty()) {
 			return Map.of();
 		}
 
-		Set<String> objectKeys = Set.copyOf(request.objectKeys());
+		Set<String> objectKeySet = Set.copyOf(objectKeys);
 		Map<String, String> detailThumbnailKeysByObjectKey = new LinkedHashMap<>();
 		Set<String> detailThumbnailKeys = new HashSet<>();
 		for (CreateItemRequest.ImageDetailThumbnail mapping : mappings) {
 			String objectKey = mapping.objectKey();
 			String detailThumbnailObjectKey = mapping.detailThumbnailObjectKey();
-			if (!objectKeys.contains(objectKey)
+			if (!objectKeySet.contains(objectKey)
 					|| detailThumbnailKeysByObjectKey.containsKey(objectKey)
 					|| !detailThumbnailKeys.add(detailThumbnailObjectKey)
-					|| objectKeys.contains(detailThumbnailObjectKey)
-					|| detailThumbnailObjectKey.equals(request.thumbnailObjectKey())) {
+					|| objectKeySet.contains(detailThumbnailObjectKey)
+					|| detailThumbnailObjectKey.equals(thumbnailObjectKey)) {
 				throw new ApiException(ErrorCode.BAD_REQUEST, "상세용 썸네일 연결 정보가 올바르지 않습니다.");
 			}
 			detailThumbnailKeysByObjectKey.put(objectKey, detailThumbnailObjectKey);
 		}
-		if (!detailThumbnailKeysByObjectKey.keySet().equals(objectKeys)) {
+		if (!detailThumbnailKeysByObjectKey.keySet().equals(objectKeySet)) {
 			throw new ApiException(ErrorCode.BAD_REQUEST, "상세용 썸네일 연결 정보가 올바르지 않습니다.");
 		}
 		detailThumbnailKeys.forEach(key -> s3ImageObjectService.validatePendingObject(userId, key));
@@ -179,14 +186,34 @@ public class ItemService {
 		if (!item.getUser().getId().equals(userId)) {
 			throw new ApiException(ItemErrorCode.ITEM_UPDATE_FORBIDDEN);
 		}
+		int imageCount = request.imageIds().size() + request.objectKeys().size();
+		if (imageCount < 1 || imageCount > 3) {
+			throw new ApiException(ErrorCode.BAD_REQUEST, "이미지는 1장 이상 3장 이하로 등록해야 합니다.");
+		}
 		ItemState previousItemState = item.getItemState();
 
 		List<Group> groups = findRegistrableGroups(userId, request.groupIds());
-		List<Image> images = findUpdatableImages(userId, itemId, request.imageIds());
-		Image thumbnailImage = images.stream()
-				.filter(image -> image.getId().equals(request.imageIds().get(0)))
-				.findFirst()
-				.orElseThrow();
+		List<Image> images = new ArrayList<>(findUpdatableImages(userId, itemId, request.imageIds()));
+		s3ImageObjectService.validatePendingObjects(userId, request.objectKeys());
+		Map<String, String> detailThumbnailKeysByObjectKey = validateDetailThumbnailKeys(
+				userId, request.objectKeys(), request.thumbnailObjectKey(), request.imageDetailThumbnails());
+		if (!request.objectKeys().isEmpty() && imageRepository.existsByObjectKeyIn(request.objectKeys())) {
+			throw new ApiException(ItemErrorCode.ITEM_IMAGE_ALREADY_REGISTERED);
+		}
+		List<Image> newImages = request.objectKeys().stream()
+				.map(objectKey -> {
+					Image image = Image.fromS3Object(item.getUser(), objectKey);
+					image.setDetailThumbnailObjectKey(detailThumbnailKeysByObjectKey.get(objectKey));
+					return image;
+				})
+				.toList();
+		images.addAll(newImages);
+		Image thumbnailImage = request.imageIds().isEmpty()
+				? newImages.get(0)
+				: images.stream()
+						.filter(image -> request.imageIds().get(0).equals(image.getId()))
+						.findFirst()
+						.orElseThrow();
 		if (request.thumbnailObjectKey() != null) {
 			s3ImageObjectService.validatePendingObject(userId, request.thumbnailObjectKey());
 			thumbnailImage.setThumbnailObjectKey(request.thumbnailObjectKey());
@@ -209,10 +236,19 @@ public class ItemService {
 		}
 		replaceGroups(item, groups);
 		replaceImages(item, images);
-		item.setThumbnailImage(thumbnailImage);
-		if (request.thumbnailObjectKey() != null) {
-			s3ImageObjectService.markRegistered(List.of(request.thumbnailObjectKey()));
+		if (!newImages.isEmpty()) {
+			imageRepository.saveAll(newImages);
 		}
+		item.setThumbnailImage(thumbnailImage);
+		List<String> objectKeysToRegister = new ArrayList<>(request.objectKeys());
+		if (request.thumbnailObjectKey() != null && !objectKeysToRegister.contains(request.thumbnailObjectKey())) {
+			objectKeysToRegister.add(request.thumbnailObjectKey());
+		}
+		objectKeysToRegister.addAll(detailThumbnailKeysByObjectKey.values());
+		if (!objectKeysToRegister.isEmpty()) {
+			s3ImageObjectService.markRegistered(objectKeysToRegister);
+		}
+		itemDetailCache.evictAfterCommit(List.of(itemId));
 	}
 
 	@Transactional
@@ -225,6 +261,7 @@ public class ItemService {
 			throw new ApiException(ItemErrorCode.ITEM_DELETE_FORBIDDEN);
 		}
 		item.delete();
+		itemDetailCache.evictAfterCommit(List.of(itemId));
 	}
 
 	@Transactional
@@ -274,6 +311,9 @@ public class ItemService {
 	}
 
 	private List<Image> findUpdatableImages(Long userId, Long itemId, Collection<Long> imageIds) {
+		if (imageIds.isEmpty()) {
+			return List.of();
+		}
 		List<Image> images = imageRepository.findAllForUpdateByIdIn(imageIds);
 		if (images.size() != imageIds.size()) {
 			throw new ApiException(ItemErrorCode.ITEM_UPDATE_IMAGE_NOT_FOUND);
