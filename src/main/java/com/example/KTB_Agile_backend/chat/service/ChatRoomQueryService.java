@@ -3,14 +3,12 @@ package com.example.KTB_Agile_backend.chat.service;
 import com.example.KTB_Agile_backend.chat.dto.response.ChatRoomDetailResponse;
 import com.example.KTB_Agile_backend.chat.dto.response.ChatRoomPageResponse;
 import com.example.KTB_Agile_backend.chat.dto.response.ChatRoomSummary;
-import com.example.KTB_Agile_backend.chat.document.ChatMessageDocumentRepository;
 import com.example.KTB_Agile_backend.chat.entity.ChatMember;
-import com.example.KTB_Agile_backend.chat.entity.ChatMessageView;
+import com.example.KTB_Agile_backend.chat.entity.ChatMessage;
 import com.example.KTB_Agile_backend.chat.entity.ChatRoom;
 import com.example.KTB_Agile_backend.chat.repository.ChatMemberRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatMessageRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatRoomRepository;
-import com.example.KTB_Agile_backend.chat.storage.ChatMessageStorageRouter;
 import com.example.KTB_Agile_backend.group.entity.GroupMemberStatus;
 import com.example.KTB_Agile_backend.group.repository.GroupMemberRepository;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
@@ -46,8 +44,6 @@ public class ChatRoomQueryService {
 	private static final String INVALID_PAGE_MESSAGE = "direction, size 또는 cursor 값이 올바르지 않습니다.";
 	private final ChatMemberRepository chatMemberRepository;
 	private final ChatMessageRepository chatMessageRepository;
-	private final ChatMessageDocumentRepository chatMessageDocumentRepository;
-	private final ChatMessageStorageRouter chatMessageStorageRouter;
 	private final ChatRoomRepository chatRoomRepository;
 	private final GroupMemberRepository groupMemberRepository;
 	private final ExchangeRequestRepository exchangeRequestRepository;
@@ -84,11 +80,8 @@ public class ChatRoomQueryService {
 					itemIds.add(request.getItem().getId());
 					itemIds.add(request.getOfferedItems().get(0).getItem().getId());
 				});
-		Map<Long, ChatMessageView> latestMessages = new HashMap<>();
-		List<? extends ChatMessageView> latest = chatMessageStorageRouter.readsFromMongo()
-				? chatMessageDocumentRepository.findLatestByChatRoomIds(roomIds)
-				: chatMessageRepository.findLatestByChatRoomIds(roomIds);
-		latest
+		Map<Long, ChatMessage> latestMessages = new HashMap<>();
+		chatMessageRepository.findLatestByChatRoomIds(roomIds)
 				.forEach(message -> latestMessages.put(message.getChatRoomId(), message));
 		Map<Long, Long> unreadCounts = new HashMap<>();
 		chatMemberRepository.findUnreadMessageCounts(userId, roomIds)
@@ -188,7 +181,7 @@ public class ChatRoomQueryService {
 			Long userId,
 			ChatRoom room,
 			ExchangeRequest request,
-			Map<Long, ChatMessageView> latestMessages,
+			Map<Long, ChatMessage> latestMessages,
 			Map<Long, Long> unreadCounts,
 			Map<Long, String> thumbnails,
 			Map<GroupMembershipKey, GroupMemberStatus> groupMemberStatuses
@@ -198,7 +191,7 @@ public class ChatRoomQueryService {
 		User otherUser = sent ? item.getUser() : request.getRequester();
 		GroupMemberStatus groupMemberStatus = request.getGroup() == null ? null
 				: groupMemberStatuses.get(new GroupMembershipKey(request.getGroup().getId(), otherUser.getId()));
-		ChatMessageView lastMessage = latestMessages.get(room.getId());
+		ChatMessage lastMessage = latestMessages.get(room.getId());
 		ChatRoomSummary.LastMessage lastMessageResponse = lastMessage == null ? null
 				: new ChatRoomSummary.LastMessage(
 						lastMessage.getId(), lastMessage.getContent(),
