@@ -1,6 +1,7 @@
 package com.example.KTB_Agile_backend.exchange.service;
 
 import com.example.KTB_Agile_backend.chat.dto.response.ChatMessageResponse;
+import com.example.KTB_Agile_backend.chat.document.ChatMessageDocumentRepository;
 import com.example.KTB_Agile_backend.chat.entity.ChatMessage;
 import com.example.KTB_Agile_backend.chat.entity.ChatMessageType;
 import com.example.KTB_Agile_backend.chat.entity.ChatRoomStatus;
@@ -13,6 +14,7 @@ import com.example.KTB_Agile_backend.chat.service.ChatMessageQueryService;
 import com.example.KTB_Agile_backend.chat.service.ChatMessageResponseMapper;
 import com.example.KTB_Agile_backend.chat.service.ChatMessageService;
 import com.example.KTB_Agile_backend.chat.service.ChatRoomQueryService;
+import com.example.KTB_Agile_backend.chat.storage.ChatMessageStorageRouter;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.exchange.dto.request.ExchangeRequestCreateRequest;
 import com.example.KTB_Agile_backend.exchange.entity.ExchangeRequest;
@@ -49,6 +51,12 @@ class ExchangeRequestServiceTest {
 
 	@MockitoBean
 	private ChatMessagePublisher chatMessagePublisher;
+
+	@MockitoBean
+	private ChatMessageDocumentRepository chatMessageDocumentRepository;
+
+	@MockitoBean
+	private ChatMessageStorageRouter chatMessageStorageRouter;
 
 	@MockitoBean
 	private NotificationService notificationService;
