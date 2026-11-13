@@ -16,6 +16,7 @@ import com.example.KTB_Agile_backend.item.dto.request.CreateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.request.UpdateItemRequest;
 import com.example.KTB_Agile_backend.item.dto.response.ItemDetailResponse;
 import com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection;
+import com.example.KTB_Agile_backend.item.cache.RedisItemDetailCache;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
 import com.example.KTB_Agile_backend.item.entity.ItemStats;
@@ -91,7 +92,8 @@ class ItemServiceTest {
 				mock(ItemViewRepository.class), groupRepository, groupMemberRepository,
 				mock(GroupItemRepository.class), imageRepository, mock(S3ImageObjectService.class),
 				userRepository, moderationCheckService, priceLookupService,
-				new ItemPriceRangeCalculator(), requestPublisher, mock(NotificationService.class));
+				new ItemPriceRangeCalculator(), requestPublisher, mock(NotificationService.class),
+				mock(RedisItemDetailCache.class));
 		User owner = user(42L);
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(owner));
 		when(groupRepository.findAllByIdInAndDeletedAtIsNull(List.of(101L))).thenReturn(List.of(group("그룹")));
@@ -136,7 +138,7 @@ class ItemServiceTest {
 				s3ImageObjectService,
 				userRepository,
 				mock(ModerationCheckService.class), itemPriceLookupService(), new ItemPriceRangeCalculator(),
-				requestPublisher, mock(NotificationService.class)
+				requestPublisher, mock(NotificationService.class), mock(RedisItemDetailCache.class)
 		);
 		User user = mock(User.class);
 		Group firstGroup = group("첫 그룹");
@@ -208,7 +210,8 @@ class ItemServiceTest {
 				mock(S3ImageObjectService.class),
 				userRepository,
 				mock(ModerationCheckService.class), itemPriceLookupService(), new ItemPriceRangeCalculator(),
-				mock(ItemPriceEstimationRequestPublisher.class), mock(NotificationService.class)
+				mock(ItemPriceEstimationRequestPublisher.class), mock(NotificationService.class),
+				mock(RedisItemDetailCache.class)
 		);
 		User owner = user(42L);
 		Item item = spy(new Item(owner, "기존 제목", "기존 내용"));
@@ -237,7 +240,9 @@ class ItemServiceTest {
 				new BigDecimal("0.80"),
 				List.of(101L),
 				List.of(1001L),
-				null
+				null,
+				List.of(),
+				List.of()
 		));
 
 		assertThat(List.of(
@@ -289,7 +294,8 @@ class ItemServiceTest {
 				s3ImageObjectService,
 				userRepository,
 				mock(ModerationCheckService.class), itemPriceLookupService(), new ItemPriceRangeCalculator(),
-				mock(ItemPriceEstimationRequestPublisher.class), mock(NotificationService.class)
+				mock(ItemPriceEstimationRequestPublisher.class), mock(NotificationService.class),
+				mock(RedisItemDetailCache.class)
 		);
 		User requester = user(42L);
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(requester));
@@ -385,7 +391,6 @@ class ItemServiceTest {
 		when(owner.getProfileImageUrl()).thenReturn("https://example.com/profile.jpg");
 		when(owner.getUserStatus()).thenReturn(UserStatus.ACTIVE);
 		Item item = mock(Item.class);
-		when(item.getId()).thenReturn(123L);
 		when(item.getUser()).thenReturn(owner);
 		when(item.getTitle()).thenReturn("게시글 제목1");
 		when(item.getContent()).thenReturn("게시글 내용입니다.");
@@ -478,7 +483,8 @@ class ItemServiceTest {
 				mock(S3ImageObjectService.class),
 				userRepository,
 				mock(ModerationCheckService.class), itemPriceLookupService(), new ItemPriceRangeCalculator(),
-				mock(ItemPriceEstimationRequestPublisher.class), mock(NotificationService.class)
+				mock(ItemPriceEstimationRequestPublisher.class), mock(NotificationService.class),
+				mock(RedisItemDetailCache.class)
 		);
 
 		User viewer = user(42L);
@@ -581,7 +587,8 @@ class ItemServiceTest {
 				mock(S3ImageObjectService.class),
 				userRepository,
 				mock(ModerationCheckService.class), itemPriceLookupService(), new ItemPriceRangeCalculator(),
-				mock(ItemPriceEstimationRequestPublisher.class), mock(NotificationService.class)
+				mock(ItemPriceEstimationRequestPublisher.class), mock(NotificationService.class),
+				mock(RedisItemDetailCache.class)
 		);
 	}
 
@@ -599,6 +606,8 @@ class ItemServiceTest {
 		lenient().when(itemCoViewRecommendationService.findTopRelatedItemIds(123L, 50)).thenReturn(List.of());
 		return new ItemQueryService(
 				itemRepository,
+				mock(UserRepository.class),
+				mock(RedisItemDetailCache.class),
 				itemStatsRepository,
 				itemLikeRepository,
 				groupRepository,

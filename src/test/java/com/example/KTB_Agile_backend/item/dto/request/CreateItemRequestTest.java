@@ -115,7 +115,9 @@ class CreateItemRequestTest {
 				new BigDecimal("0.30"),
 				List.of(101L),
 				List.of(1001L),
-				null
+				null,
+				List.of(),
+				List.of()
 		);
 
 		assertThat(validator.validate(request))
@@ -134,7 +136,9 @@ class CreateItemRequestTest {
 				new BigDecimal("0.30"),
 				List.of(101L),
 				List.of(1001L),
-				null
+				null,
+				List.of(),
+				List.of()
 		);
 
 		assertThat(validator.validate(request))

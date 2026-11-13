@@ -21,6 +21,7 @@ import com.example.KTB_Agile_backend.exchange.repository.ExchangeRequestReposito
 import com.example.KTB_Agile_backend.image.service.ImageUrlResolver;
 import com.example.KTB_Agile_backend.item.entity.Item;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
+import com.example.KTB_Agile_backend.item.cache.RedisItemDetailCache;
 import com.example.KTB_Agile_backend.item.repository.ItemRepository;
 import com.example.KTB_Agile_backend.notification.service.NotificationService;
 import com.example.KTB_Agile_backend.user.entity.User;
@@ -51,6 +52,9 @@ class ExchangeRequestServiceTest {
 
 	@MockitoBean
 	private NotificationService notificationService;
+
+	@MockitoBean
+	private RedisItemDetailCache itemDetailCache;
 
 	@Autowired
 	private ExchangeRequestService service;

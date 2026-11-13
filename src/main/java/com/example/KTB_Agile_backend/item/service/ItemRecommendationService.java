@@ -6,6 +6,7 @@ import com.example.KTB_Agile_backend.common.pagination.CursorCodec;
 import com.example.KTB_Agile_backend.item.dto.projection.ItemSummaryProjection;
 import com.example.KTB_Agile_backend.item.dto.response.ItemRecommendationPageResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemSummary;
+import com.example.KTB_Agile_backend.item.entity.ItemState;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
@@ -147,8 +148,16 @@ public class ItemRecommendationService {
 	@Transactional(readOnly = true)
 	public ItemRecommendationPageResponse findPopularItems(
 			Long userId, Long groupId, String sizeValue, String cursor) {
+		return findPopularItems(userId, groupId, sizeValue, null, cursor);
+	}
+
+	@Transactional(readOnly = true)
+	public ItemRecommendationPageResponse findPopularItems(
+			Long userId, Long groupId, String sizeValue, ItemState itemState, String cursor) {
 		int size = parseSize(sizeValue);
-		long offset = cursor == null || cursor.isBlank() ? 0 : CursorCodec.decodeId(cursor);
+		String itemStateFilter = itemState == null ? "ALL" : itemState.name();
+		Long cursorOffset = CursorCodec.decodeIdForFilter(cursor, itemStateFilter);
+		long offset = cursorOffset == null ? 0 : cursorOffset;
 		itemQueryService.validateActiveGroupMembership(userId, groupId);
 
 		// shortcut: scans until it finds size+1 group items or exhausts the global ranking; add a group index if scans grow costly.
@@ -175,7 +184,7 @@ public class ItemRecommendationService {
 			for (int index = 0; index < ranked.size(); index++) {
 				Long itemId = Long.valueOf(ranked.get(index).getValue());
 				ItemSummaryProjection summary = summariesById.get(itemId);
-				if (summary != null) {
+				if (summary != null && (itemState == null || summary.itemState() == itemState)) {
 					rankedItems.add(new RankedItem(addCursorOffset(offset, index), summary));
 					if (rankedItems.size() > size) {
 						break;
@@ -194,7 +203,7 @@ public class ItemRecommendationService {
 		List<ItemSummary> items = itemQueryService.toSummariesForUser(userId, summaries);
 		// shortcut: rank cursors can shift between requests as new views change scores.
 		String nextCursor = hasNext
-				? CursorCodec.encodeId(addCursorOffset(page.getLast().rank(), 1))
+				? CursorCodec.encodeIdForFilter(addCursorOffset(page.getLast().rank(), 1), itemStateFilter)
 				: null;
 		return new ItemRecommendationPageResponse(items, nextCursor, hasNext);
 	}

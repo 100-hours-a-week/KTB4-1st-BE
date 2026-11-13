@@ -60,10 +60,13 @@ public class ItemController {
 			Authentication authentication,
 			@RequestParam Long groupId,
 			@RequestParam(defaultValue = "20") String size,
+			@RequestParam(required = false) ItemState itemState,
 			@RequestParam(required = false) String cursor
 	) {
-		ItemRecommendationPageResponse response = itemRecommendationService.findPopularItems(
-				Long.valueOf(authentication.getName()), groupId, size, cursor);
+		Long userId = Long.valueOf(authentication.getName());
+		ItemRecommendationPageResponse response = itemState == null
+				? itemRecommendationService.findPopularItems(userId, groupId, size, cursor)
+				: itemRecommendationService.findPopularItems(userId, groupId, size, itemState, cursor);
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 
@@ -151,10 +154,13 @@ public class ItemController {
 	public ResponseEntity<ApiResponse<ItemPageResponse>> findByGroup(
 			Authentication authentication,
 			@PathVariable Long groupId,
+			@RequestParam(required = false) ItemState itemState,
 			@RequestParam(required = false) String cursor
 	) {
-		ItemPageResponse response = itemQueryService.findByGroup(
-				Long.valueOf(authentication.getName()), groupId, cursor);
+		Long userId = Long.valueOf(authentication.getName());
+		ItemPageResponse response = itemState == null
+				? itemQueryService.findByGroup(userId, groupId, cursor)
+				: itemQueryService.search(userId, groupId, "", itemState, cursor);
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 }
