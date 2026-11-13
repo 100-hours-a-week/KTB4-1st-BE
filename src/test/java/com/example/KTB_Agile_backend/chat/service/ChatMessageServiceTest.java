@@ -1,6 +1,7 @@
 package com.example.KTB_Agile_backend.chat.service;
 
 import com.example.KTB_Agile_backend.chat.dto.response.ChatMessageResponse;
+import com.example.KTB_Agile_backend.chat.document.ChatMessageDocumentRepository;
 import com.example.KTB_Agile_backend.chat.entity.ChatMessage;
 import com.example.KTB_Agile_backend.chat.entity.ChatMessageType;
 import com.example.KTB_Agile_backend.chat.entity.ChatRoom;
@@ -9,6 +10,7 @@ import com.example.KTB_Agile_backend.chat.messaging.ChatMessagePublisher;
 import com.example.KTB_Agile_backend.chat.repository.ChatMemberRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatMessageRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatRoomRepository;
+import com.example.KTB_Agile_backend.chat.storage.ChatMessageStorageRouter;
 import com.example.KTB_Agile_backend.exchange.repository.ExchangeRequestRepository;
 import com.example.KTB_Agile_backend.group.repository.GroupMemberRepository;
 import com.example.KTB_Agile_backend.user.repository.UserRepository;
@@ -38,6 +40,12 @@ class ChatMessageServiceTest {
 
 	@Mock
 	private ChatMessageRepository chatMessageRepository;
+
+	@Mock
+	private ChatMessageDocumentRepository chatMessageDocumentRepository;
+
+	@Mock
+	private ChatMessageStorageRouter chatMessageStorageRouter;
 
 	@Mock
 	private ChatRoomRepository chatRoomRepository;
