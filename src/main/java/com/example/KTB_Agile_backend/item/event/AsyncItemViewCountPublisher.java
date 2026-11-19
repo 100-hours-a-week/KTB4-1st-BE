@@ -29,7 +29,10 @@ public class AsyncItemViewCountPublisher {
 					Thread.sleep(RETRY_DELAY_MILLIS);
 				} catch (InterruptedException interrupted) {
 					Thread.currentThread().interrupt();
-					throw exception;
+					IllegalStateException retryInterrupted = new IllegalStateException(
+							"Interrupted while retrying item view count", interrupted);
+					retryInterrupted.addSuppressed(exception);
+					throw retryInterrupted;
 				}
 			}
 		}
