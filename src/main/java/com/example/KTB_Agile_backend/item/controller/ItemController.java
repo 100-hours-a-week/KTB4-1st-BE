@@ -10,6 +10,7 @@ import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemRecommendationPageResponse;
 import com.example.KTB_Agile_backend.item.dto.response.MyItemPageResponse;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
+import com.example.KTB_Agile_backend.item.event.AsyncItemViewCountPublisher;
 import com.example.KTB_Agile_backend.item.event.ItemViewEvent;
 import com.example.KTB_Agile_backend.item.event.ItemViewEventPublisher;
 import com.example.KTB_Agile_backend.item.service.ItemLikeService;
@@ -41,6 +42,7 @@ public class ItemController {
 	private final ItemQueryService itemQueryService;
 	private final ItemRecommendationService itemRecommendationService;
 	private final ItemViewEventPublisher itemViewEventPublisher;
+	private final AsyncItemViewCountPublisher asyncItemViewCountPublisher;
 
 	@GetMapping("/items")
 	public ResponseEntity<ApiResponse<ItemPageResponse>> search(
@@ -123,7 +125,9 @@ public class ItemController {
 	) {
 		Long userId = Long.valueOf(authentication.getName());
 		ItemDetailResponse response = itemQueryService.findDetail(userId, itemId);
-		itemViewEventPublisher.publish(new ItemViewEvent(userId, itemId));
+		ItemViewEvent event = new ItemViewEvent(userId, itemId);
+		asyncItemViewCountPublisher.publish(event);
+		itemViewEventPublisher.publish(event);
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 
