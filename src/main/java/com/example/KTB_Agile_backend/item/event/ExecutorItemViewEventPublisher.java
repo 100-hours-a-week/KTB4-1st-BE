@@ -2,6 +2,7 @@ package com.example.KTB_Agile_backend.item.event;
 
 import com.example.KTB_Agile_backend.common.config.KafkaAddressCondition;
 import com.example.KTB_Agile_backend.item.service.ItemCoViewRecommendationService;
+import com.example.KTB_Agile_backend.item.service.ItemService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.scheduling.annotation.Async;
@@ -14,11 +15,13 @@ import java.time.LocalDateTime;
 @Conditional(KafkaAddressCondition.Missing.class)
 public class ExecutorItemViewEventPublisher implements ItemViewEventPublisher {
 
+	private final ItemService itemService;
 	private final ItemCoViewRecommendationService itemCoViewRecommendationService;
 
 	@Override
 	@Async("viewCountExecutor")
 	public void publish(ItemViewEvent event) {
+		itemService.recordView(event.userId(), event.itemId());
 		itemCoViewRecommendationService.recordView(event.userId(), event.itemId(), LocalDateTime.now());
 	}
 }
