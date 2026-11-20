@@ -18,7 +18,6 @@ public class AsyncConfig {
 		executor.setMaxPoolSize(2);
 		executor.setQueueCapacity(200);
 		executor.setThreadNamePrefix("view-count-");
-		// shortcut: a full in-memory queue drops views; use durable storage if that becomes unacceptable.
 		executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
 		return executor;
 	}

@@ -9,7 +9,6 @@ import com.example.KTB_Agile_backend.item.dto.response.ItemPageResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemRecommendationPageResponse;
 import com.example.KTB_Agile_backend.item.dto.response.ItemSummary;
 import com.example.KTB_Agile_backend.item.entity.ItemState;
-import com.example.KTB_Agile_backend.item.event.AsyncItemViewCountPublisher;
 import com.example.KTB_Agile_backend.item.event.ItemViewEvent;
 import com.example.KTB_Agile_backend.item.event.ItemViewEventPublisher;
 import com.example.KTB_Agile_backend.item.service.ItemService;
@@ -45,7 +44,6 @@ class ItemControllerTest {
 	private ItemQueryService itemQueryService;
 	private ItemRecommendationService itemRecommendationService;
 	private ItemViewEventPublisher itemViewEventPublisher;
-	private AsyncItemViewCountPublisher asyncItemViewCountPublisher;
 	private MockMvc mockMvc;
 
 	@BeforeEach
@@ -55,11 +53,10 @@ class ItemControllerTest {
 		itemQueryService = mock(ItemQueryService.class);
 		itemRecommendationService = mock(ItemRecommendationService.class);
 		itemViewEventPublisher = mock(ItemViewEventPublisher.class);
-		asyncItemViewCountPublisher = mock(AsyncItemViewCountPublisher.class);
 		mockMvc = MockMvcBuilders
 				.standaloneSetup(new ItemController(
 						itemService, itemLikeService, itemQueryService,
-						itemRecommendationService, itemViewEventPublisher, asyncItemViewCountPublisher))
+						itemRecommendationService, itemViewEventPublisher))
 				.setControllerAdvice(new GlobalExceptionHandler())
 				.build();
 	}
