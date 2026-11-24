@@ -275,21 +275,28 @@ public class ItemService {
 
 	private void countViewIfNeeded(Item item, User viewer) {
 		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime lastCountedAt = itemViewRepository.findLastCountedAtWithoutLock(item.getId(), viewer.getId())
+				.orElse(null);
+		if (lastCountedAt != null && lastCountedAt.plus(VIEW_COUNT_COOLDOWN).isAfter(now)) {
+			return;
+		}
+
+		// Acquire the shared stats row before a possible item-view gap lock.
+		ItemStats stats = itemStatsRepository.findByIdForUpdate(item.getId()).orElse(null);
+		if (stats == null) {
+			return;
+		}
+
 		ItemView itemView = itemViewRepository.findByItem_IdAndUser_Id(item.getId(), viewer.getId())
 				.orElse(null);
 		if (itemView == null) {
-			if (itemStatsRepository.incrementViewCount(item.getId()) == 0) {
-				return;
-			}
+			stats.increaseViewCount();
 			itemViewRepository.save(new ItemView(item, viewer, now));
 			return;
 		}
 
-		LocalDateTime nextCountableAt = itemView.getLastCountedAt().plus(VIEW_COUNT_COOLDOWN);
-		if (!nextCountableAt.isAfter(now)) {
-			if (itemStatsRepository.incrementViewCount(item.getId()) == 0) {
-				return;
-			}
+		if (!itemView.getLastCountedAt().plus(VIEW_COUNT_COOLDOWN).isAfter(now)) {
+			stats.increaseViewCount();
 			itemView.countAt(now);
 		}
 	}

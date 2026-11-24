@@ -489,17 +489,19 @@ class ItemServiceTest {
 
 		User viewer = user(42L);
 		Item item = item(123L, viewer);
+		ItemStats stats = new ItemStats(item);
 		ItemView recentView = new ItemView(item, viewer, LocalDateTime.now().minusHours(23));
 		ItemView expiredView = new ItemView(item, viewer, LocalDateTime.now().minusHours(25));
 		when(itemRepository.findByIdAndDeletedAtIsNull(123L)).thenReturn(Optional.of(item));
-		when(itemStatsRepository.incrementViewCount(123L)).thenReturn(1);
+		when(itemStatsRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(stats));
 		when(userRepository.findActiveById(42L)).thenReturn(Optional.of(viewer));
-		when(itemViewRepository.findByItem_IdAndUser_Id(123L, 42L))
-				.thenReturn(Optional.of(recentView), Optional.of(expiredView));
+		when(itemViewRepository.findLastCountedAtWithoutLock(123L, 42L))
+				.thenReturn(Optional.of(recentView.getLastCountedAt()), Optional.of(expiredView.getLastCountedAt()));
+		when(itemViewRepository.findByItem_IdAndUser_Id(123L, 42L)).thenReturn(Optional.of(expiredView));
 		service.recordView(42L, 123L);
 		service.recordView(42L, 123L);
 
-		verify(itemStatsRepository).incrementViewCount(123L);
+		assertThat(stats.getViewCount()).isEqualTo(1L);
 	}
 
 	private static ItemPriceLookupService itemPriceLookupService() {
