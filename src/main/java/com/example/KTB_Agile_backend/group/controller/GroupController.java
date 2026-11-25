@@ -48,7 +48,7 @@ public class GroupController {
 			Authentication authentication,
 			@RequestParam(required = false) String cursor
 	) {
-		Long userId = Long.valueOf(authentication.getName());
+		Long userId = authentication == null ? null : Long.valueOf(authentication.getName());
 		return ResponseEntity.ok(new ApiResponse<>(groupQueryService.recommendations(userId, cursor), null));
 	}
 

@@ -125,7 +125,7 @@ public class ItemQueryService {
 				stats == null ? 0L : stats.getLikeCount(),
 				stats == null ? 0L : stats.getViewCount(),
 				exchangeRequestCount,
-				itemLikeRepository.existsByItem_IdAndUser_Id(itemId, userId),
+				userId != null && itemLikeRepository.existsByItem_IdAndUser_Id(itemId, userId),
 				core.createdAt(),
 				core.updatedAt(),
 				core.exchangeUrgencyScore(),
@@ -151,6 +151,9 @@ public class ItemQueryService {
 	}
 
 	private List<ItemSummary> findCoViewRecommendations(Long userId, Long itemId) {
+		if (userId == null) {
+			return List.of();
+		}
 		List<Long> rankedItemIds = itemCoViewRecommendationService.findTopRelatedItemIds(
 				itemId, DETAIL_RECOMMENDATION_CANDIDATE_LIMIT);
 		if (rankedItemIds.isEmpty()) {
@@ -197,9 +200,15 @@ public class ItemQueryService {
 
 	@Transactional(readOnly = true)
 	public ItemPageResponse findByGroup(Long userId, Long groupId, String cursor) {
-		validateActiveGroupMembership(userId, groupId);
+		if (userId == null) {
+			if (!groupRepository.existsByIdAndDeletedAtIsNull(groupId)) {
+				throw new ApiException(GroupErrorCode.GROUP_NOT_FOUND);
+			}
+		} else {
+			validateActiveGroupMembership(userId, groupId);
+		}
 
-		Long cursorId = CursorCodec.decodeId(cursor);
+		Long cursorId = userId == null ? null : CursorCodec.decodeId(cursor);
 		Pageable pageable = PageRequest.of(0, FETCH_SIZE);
 		List<ItemSummaryProjection> summaries = cursorId == null
 				? groupItemRepository.findActiveItemSummariesByGroupId(
@@ -214,14 +223,15 @@ public class ItemQueryService {
 		Set<Long> likedItemIds = findLikedItemIds(userId, itemIds);
 		Map<Long, String> thumbnails = findThumbnails(itemIds);
 		Map<Long, String> detailThumbnailImageUrls = findDetailThumbnailImageUrls(itemIds);
+		boolean hasNext = userId != null && page.hasNext();
 
 		return new ItemPageResponse(
 				page.items().stream()
 						.map(summary -> toSummary(summary, statsByItemId, exchangeRequestCounts, likedItemIds, thumbnails,
 								detailThumbnailImageUrls))
 						.toList(),
-				page.nextCursor(),
-				page.hasNext()
+				hasNext ? page.nextCursor() : null,
+				hasNext
 		);
 	}
 
@@ -253,10 +263,12 @@ public class ItemQueryService {
 		if (!groupRepository.existsByIdAndDeletedAtIsNull(groupId)) {
 			throw new ApiException(GroupErrorCode.GROUP_NOT_FOUND);
 		}
-		GroupMember member = groupMemberRepository.findByGroup_IdAndUser_Id(groupId, userId)
-				.orElseThrow(() -> new ApiException(GroupErrorCode.GROUP_MEMBERSHIP_REQUIRED));
-		if (member.getStatus() != GroupMemberStatus.ACTIVE) {
-			throw new ApiException(GroupErrorCode.GROUP_MEMBERSHIP_REQUIRED);
+		if (userId != null) {
+			GroupMember member = groupMemberRepository.findByGroup_IdAndUser_Id(groupId, userId)
+					.orElseThrow(() -> new ApiException(GroupErrorCode.GROUP_MEMBERSHIP_REQUIRED));
+			if (member.getStatus() != GroupMemberStatus.ACTIVE) {
+				throw new ApiException(GroupErrorCode.GROUP_MEMBERSHIP_REQUIRED);
+			}
 		}
 
 		String keyword = keywordValue == null ? "" : keywordValue.strip();
@@ -268,8 +280,8 @@ public class ItemQueryService {
 		}
 
 		String itemStateFilter = itemState == null ? "ALL" : itemState.name();
-		Long cursorId = CursorCodec.decodeIdForFilter(cursor, itemStateFilter);
-		if (cursorId == null && !keyword.isEmpty()) {
+		Long cursorId = userId == null ? null : CursorCodec.decodeIdForFilter(cursor, itemStateFilter);
+		if (userId != null && cursorId == null && !keyword.isEmpty()) {
 			searchHistoryEventPublisher.publish(new SearchHistoryEvent(userId, keyword));
 		}
 
@@ -289,14 +301,15 @@ public class ItemQueryService {
 		Set<Long> likedItemIds = findLikedItemIds(userId, itemIds);
 		Map<Long, String> thumbnails = findThumbnails(itemIds);
 		Map<Long, String> detailThumbnailImageUrls = findDetailThumbnailImageUrls(itemIds);
+		boolean hasNext = userId != null && page.hasNext();
 
 		return new ItemPageResponse(
 				page.items().stream()
 						.map(summary -> toSummary(summary, statsByItemId, exchangeRequestCounts, likedItemIds, thumbnails,
 								detailThumbnailImageUrls))
 						.toList(),
-				page.nextCursor(),
-				page.hasNext()
+				hasNext ? page.nextCursor() : null,
+				hasNext
 		);
 	}
 
@@ -447,7 +460,7 @@ public class ItemQueryService {
 	}
 
 	private Set<Long> findLikedItemIds(Long userId, List<Long> itemIds) {
-		if (itemIds.isEmpty()) {
+		if (userId == null || itemIds.isEmpty()) {
 			return Set.of();
 		}
 		return itemLikeRepository.findAllByItemIdsAndUserId(itemIds, userId).stream()
