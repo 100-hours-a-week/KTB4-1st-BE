@@ -90,10 +90,10 @@ public class SecurityConfig {
                                 "/ws/**",
                                 "/error"
                         ).permitAll()
-                        .anyRequest().authenticated()
                         .requestMatchers(HttpMethod.GET,
                                 "/groups/recommendations", "/groups/*/items", "/items").permitAll()
                         .requestMatchers(new RegexRequestMatcher("^/items/\\d+$", "GET")).permitAll()
+                        .anyRequest().authenticated()
                 )
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint((request, response, cause) -> writeError(
