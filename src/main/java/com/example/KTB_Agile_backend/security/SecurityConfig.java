@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -19,6 +20,7 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.RegexRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -89,6 +91,9 @@ public class SecurityConfig {
                                 "/error"
                         ).permitAll()
                         .anyRequest().authenticated()
+                        .requestMatchers(HttpMethod.GET,
+                                "/groups/recommendations", "/groups/*/items", "/items").permitAll()
+                        .requestMatchers(new RegexRequestMatcher("^/items/\\d+$", "GET")).permitAll()
                 )
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint((request, response, cause) -> writeError(

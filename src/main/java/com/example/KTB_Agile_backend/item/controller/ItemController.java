@@ -50,8 +50,9 @@ public class ItemController {
 			@RequestParam(required = false) ItemState itemState,
 			@RequestParam(required = false) String cursor
 	) {
+		Long userId = authentication == null ? null : Long.valueOf(authentication.getName());
 		ItemPageResponse response = itemQueryService.search(
-				Long.valueOf(authentication.getName()), groupId, keyword, itemState, cursor);
+				userId, groupId, keyword, itemState, cursor);
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 
@@ -121,9 +122,11 @@ public class ItemController {
 			Authentication authentication,
 			@PathVariable Long itemId
 	) {
-		Long userId = Long.valueOf(authentication.getName());
+		Long userId = authentication == null ? null : Long.valueOf(authentication.getName());
 		ItemDetailResponse response = itemQueryService.findDetail(userId, itemId);
-		itemViewEventPublisher.publish(new ItemViewEvent(userId, itemId));
+		if (userId != null) {
+			itemViewEventPublisher.publish(new ItemViewEvent(userId, itemId));
+		}
 		return ResponseEntity.ok(new ApiResponse<>(response, null));
 	}
 
@@ -157,7 +160,7 @@ public class ItemController {
 			@RequestParam(required = false) ItemState itemState,
 			@RequestParam(required = false) String cursor
 	) {
-		Long userId = Long.valueOf(authentication.getName());
+		Long userId = authentication == null ? null : Long.valueOf(authentication.getName());
 		ItemPageResponse response = itemState == null
 				? itemQueryService.findByGroup(userId, groupId, cursor)
 				: itemQueryService.search(userId, groupId, "", itemState, cursor);
