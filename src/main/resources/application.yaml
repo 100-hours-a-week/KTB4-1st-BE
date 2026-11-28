@@ -25,6 +25,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27017/ktb_agile}
 
 app:
   kafka:

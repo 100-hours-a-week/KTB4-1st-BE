@@ -1,10 +1,12 @@
 package com.example.KTB_Agile_backend.chat.service;
 
 import com.example.KTB_Agile_backend.chat.dto.response.ChatMessagePageResponse;
-import com.example.KTB_Agile_backend.chat.entity.ChatMessage;
+import com.example.KTB_Agile_backend.chat.document.ChatMessageDocumentRepository;
+import com.example.KTB_Agile_backend.chat.entity.ChatMessageView;
 import com.example.KTB_Agile_backend.chat.repository.ChatMemberRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatMessageRepository;
 import com.example.KTB_Agile_backend.chat.repository.ChatRoomRepository;
+import com.example.KTB_Agile_backend.chat.storage.ChatMessageStorageRouter;
 import com.example.KTB_Agile_backend.common.exception.ApiException;
 import com.example.KTB_Agile_backend.common.exception.ErrorCode;
 import com.example.KTB_Agile_backend.common.pagination.CursorCodec;
@@ -36,6 +38,8 @@ public class ChatMessageQueryService {
 
 	private final ChatMemberRepository chatMemberRepository;
 	private final ChatMessageRepository chatMessageRepository;
+	private final ChatMessageDocumentRepository chatMessageDocumentRepository;
+	private final ChatMessageStorageRouter chatMessageStorageRouter;
 	private final ChatRoomRepository chatRoomRepository;
 	private final ExchangeRequestRepository exchangeRequestRepository;
 	private final UserRepository userRepository;
@@ -49,20 +53,28 @@ public class ChatMessageQueryService {
 
 		Long cursorId = CursorCodec.decodeId(cursor);
 		Pageable pageable = PageRequest.of(0, FETCH_SIZE);
-		List<ChatMessage> fetchedMessages = cursorId == null
-				? chatMessageRepository.findAllByChatRoomIdOrderByIdDesc(chatRoomId, pageable)
-				: chatMessageRepository.findAllByChatRoomIdAndIdLessThanOrderByIdDesc(
-						chatRoomId, cursorId, pageable);
+		List<ChatMessageView> fetchedMessages = new ArrayList<>();
+		if (chatMessageStorageRouter.readsFromMongo()) {
+			fetchedMessages.addAll(cursorId == null
+					? chatMessageDocumentRepository.findByChatRoomIdOrderByMessageIdDesc(chatRoomId, pageable)
+					: chatMessageDocumentRepository.findByChatRoomIdAndMessageIdLessThanOrderByMessageIdDesc(
+							chatRoomId, cursorId, pageable));
+		} else {
+			fetchedMessages.addAll(cursorId == null
+					? chatMessageRepository.findAllByChatRoomIdOrderByIdDesc(chatRoomId, pageable)
+					: chatMessageRepository.findAllByChatRoomIdAndIdLessThanOrderByIdDesc(
+							chatRoomId, cursorId, pageable));
+		}
 
-		CursorPage<ChatMessage> page = CursorPage.fromIds(fetchedMessages, PAGE_SIZE, ChatMessage::getId);
-		List<ChatMessage> messages = new ArrayList<>(page.items());
+		CursorPage<ChatMessageView> page = CursorPage.fromIds(fetchedMessages, PAGE_SIZE, ChatMessageView::getId);
+		List<ChatMessageView> messages = new ArrayList<>(page.items());
 		Collections.reverse(messages);
 		ExchangeRequest request = chatRoomRepository.findById(chatRoomId)
 				.flatMap(room -> exchangeRequestRepository.findById(room.getExchangeRequestId()))
 				.orElse(null);
 		Map<Long, User> users = new HashMap<>();
 		userRepository.findAllById(messages.stream()
-				.map(ChatMessage::getUserId)
+						.map(ChatMessageView::getUserId)
 				.filter(userIdValue -> userIdValue != null)
 				.distinct()
 				.toList())
@@ -84,12 +96,12 @@ public class ChatMessageQueryService {
 		);
 	}
 
-	private Map<Long, GroupMemberStatus> findGroupMemberStatuses(List<ChatMessage> messages, ExchangeRequest request) {
+	private Map<Long, GroupMemberStatus> findGroupMemberStatuses(List<? extends ChatMessageView> messages, ExchangeRequest request) {
 		if (messages.isEmpty() || request == null || request.getGroup() == null) {
 			return Map.of();
 		}
 		List<Long> userIds = messages.stream()
-				.map(ChatMessage::getUserId)
+				.map(ChatMessageView::getUserId)
 				.filter(userId -> userId != null)
 				.distinct()
 				.toList();
